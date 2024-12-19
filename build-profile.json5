@@ -1,0 +1,49 @@
+{
+  "app": {
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS"
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "release"
+      }
+    ],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/linyoutian/.ohos/config/default_xengine-samplecode-vulkan-demo-cpp_ooL8zo51Iw_niPauGUzf4HtTaPT5_QTpKtSfDhT18ME=.cer",
+          "storePassword": "0000001B49AE299DA6B5F51DA3D51BAD9022AAB55CCF307F495238C4356E27C814883AA3BB571CE9DECDAD",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BFB5462450A544A0DE15B54E5884DDE6E9A9097924B8B0758A724EE2FD830366FD1B2F7647E6DCD",
+          "profile": "/Users/linyoutian/.ohos/config/default_xengine-samplecode-vulkan-demo-cpp_ooL8zo51Iw_niPauGUzf4HtTaPT5_QTpKtSfDhT18ME=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/linyoutian/.ohos/config/default_xengine-samplecode-vulkan-demo-cpp_ooL8zo51Iw_niPauGUzf4HtTaPT5_QTpKtSfDhT18ME=.p12"
+        }
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

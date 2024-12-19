@@ -1,0 +1,11 @@
+CMakeLists.txt.user
+build
+lego
+
+.DS_Store
+.vscode
+
+oh_modules
+.hvigor
+.cxx
+assets
