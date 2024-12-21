@@ -11,7 +11,7 @@
 namespace {
 
 constexpr uint32_t RADIX = 256;
-constexpr int WORKGROUP_SIZE = 512;
+constexpr int WORKGROUP_SIZE = 256;
 constexpr int PARTITION_DIVISION = 8;
 constexpr int PARTITION_SIZE = PARTITION_DIVISION * WORKGROUP_SIZE;
 
@@ -403,42 +403,42 @@ void gpuSort(VkCommandBuffer commandBuffer, VrdxSorter sorter,
 
     vkCmdDispatch(commandBuffer, RADIX, 1, 1);
 
-//     if (queryPool) {
-//       vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-//                           queryPool, query + 2 + 3 * i + 1);
-//     }
+    if (queryPool) {
+      vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                          queryPool, query + 2 + 3 * i + 1);
+    }
 
     // downsweep
-//     memoryBarrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-//     memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-//     memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-//     vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-//                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1,
-//                          &memoryBarrier, 0, NULL, 0, NULL);
+    memoryBarrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1,
+                         &memoryBarrier, 0, NULL, 0, NULL);
 
-//     if (valuesBuffer) {
-//       vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-//                         sorter->downsweepKeyValuePipeline);
-//     } else {
-//       vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-//                         sorter->downsweepPipeline);
-//     }
-//
-//     vkCmdDispatch(commandBuffer, partitionCount, 1, 1);
-//
-//     if (queryPool) {
-//       vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-//                           queryPool, query + 2 + 3 * i + 2);
-//     }
-//
-//     if (i < 3) {
-//       memoryBarrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-//       memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-//       memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-//       vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-//                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1,
-//                            &memoryBarrier, 0, NULL, 0, NULL);
-//     }
+    if (valuesBuffer) {
+      vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                        sorter->downsweepKeyValuePipeline);
+    } else {
+      vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                        sorter->downsweepPipeline);
+    }
+
+    vkCmdDispatch(commandBuffer, partitionCount, 1, 1);
+
+    if (queryPool) {
+      vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                          queryPool, query + 2 + 3 * i + 2);
+    }
+
+    if (i < 3) {
+      memoryBarrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+      memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+      memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1,
+                           &memoryBarrier, 0, NULL, 0, NULL);
+    }
   }
 
   if (queryPool) {

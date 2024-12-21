@@ -34,6 +34,8 @@
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
+#define SORT_SIZE 100
+
 #define VULKAN_HW
 // #define VULKAN_PC
 
@@ -79,6 +81,7 @@ public:
     bool upd_cmd_buffer = true;
 
     RandomGenerator random_generator;
+    int current_img_idx = 0;
 
     struct sortBuffers {
         vkgs::Buffer key;
@@ -344,7 +347,7 @@ public:
     }
     #endif
     template<typename T>
-    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer);
+    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 3, int length = 3);
 private:
     VkPhysicalDeviceFeatures2 features_{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     VkPhysicalDeviceImagelessFramebufferFeatures imageless_framebuffer_feature_{

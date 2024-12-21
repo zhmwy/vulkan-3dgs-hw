@@ -495,8 +495,8 @@ DataLoader::InputGaussianStruct DataLoader::loadInputGaussianData() {
 
 DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
     auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
-//     const std::string filepath = basePath + "/" + "assets/lego/input_10w.ply";
-    const std::string filepath = basePath + "/" + "assets/input_7000.ply";
+    const std::string filepath = basePath + "/" + "assets/lego/input.ply";
+//     const std::string filepath = basePath + "/" + "assets/input_7000.ply";
     LOGI("InputLegoInitStruct, loading input from: %{public}s", filepath.c_str());
     //  const std::string filepath = basePath + "/" + "assets/lego/points3d.ply";
      
@@ -517,35 +517,35 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
     
     try {
         // Request each property from the "vertex" element
-//         x = plyFile.request_properties_from_element("vertex", { "x" });
-//         y = plyFile.request_properties_from_element("vertex", { "y" });
-//         z = plyFile.request_properties_from_element("vertex", { "z" });
-//         scale_x = plyFile.request_properties_from_element("vertex", { "scale_0" });
-//         scale_y = plyFile.request_properties_from_element("vertex", { "scale_1" });
-//         scale_z = plyFile.request_properties_from_element("vertex", { "scale_2" });
-//         rotate_0 = plyFile.request_properties_from_element("vertex", { "rot_0" });
-//         rotate_1 = plyFile.request_properties_from_element("vertex", { "rot_1" });
-//         rotate_2 = plyFile.request_properties_from_element("vertex", { "rot_2" });
-//         rotate_3 = plyFile.request_properties_from_element("vertex", { "rot_3" });
-//         opacity = plyFile.request_properties_from_element("vertex", { "opacity" });
-//         r = plyFile.request_properties_from_element("vertex", { "f_dc_0" });
-//         g = plyFile.request_properties_from_element("vertex", { "f_dc_1" });
-//         b = plyFile.request_properties_from_element("vertex", { "f_dc_2" });
-        
         x = plyFile.request_properties_from_element("vertex", { "x" });
         y = plyFile.request_properties_from_element("vertex", { "y" });
         z = plyFile.request_properties_from_element("vertex", { "z" });
-        scale_x = plyFile.request_properties_from_element("vertex", { "scale_x" });
-        scale_y = plyFile.request_properties_from_element("vertex", { "scale_y" });
-        scale_z = plyFile.request_properties_from_element("vertex", { "scale_z" });
-        rotate_0 = plyFile.request_properties_from_element("vertex", { "rotate_0" });
-        rotate_1 = plyFile.request_properties_from_element("vertex", { "rotate_1" });
-        rotate_2 = plyFile.request_properties_from_element("vertex", { "rotate_2" });
-        rotate_3 = plyFile.request_properties_from_element("vertex", { "rotate_3" });
+        scale_x = plyFile.request_properties_from_element("vertex", { "scale_0" });
+        scale_y = plyFile.request_properties_from_element("vertex", { "scale_1" });
+        scale_z = plyFile.request_properties_from_element("vertex", { "scale_2" });
+        rotate_0 = plyFile.request_properties_from_element("vertex", { "rot_0" });
+        rotate_1 = plyFile.request_properties_from_element("vertex", { "rot_1" });
+        rotate_2 = plyFile.request_properties_from_element("vertex", { "rot_2" });
+        rotate_3 = plyFile.request_properties_from_element("vertex", { "rot_3" });
         opacity = plyFile.request_properties_from_element("vertex", { "opacity" });
-        r = plyFile.request_properties_from_element("vertex", { "r" });
-        g = plyFile.request_properties_from_element("vertex", { "g" });
-        b = plyFile.request_properties_from_element("vertex", { "b" });
+        r = plyFile.request_properties_from_element("vertex", { "f_dc_0" });
+        g = plyFile.request_properties_from_element("vertex", { "f_dc_1" });
+        b = plyFile.request_properties_from_element("vertex", { "f_dc_2" });
+        
+//         x = plyFile.request_properties_from_element("vertex", { "x" });
+//         y = plyFile.request_properties_from_element("vertex", { "y" });
+//         z = plyFile.request_properties_from_element("vertex", { "z" });
+//         scale_x = plyFile.request_properties_from_element("vertex", { "scale_x" });
+//         scale_y = plyFile.request_properties_from_element("vertex", { "scale_y" });
+//         scale_z = plyFile.request_properties_from_element("vertex", { "scale_z" });
+//         rotate_0 = plyFile.request_properties_from_element("vertex", { "rotate_0" });
+//         rotate_1 = plyFile.request_properties_from_element("vertex", { "rotate_1" });
+//         rotate_2 = plyFile.request_properties_from_element("vertex", { "rotate_2" });
+//         rotate_3 = plyFile.request_properties_from_element("vertex", { "rotate_3" });
+//         opacity = plyFile.request_properties_from_element("vertex", { "opacity" });
+//         r = plyFile.request_properties_from_element("vertex", { "r" });
+//         g = plyFile.request_properties_from_element("vertex", { "g" });
+//         b = plyFile.request_properties_from_element("vertex", { "b" });
     }
     catch (const std::exception& e) {
         std::cerr << "Error reading properties: " << e.what() << std::endl;

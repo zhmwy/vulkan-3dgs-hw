@@ -21,13 +21,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "/Users/linyoutian/.ohos/config/default_xengine-samplecode-vulkan-demo-cpp_ooL8zo51Iw_niPauGUzf4HtTaPT5_QTpKtSfDhT18ME=.cer",
-          "storePassword": "0000001B49AE299DA6B5F51DA3D51BAD9022AAB55CCF307F495238C4356E27C814883AA3BB571CE9DECDAD",
+          "certpath": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.cer",
+          "storePassword": "0000001BED2D34BD72C93F9D9EF1A44185A4E8E43C731FDE7AA7F6E83BA80DAB2A375FD456E6CCCCBE208C",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001BFB5462450A544A0DE15B54E5884DDE6E9A9097924B8B0758A724EE2FD830366FD1B2F7647E6DCD",
-          "profile": "/Users/linyoutian/.ohos/config/default_xengine-samplecode-vulkan-demo-cpp_ooL8zo51Iw_niPauGUzf4HtTaPT5_QTpKtSfDhT18ME=.p7b",
+          "keyPassword": "0000001B6D457F0DF902790A87355E2568BC8ABC438D318A7AEF4A81C74DFCC32DAF4B67BC9632EA64CA4B",
+          "profile": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/Users/linyoutian/.ohos/config/default_xengine-samplecode-vulkan-demo-cpp_ooL8zo51Iw_niPauGUzf4HtTaPT5_QTpKtSfDhT18ME=.p12"
+          "storeFile": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.p12"
         }
       }
     ]
