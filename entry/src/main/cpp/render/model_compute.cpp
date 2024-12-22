@@ -498,7 +498,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 //
 //     bindPipeline2CommandBuffer(pipe_project_render, FORWARD_PIPE, X, 1, 1);
 //     forwardCmd();
-//     bufferToImageCmd();
+    bufferToImageCmd();
 //     createGpu2CpuCopys();
 }
 

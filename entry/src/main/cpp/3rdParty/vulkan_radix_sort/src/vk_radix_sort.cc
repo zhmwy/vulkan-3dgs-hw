@@ -12,7 +12,7 @@ namespace {
 
 constexpr uint32_t RADIX = 256;
 constexpr int WORKGROUP_SIZE = 256;
-constexpr int PARTITION_DIVISION = 8;
+constexpr int PARTITION_DIVISION = 16;
 constexpr int PARTITION_SIZE = PARTITION_DIVISION * WORKGROUP_SIZE;
 
 uint32_t RoundUp(uint32_t a, uint32_t b) { return (a + b - 1) / b; }
