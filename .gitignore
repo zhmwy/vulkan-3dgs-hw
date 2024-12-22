@@ -9,3 +9,6 @@ oh_modules
 .hvigor
 .cxx
 assets
+
+.clang*
+.idea
