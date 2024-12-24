@@ -491,11 +491,31 @@ DataLoader::InputGaussianStruct DataLoader::loadInputGaussianData() {
     return data;
 }
 
+void extractExtrinsics(const std::vector<std::string>& files, std::vector<std::vector<float>>& extrinsics) {
+    for (const auto& entry : files) {
+        if (entry.find("cameras.txt") == std::string::npos) {
+            std::ifstream file(entry);
+            if (!file.is_open()) throw std::runtime_error("Failed to open file.");
 
+            std::string line;
+            std::vector<float> extrinsicValues;
+            while (std::getline(file, line)) {
+                std::istringstream iss(line);
+                float value;
+
+                // Read values from the line
+                while (iss >> value) {
+                    extrinsicValues.push_back(value);
+                }
+            }
+            extrinsics.push_back(extrinsicValues);
+        }
+    }
+}
 
 DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
     auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
-    const std::string filepath = basePath + "/" + "assets/lego/input.ply";
+    const std::string filepath = basePath + "/" + "assets/lego/input_08.ply";
 //     const std::string filepath = basePath + "/" + "assets/input_7000.ply";
     LOGI("InputLegoInitStruct, loading input from: %{public}s", filepath.c_str());
     //  const std::string filepath = basePath + "/" + "assets/lego/points3d.ply";
@@ -514,7 +534,7 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
     std::shared_ptr<PlyData> rotate_0, rotate_1, rotate_2, rotate_3;
     std::shared_ptr<PlyData> opacity;
     std::shared_ptr<PlyData> r, g, b;
-    
+    std::vector<std::shared_ptr<PlyData>> colorProps;
     try {
         // Request each property from the "vertex" element
         x = plyFile.request_properties_from_element("vertex", { "x" });
@@ -528,9 +548,18 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
         rotate_2 = plyFile.request_properties_from_element("vertex", { "rot_2" });
         rotate_3 = plyFile.request_properties_from_element("vertex", { "rot_3" });
         opacity = plyFile.request_properties_from_element("vertex", { "opacity" });
-        r = plyFile.request_properties_from_element("vertex", { "f_dc_0" });
-        g = plyFile.request_properties_from_element("vertex", { "f_dc_1" });
-        b = plyFile.request_properties_from_element("vertex", { "f_dc_2" });
+//         r = plyFile.request_properties_from_element("vertex", { "f_dc_0" });
+//         g = plyFile.request_properties_from_element("vertex", { "f_dc_1" });
+//         b = plyFile.request_properties_from_element("vertex", { "f_dc_2" });
+        for (int i = 0; i < 3; ++i) { // f_dc_0, f_dc_1, f_dc_2
+            std::string propName = "f_dc_" + std::to_string(i);
+            colorProps.push_back(plyFile.request_properties_from_element("vertex", { propName }));
+        }
+
+        for (int i = 0; i < 45; ++i) { // f_rest_0 to f_rest_44
+            std::string propName = "f_rest_" + std::to_string(i);
+            colorProps.push_back(plyFile.request_properties_from_element("vertex", { propName }));
+        }
         
 //         x = plyFile.request_properties_from_element("vertex", { "x" });
 //         y = plyFile.request_properties_from_element("vertex", { "y" });
@@ -591,11 +620,13 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
         data.opacities[i] = reinterpret_cast<float*>(opacity->buffer.get())[i];
 
         // Load color (r, g, b)
-        data.colors[i] = glm::vec3(
-            reinterpret_cast<float*>(r->buffer.get())[i],
-            reinterpret_cast<float*>(g->buffer.get())[i],
-            reinterpret_cast<float*>(b->buffer.get())[i]
-        );
+        // Load colors dynamically from colorProps
+        for (size_t j = 0; j < colorProps.size(); ++j) {
+            float value = reinterpret_cast<float*>(colorProps[j]->buffer.get())[i];
+            //value = 0.0;
+            data.colors[i].values[j/3 + (j % 3)*16] = value;
+        }
+        
     }
 
     std::string path = basePath + "/" + "assets/lego/ktx";
@@ -740,6 +771,6 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
         }
     }
     LOGI("InputLegoInitStruct successfully");
-
+    
     return data;
 }

@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "common/common.h"
 #include "generated/upsweep_comp.h"
 #include "generated/spine_comp.h"
 #include "generated/downsweep_comp.h"
@@ -78,7 +79,9 @@ void vrdxCreateSorter(const VrdxSorterCreateInfo* pCreateInfo,
   uint32_t maxWorkgroupSize =
       physicalDeviceProperties.properties.limits.maxComputeWorkGroupSize[0];
   uint32_t subgroupSize = physicalDeviceVulkan11Properties.subgroupSize;
-
+    
+    LOGI("maxWorkgroupSize: %{public}d", maxWorkgroupSize);
+    LOGI("subgroupSize: %{public}d", subgroupSize);
   // pipeline layout
   VkPushConstantRange pushConstants = {};
   pushConstants.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -297,7 +300,8 @@ void gpuSort(VkCommandBuffer commandBuffer, VrdxSorter sorter,
   VkDevice device = sorter->device;
   uint32_t partitionCount =
       RoundUp(indirectBuffer ? elementCount : elementCount, PARTITION_SIZE);
-
+    LOGI("partitionCount: %{public}d", partitionCount);
+    LOGI("PARTITION_SIZE: %{public}d", PARTITION_SIZE);
   VkDeviceSize elementCountSize = sizeof(uint32_t);
   VkDeviceSize histogramSize = HistogramSize(elementCount);
   VkDeviceSize inoutSize = InoutSize(elementCount);

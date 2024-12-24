@@ -34,7 +34,7 @@
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
-#define SORT_SIZE 100
+#define SORT_SIZE 1024
 
 #define VULKAN_HW
 // #define VULKAN_PC
@@ -73,7 +73,10 @@ public:
     std::vector<float> intr_tmp; 
 
     // Predefine 3DGS hyperparameters
-    int MAX_SPLAT_COUNT = 10000;
+    int MAX_SPLAT_COUNT = 100000;
+    static const int MAX_TIME_QUERY_NUM = 100;
+    static const int QUERY_TIME_RANGE = 1000;
+    int splat_count = 10000;
     int trainign_step = 0;
     int max_trainign_step = 10000;
     int last_step_tag = 0;
@@ -89,8 +92,11 @@ public:
         vkgs::Buffer unsort_index;
         vkgs::Buffer sorted_idx_array;
         vkgs::Buffer sort_storage;
+        vkgs::Buffer densify_idx;
         vkgs::Buffer splat_visible_point_count;
         vkgs::CpuBuffer splat_visible_point_count_cpu;
+        std::vector<uint32_t> sorted_key;
+        std::vector<uint32_t> sorted_index;
         VkQueryPool queryPool = VK_NULL_HANDLE;
         VrdxSorter sorter = VK_NULL_HANDLE;
     } sort_buffers;
@@ -114,6 +120,7 @@ public:
         // alpha blending buffers
         vkgs::Buffer conic;
         vkgs::Buffer opacity;
+        vkgs::Buffer sh_coeff;
         vkgs::Buffer feature;
         // vkgs::Buffer sort_idx;
         vkgs::Buffer tile_range;
@@ -162,10 +169,19 @@ public:
         vkgs::Buffer dL_dfeature;
         vkgs::Buffer dL_dndc;
         vkgs::Buffer dL_dbackground;
+        vkgs::Buffer dL_dshs_array;
 
         // activation patch buffers
         vkgs::Buffer opacity_act_array;
         vkgs::Buffer dL_dopacity_act_array;
+        
+        // for densification
+        vkgs::Buffer max_radii2D;
+        vkgs::Buffer xyz_gradient_accum;
+        vkgs::Buffer denom;
+        vkgs::Buffer curPointsNum;
+        vkgs::Buffer xyz_gradient_mean;
+
     } splat_buffers;
 
     // Input image
@@ -195,7 +211,11 @@ public:
         VkQueue queue;                                // Separate queue for compute commands
         VkCommandPool commandPool;                    // Use a separate command pool
         VkCommandBuffer commandBuffer;                // Command buffer storing the dispatch commands and barriers
+        VkCommandBuffer commandBuffer2;                // Command buffer storing the dispatch commands and barriers
+        VkCommandBuffer commandBuffer3;                // Command buffer storing the dispatch commands and barriers
         VkSemaphore semaphore;                        // Execution dependency between compute & graphic submission
+        VkSemaphore semaphore2;                       // Execution dependency between compute & graphic submission
+        VkSemaphore semaphore3;                       // Execution dependency between compute & graphic submission
         VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
         VkDescriptorSet descriptorSet;                // Compute shader bindings
         VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
@@ -208,8 +228,25 @@ public:
         VkDescriptorSet descriptorSet;                // Compute shader bindings
         VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
         std::vector<VkPipeline> pipelines;
-    } pipe_project, pipe_project_render, pipe_compute_key, pipe_compute_tile, pipe_inverse, pipe_blending, pipe_optimize, pipe_loss, pipe_copy_img2buffer, pipe_copy_buffer2img, pipe_buffer_fill;
-
+    };
+    Compute3DGS pipe_project, pipe_project_render;
+    Compute3DGS pipe_compute_key;
+    Compute3DGS pipe_compute_tile;
+    Compute3DGS pipe_inverse;
+    Compute3DGS pipe_blending;
+    Compute3DGS pipe_optimize;
+    Compute3DGS pipe_loss;
+    Compute3DGS pipe_copy_img2buffer;
+    Compute3DGS pipe_copy_buffer2img; 
+    Compute3DGS pipe_buffer_fill;
+    Compute3DGS pipe_sh;
+    Compute3DGS pipe_sh_render;
+    Compute3DGS pipe_densification_stats;
+    Compute3DGS pipe_mean_grad;
+    Compute3DGS pipe_clone;
+    Compute3DGS pipe_split;
+    Compute3DGS pipe_reset_opacity;
+    
     vks::Buffer vertexBuffer;
     vks::Buffer indexBuffer;
     uint32_t indexCount;
@@ -253,10 +290,21 @@ public:
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         bool float_constant = false
     );
+    void bindPipeline2CommandBuffer2(
+        const VulkanComputeExample::Compute3DGS& pipe, 
+        const int PIPELINE_INDEX,
+        uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
+        bool float_constant = false
+    );
 
-    void ComputeMemoryBarrierBlock();
+    void ComputeMemoryBarrierBlock(VkCommandBuffer commandBuffer);
+    void ComputeShaderMemoryBarrierBlock(VkCommandBuffer commandBuffer);
+    void ComputeTransBarrierBlock(VkCommandBuffer commandBuffer);
+    void TransComputeBarrierBlock(VkCommandBuffer commandBuffer);
 
     void createGpu2CpuCopy(vkgs::Buffer &buffer);
+    void createGpu2CpuCopy1(vkgs::Buffer &buffer);
+    void createGpu2CpuCopy3(vkgs::Buffer &buffer);
 
     // 3dgs compute pipelines
     void setBufferFillPipeline();
@@ -268,10 +316,17 @@ public:
     void setSortPipeline(); 
     void setComputeKeyPipeline();
     void setComputeTilePipeline();
+    void setDensificationStatsPipeline();
+    void setMeanGradPipeline();
+    void setClonePipeline();
+    void setSplitPipeline();
+    void setResetOpacityPipeline();
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
     void setOptimizitionPipeline();
     void setLossPipeline();
+    void setComputeSHPipeline();
+    void setComputeSHRenderPipeline();
     // 3dgs command buffer
     void forwardCmd();
     void backwardCmd();
@@ -279,6 +334,7 @@ public:
     void imageToBufferCmd();
     void bufferToImageCmd();
     void optimizeStepCmd();
+    void densifyCmd();
     void updRenderCmd();
 
     // Methods
@@ -347,7 +403,7 @@ public:
     }
     #endif
     template<typename T>
-    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 3, int length = 3);
+    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50);
 private:
     VkPhysicalDeviceFeatures2 features_{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     VkPhysicalDeviceImagelessFramebufferFeatures imageless_framebuffer_feature_{

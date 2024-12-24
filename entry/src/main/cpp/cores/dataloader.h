@@ -4,6 +4,8 @@
 #include "tinyply.h"
 #include <glm/glm.hpp>
 #include "vulkanexamplebase.h"
+#define VULKAN_HW
+// #define VULKAN_PC
 
 using namespace tinyply;
 
@@ -218,7 +220,11 @@ public:
         std::vector<glm::vec3> scales;         // Scaling factors (scale_x, scale_y, scale_z)
         std::vector<glm::vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
         std::vector<float> opacities;          // Opacity
-        std::vector<glm::vec3> colors;         // RGB colors (r, g, b)
+
+        struct Data {
+            float values[48];  // 48维浮点数组
+        };
+        std::vector<Data> colors;         // RGB colors (r, g, b)
         std::vector<vks::Texture2D> images;   // Images
 
         std::vector<std::string> img_list;
@@ -230,6 +236,7 @@ public:
         void print() const {
             std::cout << "Loaded " << positions.size() << " vertices." << std::endl;
             if (!positions.empty()) {
+#ifdef VULKAN_PC
                 std::cout << "\nFirst vertex data:" << std::endl;
 
                 // Print position (x, y, z)
@@ -246,7 +253,7 @@ public:
                 // std::cout << "Opacity: " << opacities[0] << std::endl;
 
                 // Print color (r, g, b)
-                std::cout << "Color (r, g, b): (" << colors[0].r << ", " << colors[0].g << ", " << colors[0].b << ")" << std::endl;
+                std::cout << "Color (r, g, b): (" << colors[0].values[0] << ", " << colors[0].values[1] << ", " << colors[0].values[2] << ")" << std::endl;
 
                 // Print image list
                 std::cout << "Image list: " << img_list[0] << std::endl;
@@ -256,6 +263,35 @@ public:
                 for (int i = 0; i < 12; ++i) {
                     std::cout << extr_tmp[0][i] << " ";
                 }
+#endif
+#ifdef VULKAN_HW
+                LOGI("First vertex data:");
+                LOGI("Position (x, y, z): (%{public}f, %{public}f, %{public}f)", positions[0].x, positions[0].y, positions[0].z);
+                LOGI("Scale (x, y, z): (%{public}f, %{public}f, %{public}f)", scales[0].x, scales[0].y, scales[0].z);
+                LOGI("Color (r, g, b): (%{public}f, %{public}f, %{public}f)", colors[0].values[0], colors[0].values[1], colors[0].values[2]);
+                LOGI("Image list: : %{public}s", img_list[0].c_str());
+                LOGI("Extrinsic parameters: ");
+                std::ostringstream oss;
+                for (int i = 0; i < 12; ++i) {
+                    oss << extr_tmp[0][i];
+                    if (i < 12 - 1) {
+                        oss << " ";
+                    }
+                }
+                std::string result = oss.str();
+                LOGI("%{public}s", result.c_str());
+                LOGI("Extrinsic parameters for render: ");
+                oss.str("");
+                oss.clear();
+                for (int i = 0; i < 12; ++i) {
+                    oss << extr_tmp_test[0][i];
+                    if (i < 12 - 1) {
+                        oss << " ";
+                    }
+                }
+                result = oss.str();
+                LOGI("%{public}s", result.c_str());
+#endif
             }
         }
     };
