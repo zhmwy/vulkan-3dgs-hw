@@ -211,11 +211,7 @@ public:
         VkQueue queue;                                // Separate queue for compute commands
         VkCommandPool commandPool;                    // Use a separate command pool
         VkCommandBuffer commandBuffer;                // Command buffer storing the dispatch commands and barriers
-        VkCommandBuffer commandBuffer2;                // Command buffer storing the dispatch commands and barriers
-        VkCommandBuffer commandBuffer3;                // Command buffer storing the dispatch commands and barriers
         VkSemaphore semaphore;                        // Execution dependency between compute & graphic submission
-        VkSemaphore semaphore2;                       // Execution dependency between compute & graphic submission
-        VkSemaphore semaphore3;                       // Execution dependency between compute & graphic submission
         VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
         VkDescriptorSet descriptorSet;                // Compute shader bindings
         VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
@@ -297,14 +293,12 @@ public:
         bool float_constant = false
     );
 
-    void ComputeMemoryBarrierBlock(VkCommandBuffer commandBuffer);
-    void ComputeShaderMemoryBarrierBlock(VkCommandBuffer commandBuffer);
-    void ComputeTransBarrierBlock(VkCommandBuffer commandBuffer);
-    void TransComputeBarrierBlock(VkCommandBuffer commandBuffer);
+    void ComputeMemoryBarrierBlock();
+    void ComputeShaderMemoryBarrierBlock();
+    void ComputeTransBarrierBlock();
+    void TransComputeBarrierBlock();
 
     void createGpu2CpuCopy(vkgs::Buffer &buffer);
-    void createGpu2CpuCopy1(vkgs::Buffer &buffer);
-    void createGpu2CpuCopy3(vkgs::Buffer &buffer);
 
     // 3dgs compute pipelines
     void setBufferFillPipeline();
