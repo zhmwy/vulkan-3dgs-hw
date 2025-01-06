@@ -6,9 +6,9 @@
 #extension GL_KHR_shader_subgroup_ballot: enable
 
 const int RADIX = 256;
-#define SUBGROUP_SIZE 32
-#define WORKGROUP_SIZE 512
-#define PARTITION_DIVISION 8
+#define SUBGROUP_SIZE 64
+#define WORKGROUP_SIZE 256
+#define PARTITION_DIVISION 16
 const int PARTITION_SIZE = PARTITION_DIVISION * WORKGROUP_SIZE;
 
 // dispatch this shader (RADIX, 1, 1), so that gl_WorkGroupID.x is radix
