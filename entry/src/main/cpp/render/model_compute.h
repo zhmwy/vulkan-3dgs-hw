@@ -34,7 +34,7 @@
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
-#define SORT_SIZE 1024
+#define SORT_SIZE 256
 
 #define VULKAN_HW
 // #define VULKAN_PC
@@ -97,6 +97,14 @@ public:
         vkgs::CpuBuffer splat_visible_point_count_cpu;
         std::vector<uint32_t> sorted_key;
         std::vector<uint32_t> sorted_index;
+        
+        // 3DGS.cpp sort buffer
+        vkgs::Buffer sortKBufferEven;
+        vkgs::Buffer sortKBufferOdd;
+        vkgs::Buffer sortVBufferEven;
+        vkgs::Buffer sortVBufferOdd;
+        vkgs::Buffer sortHistBuffer;
+        
         VkQueryPool queryPool = VK_NULL_HANDLE;
         VrdxSorter sorter = VK_NULL_HANDLE;
     } sort_buffers;
@@ -242,6 +250,10 @@ public:
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
     Compute3DGS pipe_reset_opacity;
+    Compute3DGS pipe_sort_even;
+    Compute3DGS pipe_sort_odd;
+    Compute3DGS pipe_hist_even;
+    Compute3DGS pipe_hist_odd;
     
     vks::Buffer vertexBuffer;
     vks::Buffer indexBuffer;
@@ -292,6 +304,12 @@ public:
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         bool float_constant = false
     );
+    void bindPipeline2CommandBufferPushConstants(
+        const VulkanComputeExample::Compute3DGS& pipe, 
+        const int PIPELINE_INDEX,
+        uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
+        std::vector<uint32_t>& pushConstants
+    );
 
     void ComputeMemoryBarrierBlock();
     void ComputeShaderMemoryBarrierBlock();
@@ -321,6 +339,10 @@ public:
     void setLossPipeline();
     void setComputeSHPipeline();
     void setComputeSHRenderPipeline();
+    void setHistEvenPipeline();
+    void setHistOddPipeline();
+    void setSortEvenPipeline();
+    void setSortOddPipeline();
     // 3dgs command buffer
     void forwardCmd();
     void backwardCmd();
@@ -330,6 +352,7 @@ public:
     void optimizeStepCmd();
     void densifyCmd();
     void updRenderCmd();
+    void radixSortCmd();
 
     // Methods
     void prepreAllocator();
