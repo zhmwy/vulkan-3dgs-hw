@@ -15,6 +15,7 @@
 #include "vk_mem_alloc.h"
 #include "cores/buffer.h"
 #include "cores/cpu_buffer.h"
+#include <cstdint>
 #include <vector>
 #include <string>
 #include "file/file_operator.h"
@@ -352,7 +353,7 @@ public:
     void optimizeStepCmd();
     void densifyCmd();
     void updRenderCmd();
-    void radixSortCmd();
+    void radixSortCmd(uint32_t numInstances);
 
     // Methods
     void prepreAllocator();

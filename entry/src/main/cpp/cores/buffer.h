@@ -11,33 +11,34 @@
 namespace vkgs {
 
 class Buffer {
- public:
-  Buffer();
-
-  Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage);
-
-  ~Buffer();
-
-  operator bool() const noexcept { return impl_ != nullptr; }
-
-  operator VkBuffer() const;
-
-  VkDeviceSize size() const;
-
-  void FromCpu(VkCommandBuffer command_buffer, const void* src,
-               VkDeviceSize size);
-  void FromCpu(VkCommandBuffer command_buffer, const void* src);
-
-  template <typename T>
-  void FromCpu(VkCommandBuffer command_buffer, const std::vector<T>& v) {
-    FromCpu(command_buffer, v.data(), v.size() * sizeof(T));
-  }
+    public:
+        Buffer();
+        
+        Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage);
+        
+        ~Buffer();
+        
+        operator bool() const noexcept { return impl_ != nullptr; }
+        
+        operator VkBuffer() const;
+        
+        VkDeviceSize size() const;
+        
+        void FromCpu(VkCommandBuffer command_buffer, const void* src,
+                   VkDeviceSize size);
+        void FromCpu(VkCommandBuffer command_buffer, const void* src);
+        void* getMap();
+        
+        template <typename T>
+        void FromCpu(VkCommandBuffer command_buffer, const std::vector<T>& v) {
+        FromCpu(command_buffer, v.data(), v.size() * sizeof(T));
+}
 public:
     CpuBuffer cpu_buffer;
 
- private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+private:
+    class Impl;
+    std::shared_ptr<Impl> impl_;
 };
 
 }  // namespace vk

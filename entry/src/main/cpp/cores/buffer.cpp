@@ -87,6 +87,11 @@ namespace vkgs {
             region.size = size;
             vkCmdCopyBuffer(command_buffer, staging_buffer_, buffer_, 1, &region);
         }
+    
+        void* getMap()
+        {
+            return map_;
+        }
     private:
         VmaAllocator allocator_;
         VkDeviceSize size_ = 0;
@@ -129,6 +134,10 @@ namespace vkgs {
         const void* src
     ) {
         impl_->FromCpu(command_buffer, src, size());
+    }
+    void* Buffer::getMap()
+    {
+        return impl_->getMap();
     }
 
 }  // namespace vkgs
