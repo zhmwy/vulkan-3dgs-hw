@@ -12,7 +12,7 @@
 namespace {
 
 constexpr uint32_t RADIX = 256;
-constexpr int WORKGROUP_SIZE = 256;
+constexpr int WORKGROUP_SIZE = 256;  
 constexpr int PARTITION_DIVISION = 16;
 constexpr int PARTITION_SIZE = PARTITION_DIVISION * WORKGROUP_SIZE;
 
@@ -243,7 +243,8 @@ void vrdxGetSorterKeyValueStorageRequirements(
   requirements->size = storageSize;
   requirements->usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                         VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+                        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | 
+                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 }
 
 void vrdxCmdSort(VkCommandBuffer commandBuffer, VrdxSorter sorter,

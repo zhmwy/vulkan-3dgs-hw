@@ -205,12 +205,8 @@ void VulkanComputeExample::radixSortCmd()
     uint32_t numRadixSortBlocksPerWorkgroup = 256;
     uint32_t invocationSize = (numInstances + numRadixSortBlocksPerWorkgroup - 1) / numRadixSortBlocksPerWorkgroup;
     invocationSize = (invocationSize + 255) / 256;
-    
-    LOGI("numInstances: %{public}d", numInstances);
-    LOGI("numRadixSortBlocksPerWorkgroup: %{public}d", numRadixSortBlocksPerWorkgroup);
-    LOGI("invocationSize: %{public}d", invocationSize);
 
-    for (uint32_t i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < 4; i++) {
 
         std::vector<uint32_t> pushConstants;
         pushConstants.push_back(numInstances);
@@ -493,33 +489,32 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     uint32_t X = 0;
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     VkDeviceSize size = sizeof(uint32_t);
-//     if (trainign_step < max_trainign_step){
-//         imageToBufferCmd();
-//         zeroGardCmd();
-//
-//         vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
-//         bindPipeline2CommandBuffer(pipe_buffer_fill, 0, X, 1, 1);
-//         bindPipeline2CommandBuffer(pipe_project, FORWARD_PIPE, X, 1, 1);
-//         bindPipeline2CommandBuffer(pipe_sh, FORWARD_PIPE, X, 1, 1);
-//
-//         forwardCmd();
-//         backwardCmd();
-//         optimizeStepCmd();
-//         bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
-//
+    if (trainign_step < max_trainign_step){
+        imageToBufferCmd();
+        zeroGardCmd();
+
+        vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
+        bindPipeline2CommandBuffer(pipe_buffer_fill, 0, X, 1, 1);
+        bindPipeline2CommandBuffer(pipe_project, FORWARD_PIPE, X, 1, 1);
+        bindPipeline2CommandBuffer(pipe_sh, FORWARD_PIPE, X, 1, 1);
+
+        forwardCmd();
+        backwardCmd();
+        optimizeStepCmd();
+        bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
+
 //         if (trainign_step > 500 && trainign_step % 100 == 0)
 //         {
 //             densifyCmd();
 //         }
-//         if (trainign_step % 3000 == 0)
-//         {
-//             bindPipeline2CommandBuffer2(pipe_reset_opacity, FORWARD_PIPE, X, 1, 1);
-//         }
-//         ComputeTransBarrierBlock(compute.commandBuffer2);
-//         bufferToImageCmd();
-//         createGpu2CpuCopys();
-//         createGpu2CpuCopy(splat_buffers.curPointsNum);
-//     }
+        if (trainign_step % 3000 == 0)
+        {
+            bindPipeline2CommandBuffer(pipe_reset_opacity, FORWARD_PIPE, X, 1, 1);
+        }
+        ComputeTransBarrierBlock();
+        bufferToImageCmd();
+        
+    }
 
     updRenderCmd();
     vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
@@ -532,7 +527,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     forwardCmd();
     ComputeTransBarrierBlock();
     bufferToImageCmd();
-    createGpu2CpuCopys();
+//     createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
 }
 
@@ -1857,21 +1852,21 @@ void VulkanComputeExample::setSortPipeline()
         allocator, sizeof(uint32_t)
     );
 
-    sort_buffers.key = vkgs::Buffer(
-        allocator, 
-        MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-    );
-
-    sort_buffers.index = vkgs::Buffer(
-        allocator, 
-        MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-    );
+//     sort_buffers.key = vkgs::Buffer(
+//         allocator, 
+//         MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
+//         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+//         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+//         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+//     );
+//
+//     sort_buffers.index = vkgs::Buffer(
+//         allocator, 
+//         MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
+//         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+//         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+//         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+//     );
 
     sort_buffers.unsort_index = vkgs::Buffer(
         allocator, 
@@ -1891,7 +1886,7 @@ void VulkanComputeExample::setSortPipeline()
     
     sort_buffers.sortHistBuffer = vkgs::Buffer(
         allocator, 
-        1024 * sizeof(uint32_t),
+        256 * 256 * sizeof(uint32_t),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -3005,7 +3000,7 @@ void VulkanComputeExample::draw()
     if (trainign_step % 1000 == 0 && trainign_step != max_trainign_step)
         std::cout << "Traning Step[" << trainign_step << "]" << std::endl;
 
-    printGpuBuffers();
+//     printGpuBuffers();
 }
 
 #ifdef VULKAN_PC
