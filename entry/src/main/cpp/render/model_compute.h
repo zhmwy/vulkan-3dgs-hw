@@ -76,7 +76,7 @@ public:
     // Predefine 3DGS hyperparameters
     int MAX_SPLAT_COUNT = 100000;
     static const int MAX_TIME_QUERY_NUM = 100;
-    static const int QUERY_TIME_RANGE = 1000;
+    static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;
     int trainign_step = 0;
     int max_trainign_step = 10000;
@@ -226,8 +226,17 @@ public:
         VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
         std::vector<VkPipeline> pipelines;            // Compute pipelines for image filters
         int32_t pipelineIndex;                        // Current image filtering compute pipeline index
+        
+        VkQueryPool queryPool;
     } compute;
 
+    struct QueryTime {
+        uint32_t startIndex; // Start index in the query pool
+        uint32_t endIndex;   // End index in the query pool
+    };
+    std::map<std::string, QueryTime> queryTime;
+    std::map<std::string, float> elapsedTimeSum;
+    
     struct Compute3DGS {
         VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
         VkDescriptorSet descriptorSet;                // Compute shader bindings
@@ -346,6 +355,8 @@ public:
     void setSortOddPipeline();
     // 3dgs command buffer
     void forwardCmd();
+    void forwardCmdTime();
+    
     void backwardCmd();
     void zeroGardCmd();
     void imageToBufferCmd();
@@ -372,6 +383,10 @@ public:
     void draw();
     // void drawUI(const VkCommandBuffer commandBuffer);
 
+    void queryEventTime();
+    void queryCmdTimeStart(std::string enventName);
+    void queryCmdTimeEnd(std::string enventName);
+    
     void printGpuBuffers();
 
     virtual void getEnabledFeatures() override;
