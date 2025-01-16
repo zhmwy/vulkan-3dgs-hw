@@ -133,15 +133,15 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.cov2d);
     createGpu2CpuCopy(splat_buffers.cov3d);
 
-    createGpu2CpuCopy(sort_buffers.key);
-    createGpu2CpuCopy(sort_buffers.unsort_index);
+//     createGpu2CpuCopy(sort_buffers.key);
+//     createGpu2CpuCopy(sort_buffers.unsort_index);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
-    createGpu2CpuCopy(sort_buffers.index);
+//     createGpu2CpuCopy(sort_buffers.index);
     createGpu2CpuCopy(sort_buffers.sortKBufferEven);
     createGpu2CpuCopy(sort_buffers.sortVBufferEven);
 
     createGpu2CpuCopy(splat_buffers.tile_range);
-    createGpu2CpuCopy(sort_buffers.sorted_idx_array);
+//     createGpu2CpuCopy(sort_buffers.sorted_idx_array);
 
     createGpu2CpuCopy(splat_buffers.conic);
     createGpu2CpuCopy(splat_buffers.rfeat);
@@ -160,10 +160,20 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.dL_dbackground);      // Copy dL_dbackground
     createGpu2CpuCopy(splat_buffers.sh_coeff);
     createGpu2CpuCopy(splat_buffers.curPointsNum);
+    
     createGpu2CpuCopy(sort_buffers.densify_idx);
     createGpu2CpuCopy(splat_buffers.xyz_gradient_mean);
+    createGpu2CpuCopy(splat_buffers.xyz_gradient_accum);
+    createGpu2CpuCopy(splat_buffers.denom);
     
-    createGpu2CpuCopy(splat_buffers.curPointsNum);
+    
+    
+    createGpu2CpuCopy(splat_buffers.dL_dxyz);
+    createGpu2CpuCopy(splat_buffers.dL_dshs_array);
+    createGpu2CpuCopy(splat_buffers.dL_dopacity);
+    createGpu2CpuCopy(splat_buffers.dL_dscale);
+    createGpu2CpuCopy(splat_buffers.dL_drotate);
+    
 }
 
 int cumsum_cpu(const vkgs::Buffer& buffer){
@@ -181,21 +191,22 @@ int cumsum_cpu(const vkgs::Buffer& buffer){
 void VulkanComputeExample::printGpuBuffers()
 {
     LOGW("Current image index: %{public}d, training step: %{public}d", current_img_idx, trainign_step);
-    printGpuBuffer<float>("xyz_array", splat_buffers.xyz_array);
-    printGpuBuffer<float>("extr", splat_buffers.extr_params);
-    printGpuBuffer<float>("extr_render", splat_buffers.extr_params_render);
-    printGpuBuffer<float>("intr", splat_buffers.intr_params);
-    printGpuBuffer<float>("uvd", splat_buffers.uvd);
-    printGpuBuffer<int32_t>("radius", splat_buffers.radius); 
-    printGpuBuffer<int32_t>("visible", splat_buffers.visible); 
-    printGpuBuffer<int32_t>("tiles", splat_buffers.tiles); 
-    printGpuBuffer<int32_t>("splat_visible_point_count", sort_buffers.splat_visible_point_count); 
+    
+    printGpuBuffer<int32_t>("splat_visible_point_count", sort_buffers.splat_visible_point_count, 1, 1); 
     int sum = cumsum_cpu(splat_buffers.tiles);
     LOGW("cumsum cpu: %{public}d ", sum);
-    printGpuBuffer<int32_t>("tile_range", splat_buffers.tile_range);
-    printGpuBuffer<uint32_t>("key", sort_buffers.sortKBufferEven);
-    printGpuBuffer<uint32_t>("index", sort_buffers.sortVBufferEven);
-    printGpuBuffer<uint32_t>("unsort_index", sort_buffers.unsort_index);
+    
+    printGpuBuffer<float>("dL_dndc", splat_buffers.dL_dndc, 3, 2);
+    
+    printGpuBuffer<float>("xyz_gradient_accum", splat_buffers.xyz_gradient_accum, 3, 1);
+    printGpuBuffer<uint32_t>("xyz_gradient_mean", splat_buffers.xyz_gradient_mean, 3, 1);
+    printGpuBuffer<uint32_t>("sortKBufferEven", sort_buffers.sortKBufferEven, 10, 1);
+    
+    printGpuBuffer<int32_t>("denom", splat_buffers.denom, 10, 1);
+    printGpuBuffer<uint32_t>("densify_idx", sort_buffers.densify_idx, 10, 1);
+    printGpuBuffer<uint32_t>("sortVBufferEven", sort_buffers.sortVBufferEven, 10, 1);
+    
+    printGpuBuffer<uint32_t>("curPointsNum", splat_buffers.curPointsNum, 1, 1);
     
 }
 
@@ -242,6 +253,7 @@ void VulkanComputeExample::imageToBufferCmd()
 
     // int current_img_idx = trainign_step % inputeGaussian.img_list.size();
     int current_img_idx = random_generator.generate();
+//     current_img_idx = 0;
 //     int current_img_idx = 0;
     vkCmdCopyImageToBuffer(
         compute.commandBuffer,
@@ -521,13 +533,15 @@ void VulkanComputeExample::optimizeStepCmd()
 void VulkanComputeExample::densifyCmd()
 {
     uint32_t X = 0;
-    X = (MAX_SPLAT_COUNT + 256 - 1) / 256; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_mean_grad, FORWARD_PIPE, X, 1, 1);  
+    X = (splat_count + 256 - 1) / 256; // Ceiling division
+    bindPipeline2CommandBuffer(pipe_mean_grad, FORWARD_PIPE, X, 1, 1);
+    ComputeTransBarrierBlock();
     
     VkBufferCopy copyRegionBB = {};
     copyRegionBB.srcOffset = 0; // Start at the beginning of the source buffer
     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
     copyRegionBB.size = splat_count * sizeof(uint32_t); // Size of data to copy
+    
     vkCmdCopyBuffer(
         compute.commandBuffer,
         splat_buffers.xyz_gradient_mean,
@@ -543,7 +557,7 @@ void VulkanComputeExample::densifyCmd()
         &copyRegionBB   // Pointer to the copy region
     );
     TransComputeBarrierBlock();
-    
+
 //     vrdxCmdSortKeyValueIndirect(
 //         compute.commandBuffer,
 //         sort_buffers.sorter,
@@ -555,7 +569,7 @@ void VulkanComputeExample::densifyCmd()
 //         sort_buffers.sort_storage, 0,
 //         NULL, 0
 //     );
-
+    
     radixSortCmd(splat_count);
     ComputeTransBarrierBlock();
     
@@ -574,7 +588,9 @@ void VulkanComputeExample::densifyCmd()
         &copyRegionBB   // Pointer to the copy region
     );
     TransComputeBarrierBlock();
-
+    
+//     return;
+    
     bindPipeline2CommandBuffer(pipe_clone, FORWARD_PIPE, X, 1, 1);
     bindPipeline2CommandBuffer(pipe_split, FORWARD_PIPE, X, 1, 1);
     vkCmdFillBuffer(compute.commandBuffer, splat_buffers.xyz_gradient_accum, 0, VK_WHOLE_SIZE, 0);
@@ -627,11 +643,13 @@ void VulkanComputeExample::updRenderCmd()
 
 void VulkanComputeExample::encodePipeline2CommandBuffer()
 {
+    queryTime.clear();
+    
     uint32_t X = 0;
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     VkDeviceSize size = sizeof(uint32_t);
     
-    queryCmdTimeStart("00. compute overall");
+//     queryCmdTimeStart("00. compute overall");
     if (trainign_step < max_trainign_step){
         
         queryCmdTimeStart("01. image to buffer");
@@ -667,16 +685,20 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
         
         bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
 
-        if ((trainign_step + 1) > 100 && (trainign_step + 1) % 100 == 0)
+        if ((trainign_step + 1) > 500 && (trainign_step + 1) % 100 == 0)
         {
             densifyCmd();
         }
-        if ((trainign_step + 1) % 1000 == 0)
+        if ((trainign_step + 1) % 3000 == 0)
         {
             bindPipeline2CommandBuffer(pipe_reset_opacity, FORWARD_PIPE, X, 1, 1);
         }
     }
-    queryCmdTimeEnd("00. compute overall");
+//     queryCmdTimeEnd("00. compute overall");
+    ComputeTransBarrierBlock();
+//     createGpu2CpuCopys();
+    createGpu2CpuCopy(splat_buffers.curPointsNum);
+    
     if (trainign_step % 5 == 0){
         updRenderCmd();
         vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
@@ -688,8 +710,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
         ComputeTransBarrierBlock();
         bufferToImageCmd();
     }
-//     createGpu2CpuCopys();
-//     createGpu2CpuCopy(splat_buffers.curPointsNum);
+    
 }
 
 
@@ -1079,7 +1100,7 @@ void VulkanComputeExample::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     splat_buffers.xyz_gradient_mean = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * sizeof(float),
+        allocator, MAX_SPLAT_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     sort_buffers.densify_idx = vkgs::Buffer(
@@ -2921,48 +2942,81 @@ void VulkanComputeExample::prepareGraphics()
 }
 
 template <typename T>
-void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum)
+void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum, int length)
 {
     
     const vkgs::CpuBuffer &cpu_buffer = buffer.cpu_buffer;
     if (cpu_buffer.isInit == false) return;
     int size = cpu_buffer.size() / sizeof(T);  // 根据元素大小计算数量
-    size = std::min(size, pointNum);
+    size = std::min(size, pointNum * length);
     const T* num = reinterpret_cast<const T*>(cpu_buffer.data());
     
-#ifdef VULKAN_PC
+    
     std::cout << "Variable: " << varName << std::endl;
-    for (int i = 0; i < size; i++)
-    {
-        if constexpr (std::is_same<T, uint8_t>::value) {
-            std::cout << static_cast<unsigned int>(num[i]) << " ";
-        }
-        else
-        {
-            std::cout << num[i] << " ";
-        }
-            
-    }
-    std::cout << std::endl;
-#endif
 #ifdef VULKAN_HW
-    LOGI("Variable:  %{public}s", varName.c_str());
-    std::ostringstream oss;
-    for (int i = 0; i < size; ++i) {
-        if constexpr (std::is_same<T, uint8_t>::value) {
-            oss << static_cast<unsigned int>(num[i]);
+    LOGW("Variable:  %{public}s", varName.c_str());
+#endif
+    if (varName == "final_T" || varName == "ncontrib" || varName == "rfeat" || varName == "dL_drfeat") {
+        std::vector<int> Is = { 101,101,101,785,785,785 };
+        std::vector<int> Js = { 438,439,440,263,264,265 };
+        
+        if (varName == "rfeat" || varName == "dL_drfeat") {
+            for (int k = 0; k < Is.size(); k++) {
+                int i = Is[k];
+                int j = Js[k];
+                #ifdef VULKAN_HW
+                LOGW("%{public}d, %{public}d: %{public}.12f %{public}.12f %{public}.12f", i, j, num[i * 800 + j], num[i * 800 + j + 800 * 800], num[i * 800 + j + 800 * 800 * 2]);
+                #endif
+            }
         }
-        else
-        {
-            oss << num[i];
+        else if (varName == "final_T") {
+            for (int k = 0; k < Is.size(); k++) {
+                int i = Is[k];
+                int j = Js[k];
+                #ifdef VULKAN_HW
+                LOGW("%{public}d, %{public}d: %{public}f", i, j, num[i * 800 + j]);
+                #endif
+            }
         }
-        if (i < size - 1) {
-            oss << " ";
+        else{
+            for (int k = 0; k < Is.size(); k++) {
+                int i = Is[k];
+                int j = Js[k];
+                #ifdef VULKAN_HW
+                LOGW("%{public}d, %{public}d: %{public}d", i, j, num[i * 800 + j]);
+                #endif
+            }
+        }
+        return;
+    }
+    
+    if (varName == "tile_range"){
+        
+        for(int i = 0; i < pointNum;i++){
+            LOGW("%{public}d: %{public}d %{public}d", i, num[i * 2 + 0], num[i * 2 + 1]);
+        }
+        return;
+    }
+    
+    #ifdef VULKAN_HW
+    for (int i = 0; i < pointNum; i++) {
+        LOGW("%{public}d: ", i);
+        for (int j = 0; j < length; j++) {
+            if constexpr (std::is_same<T, int32_t>::value)
+                LOGW("%{public}d ", num[i * length + j]);
+            else if constexpr (std::is_same<T, uint32_t>::value)
+                LOGW("%{public}d ", num[i * length + j]);
+            
+            else {
+                if (varName.substr(0, 2) == "dL" || varName == "xyz_gradient_accum" || varName == "xyz_gradient_mean") {
+                    LOGW("%{public}.16f ", num[i * length + j]);
+                }
+                else
+                    LOGW("%{public}f ", num[i * length + j]);
+            }
         }
     }
-    std::string result = oss.str();
-    LOGI("%{public}s", result.c_str());
-#endif
+    #endif
 
 }
 
@@ -3171,17 +3225,22 @@ void VulkanComputeExample::draw()
     }
 #endif
 #ifdef VULKAN_HW
-    const uint32_t* num = reinterpret_cast<const uint32_t*>(splat_buffers.curPointsNum.getMap());
-    if (splat_count != num[0]){
+//     const uint32_t* num = reinterpret_cast<const uint32_t*>(splat_buffers.curPointsNum.getMap());
+//     if (splat_count != num[0]){
+//         splat_count = num[0];
+//         LOGW("Current splat_count: [ %{public}d ]", splat_count);
+//     }
+    const vkgs::CpuBuffer& cpu_buffer = splat_buffers.curPointsNum.cpu_buffer;
+    if (cpu_buffer.isInit) {
+        const int* num = reinterpret_cast<const int*>(cpu_buffer.data());
         splat_count = num[0];
-        LOGW("Current splat_count: [ %{public}d ]", splat_count);
     }
 #endif
 
     if (trainign_step % 100 == 0 && trainign_step != max_trainign_step){
-        std::cout << "Traning Step[" << trainign_step << "]" << std::endl;
+        std::cout << "Trianing Step[" << trainign_step << "]" << std::endl;
 #ifdef VULKAN_HW
-        LOGW("Traning Step[ %{public}d ]", trainign_step);
+        LOGW("Trianing Step[ %{public}d ] Point Num: %{public}d", trainign_step, splat_count);
 #endif
     }
     

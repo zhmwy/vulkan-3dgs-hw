@@ -74,7 +74,7 @@ public:
     std::vector<float> intr_tmp; 
 
     // Predefine 3DGS hyperparameters
-    int MAX_SPLAT_COUNT = 100000;
+    int MAX_SPLAT_COUNT = 20000;
     static const int MAX_TIME_QUERY_NUM = 100;
     static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;
@@ -436,7 +436,7 @@ public:
     }
     #endif
     template<typename T>
-    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50);
+    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50, int length = 3);
 private:
     VkPhysicalDeviceFeatures2 features_{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     VkPhysicalDeviceImagelessFramebufferFeatures imageless_framebuffer_feature_{
