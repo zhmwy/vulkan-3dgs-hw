@@ -301,6 +301,12 @@ void VulkanComputeExample::forwardCmd()
     uint32_t X = 0;
     uint32_t Y = 0;
     
+    /********************* Inverse index gaussian point ***********************/
+    X = (splat_count + 256 - 1) / 256; // Ceiling division
+    bindPipeline2CommandBuffer(pipe_inverse, FORWARD_PIPE, X, 1, 1);
+    /********************* Inverse index gaussian point ***********************/
+
+    
     uint32_t grid_width = storageImage.width / 16;
     grid_width = (storageImage.width + 15) / 16;
     uint32_t grid_height = storageImage.height / 16;
@@ -329,31 +335,12 @@ void VulkanComputeExample::forwardCmd()
     );
     TransComputeBarrierBlock();
 
-    
-//     vrdxCmdSortKeyValueIndirect(
-//         compute.commandBuffer, 
-//         sort_buffers.sorter, 
-//         splat_count * SORT_SIZE, 
-//         // required buffers
-//         sort_buffers.splat_visible_point_count, 0,
-//         sort_buffers.key, 0, 
-//         sort_buffers.index, 0, 
-//         sort_buffers.sort_storage, 0,
-//         NULL, 0
-//     );
-    
-
     radixSortCmd(0);
     ComputeShaderMemoryBarrierBlock();
 
     X = (splat_count * SORT_SIZE + 256 - 1) / 256;
     bindPipeline2CommandBuffer(pipe_compute_tile, FORWARD_PIPE, X, 1, 1);
-
-
-    /********************* Inverse index gaussian point ***********************/
-    X = (splat_count + 256 - 1) / 256; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_inverse, FORWARD_PIPE, X, 1, 1);
-    /********************* Inverse index gaussian point ***********************/
+    
 
     /*********************  Alpha blending ***********************/
     X = (storageImage.width + 16 - 1) / 16; // Ceiling division
@@ -649,7 +636,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     VkDeviceSize size = sizeof(uint32_t);
     
-//     queryCmdTimeStart("00. compute overall");
+    queryCmdTimeStart("00. compute overall");
     if (trainign_step < max_trainign_step){
         
         queryCmdTimeStart("01. image to buffer");
@@ -694,7 +681,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
             bindPipeline2CommandBuffer(pipe_reset_opacity, FORWARD_PIPE, X, 1, 1);
         }
     }
-//     queryCmdTimeEnd("00. compute overall");
+    queryCmdTimeEnd("00. compute overall");
     ComputeTransBarrierBlock();
 //     createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
@@ -1696,7 +1683,7 @@ void VulkanComputeExample::setLossPipeline()
 
 void VulkanComputeExample::setComputeKeyPipeline()
 {
-    const uint32_t bindingCount = 8;
+    const uint32_t bindingCount = 10;
     createPipelineLayout(
         pipe_compute_key,
         bindingCount,  // Number of descriptor set bindings
@@ -1713,6 +1700,8 @@ void VulkanComputeExample::setComputeKeyPipeline()
         &sort_buffers.unsort_index,                  //5
         &sort_buffers.splat_visible_point_count,     //6
         &splat_buffers.curPointsNum, //7
+        &splat_buffers.conic,
+        &splat_buffers.opacity_act_array
     };
 
     updateDescriptorSet(pipe_compute_key.descriptorSet, splatBuffers);
