@@ -18,15 +18,18 @@
 /********************* For Unit Test ****************************/
 void VulkanComputeExample::loadTestData()
 {
-    inputeGaussian = DataLoader::loadInputLegoInitData();
+//     inputeGaussian = DataLoader::loadInputLegoInitData();
+    inputeGaussian = DataLoader::loadAREngineInitData();
     inputeGaussian.print();
     random_generator.initialize(inputeGaussian.img_list.size());
 
+    splat_count = inputeGaussian.positions.size();
     extr_tmp = std::vector<float>({ 1.0, 0.0, 0.0, 0.0,
                                      0.0, 1.0, 0.0, 0.0,
                                      0.0 ,0.0, 1.0, 2.5 });
 //     intr_tmp = std::vector<float>({ 256,256,256,256 });
-    intr_tmp = std::vector<float>({ 1111.11108398,1111.11108398,400,400 });
+//     intr_tmp = std::vector<float>({ 1111.11108398,1111.11108398,400,400 });
+    intr_tmp = std::vector<float>({ 508.6300048828125, 509.0169677734375, 243.5619812011718750, 318.46099853515625 });
 }
 void VulkanComputeExample::encodeCpu2Gpu()
 {
@@ -2502,7 +2505,8 @@ void VulkanComputeExample::prepareStorageImage()
 
 void VulkanComputeExample::loadAssets()
 {
-    std::string filename = FileOperator::GetInstance()->GetFileAbsolutePath("assets/lego/ktx/r_0.ktx");
+//     std::string filename = FileOperator::GetInstance()->GetFileAbsolutePath("assets/lego/ktx/r_0.ktx");
+    std::string filename = inputeGaussian.img_list[0];
     // std::string filename = getPath("textures/bunny.ktx");
 #ifdef VULKAN_PC
     // filename = "../../assets/textures/bunny.ktx";

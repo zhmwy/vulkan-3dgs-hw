@@ -74,7 +74,7 @@ public:
     std::vector<float> intr_tmp; 
 
     // Predefine 3DGS hyperparameters
-    int MAX_SPLAT_COUNT = 20000;
+    int MAX_SPLAT_COUNT = 200000;
     static const int MAX_TIME_QUERY_NUM = 100;
     static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;

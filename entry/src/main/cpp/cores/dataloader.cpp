@@ -513,12 +513,36 @@ void extractExtrinsics(const std::vector<std::string>& files, std::vector<std::v
     }
 }
 
+
+void getFilesInDirectory(std::string path, std::string ext, std::vector<std::string>& outFiles){
+    DIR* dir = opendir(path.c_str());
+    if (!dir) {
+        std::cerr << "Error: Could not open directory " << path << std::endl;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string filename = entry->d_name;
+
+        // Skip "." and ".." entries
+        if (filename == "." || filename == "..") {
+            continue;
+        }
+
+        // Check if the filename matches the pattern "r_*.ktx"
+        if (filename.size() > ext.size() && filename.substr(filename.size() - ext.size(), ext.size()) == ext){
+            outFiles.push_back(path + "/" + filename);
+        }
+    }
+    closedir(dir);
+}
+
+
 DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
+    
     auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
     const std::string filepath = basePath + "/" + "assets/lego/input_08.ply";
-//     const std::string filepath = basePath + "/" + "assets/input_7000.ply";
     LOGI("InputLegoInitStruct, loading input from: %{public}s", filepath.c_str());
-    //  const std::string filepath = basePath + "/" + "assets/lego/points3d.ply";
      
     DataLoader::InputLegoInitStruct data;
 
@@ -652,6 +676,7 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
             data.img_list.push_back(path + "/" + filename);
         }
     }
+    
     closedir(dir);
     // sort image list 
     std::sort(
@@ -774,3 +799,161 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
     
     return data;
 }
+
+
+DataLoader::InputLegoInitStruct DataLoader::loadAREngineInitData()
+{
+    auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
+    const std::string filepath = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/input_AREngine.ply";
+    
+
+    DataLoader::InputLegoInitStruct data;
+
+    std::ifstream file(filepath, std::ios::binary);
+    if (!file.is_open()) 
+        throw std::runtime_error("Failed to open PLY file.");
+
+    PlyFile plyFile;
+    plyFile.parse_header(file);
+
+    // Declare shared pointers to request each property from the PLY file
+    std::shared_ptr<PlyData> x, y, z;
+    std::shared_ptr<PlyData> scale_x, scale_y, scale_z;
+    std::shared_ptr<PlyData> rotate_0, rotate_1, rotate_2, rotate_3;
+    std::shared_ptr<PlyData> opacity;
+    std::shared_ptr<PlyData> r, g, b;
+    std::vector<std::shared_ptr<PlyData>> colorProps;
+
+    try {
+        // Request each property from the "vertex" element
+        x = plyFile.request_properties_from_element("vertex", { "x" });
+        y = plyFile.request_properties_from_element("vertex", { "y" });
+        z = plyFile.request_properties_from_element("vertex", { "z" });
+        scale_x = plyFile.request_properties_from_element("vertex", { "scale_0" });
+        scale_y = plyFile.request_properties_from_element("vertex", { "scale_1" });
+        scale_z = plyFile.request_properties_from_element("vertex", { "scale_2" });
+        rotate_0 = plyFile.request_properties_from_element("vertex", { "rot_0" });
+        rotate_1 = plyFile.request_properties_from_element("vertex", { "rot_1" });
+        rotate_2 = plyFile.request_properties_from_element("vertex", { "rot_2" });
+        rotate_3 = plyFile.request_properties_from_element("vertex", { "rot_3" });
+        opacity = plyFile.request_properties_from_element("vertex", { "opacity" });
+        /*r = plyFile.request_properties_from_element("vertex", { "f_dc_0" });
+        g = plyFile.request_properties_from_element("vertex", { "f_dc_1" });
+        b = plyFile.request_properties_from_element("vertex", { "f_dc_2" });*/
+        for (int i = 0; i < 3; ++i) { // f_dc_0, f_dc_1, f_dc_2
+            std::string propName = "f_dc_" + std::to_string(i);
+            colorProps.push_back(plyFile.request_properties_from_element("vertex", { propName }));
+        }
+
+        for (int i = 0; i < 45; ++i) { // f_rest_0 to f_rest_44
+            std::string propName = "f_rest_" + std::to_string(i);
+            colorProps.push_back(plyFile.request_properties_from_element("vertex", { propName }));
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error reading properties: " << e.what() << std::endl;
+    }
+
+    // Read the data from the file
+    plyFile.read(file);
+    size_t numVertices = x->count;
+
+    // Resize the vectors to fit the number of vertices
+    data.positions.resize(numVertices);
+    data.scales.resize(numVertices);
+    data.rotations.resize(numVertices);
+    data.opacities.resize(numVertices);
+    data.colors.resize(numVertices);
+
+    // Load the data into the structure
+    for (size_t i = 0; i < numVertices; ++i) {
+        // Load position (x, y, z)
+        data.positions[i] = glm::vec3(
+            reinterpret_cast<float*>(x->buffer.get())[i],
+            reinterpret_cast<float*>(y->buffer.get())[i],
+            reinterpret_cast<float*>(z->buffer.get())[i]
+        );
+
+        // Load scale (scale_x, scale_y, scale_z)
+        data.scales[i] = glm::vec3(
+            reinterpret_cast<float*>(scale_x->buffer.get())[i],
+            reinterpret_cast<float*>(scale_y->buffer.get())[i],
+            reinterpret_cast<float*>(scale_z->buffer.get())[i]
+        );
+
+
+        // Load rotation (as quaternion)
+        data.rotations[i] = glm::vec4(
+            reinterpret_cast<float*>(rotate_0->buffer.get())[i],
+            reinterpret_cast<float*>(rotate_1->buffer.get())[i],
+            reinterpret_cast<float*>(rotate_2->buffer.get())[i],
+            reinterpret_cast<float*>(rotate_3->buffer.get())[i]
+        );
+
+        // Load opacity
+        data.opacities[i] = reinterpret_cast<float*>(opacity->buffer.get())[i];
+
+        // Load color (r, g, b)
+        // Load colors dynamically from colorProps
+        for (size_t j = 0; j < colorProps.size(); ++j) {
+            float value = reinterpret_cast<float*>(colorProps[j]->buffer.get())[i];
+            //value = 0.0;
+            data.colors[i].values[j / 3 + (j % 3) * 16] = value;
+        }
+        
+    }
+
+    std::string path = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/ktx";
+    std::string extension = ".ktx";
+
+    // Get the list of files with the specified extension
+    getFilesInDirectory(path, extension, data.img_list);
+
+    // Sort the image list
+    std::sort(
+        data.img_list.begin(),
+        data.img_list.end(),
+        [](const std::string& a, const std::string& b) {
+            return extractNumberKtx(a) < extractNumberKtx(b);
+        }
+    );
+    std::cout << "data.img_list.size() = " << data.img_list.size() << std::endl;
+
+    // Process the extrinsic files for training
+    path = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/sparse/";
+    std::vector<std::string> matchingFiles;
+    getFilesInDirectory(path, ".txt", matchingFiles);
+
+    // Sort txt list
+    std::sort(
+        matchingFiles.begin(),
+        matchingFiles.end(),
+        [](const std::string& a, const std::string& b) {
+            return extractNumberTxt(a) < extractNumberTxt(b);
+        }
+    );
+
+    extractExtrinsics(matchingFiles, data.extr_tmp);
+
+    // Process the extrinsic files for testing
+    path = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/sparse_test/";
+    std::vector<std::string> matchingFiles_test;
+    getFilesInDirectory(path, ".txt", matchingFiles_test);
+
+    // Sort txt list
+    std::sort(
+        matchingFiles_test.begin(),
+        matchingFiles_test.end(),
+        [](const std::string& a, const std::string& b) {
+            return extractNumberTxt(a) < extractNumberTxt(b);
+        }
+    );
+
+    extractExtrinsics(matchingFiles_test, data.extr_tmp_test);
+
+    std::cout << "Extrinsics for training: " << data.extr_tmp.size() << std::endl;
+    std::cout << "Extrinsics for testing: " << data.extr_tmp_test.size() << std::endl;
+
+    return data;
+}
+
