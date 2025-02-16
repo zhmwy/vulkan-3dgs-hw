@@ -35,7 +35,7 @@
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
-#define SORT_SIZE 256
+#define SORT_SIZE 100    // must be equal to TILE_NUM_AVG_MAX!!!!!!!!
 
 #define VULKAN_HW
 // #define VULKAN_PC
@@ -72,7 +72,9 @@ public:
     DataLoader::InputLegoInitStruct inputeGaussian;
     std::vector<float> extr_tmp;
     std::vector<float> intr_tmp; 
+    std::vector<float> intr_render_tmp;
 
+    
     // Predefine 3DGS hyperparameters
     int MAX_SPLAT_COUNT = 200000;
     static const int MAX_TIME_QUERY_NUM = 100;
@@ -83,7 +85,10 @@ public:
     int last_step_tag = 0;
     int render_index = 0;
     bool upd_cmd_buffer = true;
-
+    float low_resolotion_scale = 0.25;
+    int sh_degree = 16;
+    
+    
     RandomGenerator random_generator;
     int current_img_idx = 0;
 
@@ -116,6 +121,7 @@ public:
         vkgs::Buffer scale_array;   // [P, 3]
         vkgs::Buffer rotate_array;
         vkgs::Buffer intr_params;   // [4]
+        vkgs::Buffer intr_params_render;
         vkgs::Buffer extr_params;   // [3, 4]
         vkgs::Buffer extr_params_render;   // [3, 4]
         vkgs::Buffer visible;
@@ -191,8 +197,12 @@ public:
         vkgs::Buffer curPointsNum;
         vkgs::Buffer xyz_gradient_mean;
 
+        vkgs::Buffer psnr_sum;
+        
     } splat_buffers;
 
+    bool hasKNN = false;
+    
     // Input image
     vks::Texture2D textureColorMap;
     // Storage image that the compute shader uses to apply the filter effect to
@@ -260,6 +270,10 @@ public:
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
     Compute3DGS pipe_reset_opacity;
+    
+    Compute3DGS pipe_knn;
+    Compute3DGS pipe_prune;
+    
     Compute3DGS pipe_sort_even;
     Compute3DGS pipe_sort_odd;
     Compute3DGS pipe_hist_even;
@@ -271,6 +285,14 @@ public:
     uint32_t vertexBufferSize;
 
     std::vector<std::string> filterNames;
+    
+    double total_psnr = 0;
+    long long total_sort_point_count = 0;
+    double max_avg_splat_tile_num = 0;
+    float current_scale;
+    int image_height;
+    int image_width;
+    
     
     int use_method = 0;
     int cur_method = 0;
@@ -334,6 +356,7 @@ public:
     void setBuffer2ImagePipeline();
     void prepare3dgsBuffers();
     void setProjectionPipeline();  
+    void setKNNPipeline();
     void setProjectionRenderPipeline();
     void setSortPipeline(); 
     void setComputeKeyPipeline();
@@ -341,6 +364,7 @@ public:
     void setDensificationStatsPipeline();
     void setMeanGradPipeline();
     void setClonePipeline();
+    void setPrunePipeline();
     void setSplitPipeline();
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
@@ -369,7 +393,8 @@ public:
     // Methods
     void prepreAllocator();
     void prepareStorageImage();
-    void loadAssets();
+    void resizeAndUploadTexture(vks::Texture2D& texture, const unsigned char* original_image_data, int width, int height, float scale, vks::VulkanDevice* vulkanDevice, VkQueue queue);
+    void loadAssets(float scale);
     void buildCommandBuffers();
     void encodePipeline2CommandBuffer();
     void buildComputeCommandBuffer();
@@ -380,6 +405,7 @@ public:
     void prepareUniformBuffers();
     void updateUniformBuffers();
     bool prepare();
+    void calculatePSNR(float mse, int width, int height);
     void draw();
     // void drawUI(const VkCommandBuffer commandBuffer);
 

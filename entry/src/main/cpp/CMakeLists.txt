@@ -34,8 +34,8 @@ add_library(nativerender SHARED
     file/file_operator.cpp
     file/file.cpp
     # render/model_3d_sponza.cpp
-    render/vulkan_obj_model.cpp
-    render/vulkan_obj_mesh.cpp
+#    render/vulkan_obj_model.cpp
+#    render/vulkan_obj_mesh.cpp
     render/model_compute.cpp
     cores/buffer.cpp
     cores/cpu_buffer.cpp

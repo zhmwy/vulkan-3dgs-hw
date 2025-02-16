@@ -4,8 +4,6 @@
 #include "tinyply.h"
 #include <glm/glm.hpp>
 #include "vulkanexamplebase.h"
-#define VULKAN_HW
-// #define VULKAN_PC
 
 using namespace tinyply;
 
@@ -226,6 +224,7 @@ public:
         };
         std::vector<Data> colors;         // RGB colors (r, g, b)
         std::vector<vks::Texture2D> images;   // Images
+        std::vector<vks::Texture2D> images_low_res;
 
         std::vector<std::string> img_list;
         std::vector<std::vector<float>> extr_tmp;  
@@ -236,7 +235,6 @@ public:
         void print() const {
             std::cout << "Loaded " << positions.size() << " vertices." << std::endl;
             if (!positions.empty()) {
-#ifdef VULKAN_PC
                 std::cout << "\nFirst vertex data:" << std::endl;
 
                 // Print position (x, y, z)
@@ -263,35 +261,6 @@ public:
                 for (int i = 0; i < 12; ++i) {
                     std::cout << extr_tmp[0][i] << " ";
                 }
-#endif
-#ifdef VULKAN_HW
-                LOGI("First vertex data:");
-                LOGI("Position (x, y, z): (%{public}f, %{public}f, %{public}f)", positions[0].x, positions[0].y, positions[0].z);
-                LOGI("Scale (x, y, z): (%{public}f, %{public}f, %{public}f)", scales[0].x, scales[0].y, scales[0].z);
-                LOGI("Color (r, g, b): (%{public}f, %{public}f, %{public}f)", colors[0].values[0], colors[0].values[1], colors[0].values[2]);
-                LOGI("Image list: : %{public}s", img_list[0].c_str());
-                LOGI("Extrinsic parameters: ");
-                std::ostringstream oss;
-                for (int i = 0; i < 12; ++i) {
-                    oss << extr_tmp[0][i];
-                    if (i < 12 - 1) {
-                        oss << " ";
-                    }
-                }
-                std::string result = oss.str();
-                LOGI("%{public}s", result.c_str());
-                LOGI("Extrinsic parameters for render: ");
-                oss.str("");
-                oss.clear();
-                for (int i = 0; i < 12; ++i) {
-                    oss << extr_tmp_test[0][i];
-                    if (i < 12 - 1) {
-                        oss << " ";
-                    }
-                }
-                result = oss.str();
-                LOGI("%{public}s", result.c_str());
-#endif
             }
         }
     };
@@ -304,7 +273,6 @@ public:
     static EvalSHBackwardStruct loadEvalSHBackwardData();
     static InputGaussianStruct loadInputGaussianData();
     static InputLegoInitStruct loadInputLegoInitData();
-    static InputLegoInitStruct loadAREngineInitData();
 
     static void printPlyHeader(const std::string& filepath);
     
