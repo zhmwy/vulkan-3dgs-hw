@@ -147,7 +147,7 @@ void VulkanExampleBase::renderLoop()
             frameCounter = 0;
             lastTimestamp = tEnd;
         }
-        LOGD("VulkanExampleBase cost time: %{public}f", fpsTimer);
+//         LOGD("VulkanExampleBase cost time: %{public}f", fpsTimer);
         bool updateView = false;
     }
 	// Flush device to make sure all resources can be freed

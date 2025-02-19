@@ -273,6 +273,7 @@ public:
     static EvalSHBackwardStruct loadEvalSHBackwardData();
     static InputGaussianStruct loadInputGaussianData();
     static InputLegoInitStruct loadInputLegoInitData();
+    static InputLegoInitStruct loadInputLegoInitDatav2();
 
     static void printPlyHeader(const std::string& filepath);
     

@@ -764,3 +764,133 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
 }
 
 
+DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitDatav2() {
+auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
+    DataLoader::InputLegoInitStruct data;
+    
+    // 1. Load points and color data from points3D.txt
+    std::string pointsFilePath = basePath + "/assets/case1/slam/points3D.txt";
+    std::ifstream pointsFile(pointsFilePath);
+    if (!pointsFile.is_open()) {
+        throw std::runtime_error("Failed to open points3D.txt file.");
+    }
+    
+    std::string line;
+    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
+    float C0 = 0.28209479177387814;
+    while (std::getline(pointsFile, line)) {
+        if (line.empty()) continue;
+        std::istringstream iss(line);
+        int pointId;
+        float x, y, z;
+        int r, g, b;
+        float alpha; // Although alpha is provided, we will not use it.
+        if (!(iss >> pointId >> x >> y >> z >> r >> g >> b >> alpha)) {
+            continue; // Skip invalid lines.
+        }
+
+        glm::vec3 pos(x, y, z);
+        // Check for duplicate points
+        if (uniquePoints.find(pos) != uniquePoints.end()) {
+            continue;
+        }
+        uniquePoints.insert(pos);
+        
+        // Store the point position.
+        data.positions.push_back(pos);
+        
+        // Default attributes (scales, rotations, opacities) to zeros.
+        data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
+        data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+        data.opacities.push_back(1.0f);
+        
+        // Process the color data.
+        // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
+        DataLoader::InputLegoInitStruct::Data colorData = {};
+        // Save r in index 0, g in index 16, and b in index 32.
+        colorData.values[0]  = static_cast<float>((r/255.0-0.5)/C0);
+        colorData.values[16] = static_cast<float>((g/255.0-0.5)/C0);
+        colorData.values[32] = static_cast<float>((b/255.0-0.5)/C0);
+        data.colors.push_back(colorData);
+    }
+    LOGI("Unique points loaded: %{public}zu", data.positions.size());
+    
+    // 2. Load image file names and extrinsics from images.txt
+    std::string imagesFilePath = basePath + "/assets/case1/slam/images.txt";
+    std::ifstream imagesFile(imagesFilePath);
+    if (!imagesFile.is_open()) {
+        throw std::runtime_error("Failed to open images.txt file.");
+    }
+
+    while (std::getline(imagesFile, line)) {
+        if (line.empty()) continue;
+        std::istringstream iss(line);
+        int frameId;
+        float qx, qy, qz, qw;
+        float tx, ty, tz;
+        int camera_id;
+        std::string imageName;
+
+        // Read the first 10 tokens:
+        // frame_id, qx, qy, qz, qw, tx, ty, tz, camera_id, image_name
+        if (!(iss >> frameId >> qx >> qy >> qz >> qw >> tx >> ty >> tz >> camera_id >> imageName)) {
+            continue; // Skip invalid lines.
+        }
+        
+        // Get the rest of the line which contains the extrinsic matrix in the form "mat4x4((...))"
+        std::string extrinsicsToken;
+        std::getline(iss, extrinsicsToken);
+        size_t posExtr = extrinsicsToken.find("mat4x4(");
+        if (posExtr != std::string::npos) {
+            std::string mStr = extrinsicsToken.substr(posExtr);
+            const std::string prefix = "mat4x4(";
+            if (mStr.compare(0, prefix.size(), prefix) == 0) {
+                mStr = mStr.substr(prefix.size());
+            }
+            // Remove trailing ')' characters.
+            while (!mStr.empty() && mStr.back() == ')') {
+                mStr.pop_back();
+            }
+            // Replace any '(' , ')' or ',' with spaces.
+            std::string cleanedMatrix;
+            for (char c : mStr) {
+                if (c == '(' || c == ')' || c == ',') {
+                    cleanedMatrix.push_back(' ');
+                } else {
+                    cleanedMatrix.push_back(c);
+                }
+            }
+            // Now extract all floating-point values.
+            std::istringstream issMatrix(cleanedMatrix);
+            std::vector<float> mValues;
+            float mVal;
+            while (issMatrix >> mVal) {
+                mValues.push_back(mVal);
+            }
+            // Expect 16 values for a full 4x4 matrix stored in column-major order.
+            if (mValues.size() >= 16) {
+                std::vector<float> extr(12);
+                extr[0]  = mValues[0];
+                extr[1]  = mValues[4];
+                extr[2]  = mValues[8];
+                extr[3]  = mValues[12];
+                extr[4]  = -mValues[1];
+                extr[5]  = -mValues[5];
+                extr[6]  = -mValues[9];
+                extr[7]  = -mValues[13];
+                extr[8]  = -mValues[2];
+                extr[9]  = -mValues[6];
+                extr[10] = -mValues[10];
+                extr[11] = -mValues[14];
+                data.extr_tmp.push_back(extr);
+            }
+        }
+        // Store the image name.
+        data.img_list.push_back(basePath + "/assets/case1/frames/" + imageName);
+    }
+    data.extr_tmp_test = data.extr_tmp;
+    
+    // The testing extrinsics field is left empty.
+    return data;
+}
+
