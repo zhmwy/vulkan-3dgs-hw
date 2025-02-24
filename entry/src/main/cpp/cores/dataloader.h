@@ -2,12 +2,12 @@
 #include <iostream>
 #include <vector>
 #include "tinyply.h"
+#define GLM_FORCE_PRECISION_HIGH     // 高精度
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES  // 确保默认对齐方式
 #include <glm/glm.hpp>
 #include "vulkanexamplebase.h"
 
 using namespace tinyply;
-
-
 
 // DataLoader Tool Class
 class DataLoader
@@ -229,8 +229,14 @@ public:
         std::vector<std::string> img_list;
         std::vector<std::vector<float>> extr_tmp;  
         std::vector<std::vector<float>> extr_tmp_test; 
-        // std::vector<std::vector<float>> intr_tmp;
+        std::vector<std::vector<float>> intr_tmp;
 
+        std::vector<glm::vec3> cam_centers;
+        glm::vec3 translate;
+        float radius;
+        glm::vec3 mean;
+        float variance = 0;
+        
         // Print the first vertex's data for verification
         void print() const {
             std::cout << "Loaded " << positions.size() << " vertices." << std::endl;
@@ -263,6 +269,10 @@ public:
                 }
             }
         }
+    
+        void computeNormalization();
+        void normalizeData();
+        void computePositionStats();
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);
@@ -274,7 +284,10 @@ public:
     static InputGaussianStruct loadInputGaussianData();
     static InputLegoInitStruct loadInputLegoInitData();
     static InputLegoInitStruct loadInputLegoInitDatav2();
-
+    
+    
+    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputLegoInitStruct& data);
+    
     static void printPlyHeader(const std::string& filepath);
     
 };

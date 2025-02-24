@@ -87,7 +87,7 @@ public:
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
     int sh_degree = 16;
-    
+    int save_step = 1000;
     
     RandomGenerator random_generator;
     int current_img_idx = 0;

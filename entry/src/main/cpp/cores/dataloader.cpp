@@ -492,6 +492,31 @@ DataLoader::InputGaussianStruct DataLoader::loadInputGaussianData() {
     return data;
 }
 
+
+void extractIntrinsics(const std::vector<std::string>& file_list, std::vector<std::vector<float>>& intrinsics) {
+    for (const std::string& filename : file_list) {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open intrinsic file: " << filename << std::endl;
+            continue;
+        }
+
+        std::vector<float> intr(4, 0.0f);  // 预留 4 个浮点数
+        for (int i = 0; i < 4; ++i) {
+            file >> intr[i];
+        }
+        file.close();
+
+        if (intr.size() == 4) {
+            intrinsics.push_back(intr);
+        }
+        else {
+            std::cerr << "Invalid intrinsic file format in: " << filename << std::endl;
+        }
+    }
+}
+
+
 void extractExtrinsics(const std::vector<std::string>& files, std::vector<std::vector<float>>& extrinsics) {
     for (const auto& entry : files) {
         if (entry.find("cameras.txt") == std::string::npos) {
@@ -512,6 +537,34 @@ void extractExtrinsics(const std::vector<std::string>& files, std::vector<std::v
             extrinsics.push_back(extrinsicValues);
         }
     }
+}
+
+
+long long extractNumber(const std::string& str) {
+    std::string imgName = std::filesystem::path(str).stem().string();
+    
+    std::string numberStr;
+
+    // 遍历文件名，提取数字部分
+    for (char ch : imgName) {
+        if (std::isdigit(ch)) {
+            numberStr += ch;
+        }
+    }
+    
+    // 如果提取到数字，则返回转换后的数字
+    if (!numberStr.empty()) {
+        try {
+            return std::stoll(numberStr); // 使用 stoll 转换为 long long
+        }
+        catch (const std::invalid_argument& e) {
+            std::cerr << "Invalid number in string: " << str << std::endl;
+            throw;
+        }
+    }
+
+    // 如果没有找到数字，返回默认值（例如：0）
+    return 0;
 }
 
 
@@ -557,31 +610,170 @@ struct Vec3Equal {
 };
 
 
-long long extractNumber(const std::string& str) {
-    std::string imgName = std::filesystem::path(str).stem().string();
-    
-    std::string numberStr;
+void DataLoader::InputLegoInitStruct::computeNormalization() {
+    cam_centers.clear();  // 清空之前存的相机中心
 
-    // 遍历文件名，提取数字部分
-    for (char ch : imgName) {
-        if (std::isdigit(ch)) {
-            numberStr += ch;
+    // 遍历所有相机的外参矩阵
+    for (const auto& extrinsic : extr_tmp) {
+        if (extrinsic.size() != 12) {
+            std::cerr << "Error: Each extrinsic matrix must have 12 elements (3x4)!" << std::endl;
+            continue;
+        }
+
+        glm::mat4 W2C(1.0f);  // 4x4 齐次矩阵
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                W2C[i][j] = static_cast<float>(extrinsic[i * 4 + j]);
+            }
+        }
+
+        // 计算 W2C 的逆矩阵，得到 C2W
+        glm::mat4 C2W = glm::inverse(W2C);
+
+        // 提取 C2W 的位移分量（最后一列的前三个元素）
+        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        cam_centers.push_back(cam_center);
+    }
+
+    if (cam_centers.empty()) {
+        std::cerr << "Error: No valid camera centers computed!" << std::endl;
+        return;
+    }
+
+    // **计算相机中心的均值**
+    glm::vec3 center(0.0f);
+    for (const auto& c : cam_centers) {
+        center += c;
+    }
+    center /= static_cast<float>(cam_centers.size());
+
+    // **计算最大欧几里得距离（对角线）**
+    float max_dist = 0.0f;
+    for (const auto& c : cam_centers) {
+        float dist = glm::length(c - center);
+        if (dist > max_dist) {
+            max_dist = dist;
         }
     }
+
+    // **计算 radius（加 10% buffer）**
+    radius = max_dist * 1.1f;
+
+    // **计算 translate（相机中心对齐到原点）**
+    translate = -center;
+
+
+    std::cout << "Translate: (" << translate.x << ", " << translate.y << ", " << translate.z << ")" << std::endl;
+    std::cout << "Radius: " << radius << std::endl;
+
+    return;
+}
+
+void DataLoader::InputLegoInitStruct::normalizeData() {
+    if (positions.empty()) {
+        std::cerr << "Error: No data available for normalization!" << std::endl;
+        return;
+    }
+
+    float stddev = glm::sqrt(variance) + 1e-6f;  // **保证所有维度的缩放一致**
+
+    // **标准化 positions**
+    for (auto& pos : positions) {
+        pos = (pos - mean) / stddev;
+    }
+    for (auto& scale : scales) {
+        scale = scale - glm::log(stddev);
+    }
     
-    // 如果提取到数字，则返回转换后的数字
-    if (!numberStr.empty()) {
-        try {
-            return std::stoll(numberStr); // 使用 stoll 转换为 long long
+    // **标准化 extr_tmp（w2c 矩阵）**
+    for (auto& extr : extr_tmp) {
+        if (extr.size() < 12) continue;
+
+        glm::mat4 W2C(1.0f);
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                W2C[i][j] = extr[i * 4 + j];
+            }
         }
-        catch (const std::invalid_argument& e) {
-            std::cerr << "Invalid number in string: " << str << std::endl;
-            throw;
+
+        glm::mat4 C2W = glm::inverse(W2C);
+        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+
+        // **标准化 cam_center**
+        glm::vec3 normalized_center = (cam_center - mean) / stddev;
+
+        C2W[0][3] = normalized_center.x;
+        C2W[1][3] = normalized_center.y;
+        C2W[2][3] = normalized_center.z;
+
+        W2C = glm::inverse(C2W);
+
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                extr[i * 4 + j] = W2C[i][j];
+            }
         }
     }
 
-    // 如果没有找到数字，返回默认值（例如：0）
-    return 0;
+    // **标准化 extr_tmp_test（同样方式）**
+    for (auto& extr : extr_tmp_test) {
+        if (extr.size() < 12) continue;
+
+        glm::mat4 W2C(1.0f);
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                W2C[i][j] = extr[i * 4 + j];
+            }
+        }
+
+        glm::mat4 C2W = glm::inverse(W2C);
+        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+
+        glm::vec3 normalized_center = (cam_center - mean) / stddev;
+        C2W[0][3] = normalized_center.x;
+        C2W[1][3] = normalized_center.y;
+        C2W[2][3] = normalized_center.z;
+
+        W2C = glm::inverse(C2W);
+
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                extr[i * 4 + j] = W2C[i][j];
+            }
+        }
+    }
+
+    std::cout << "Positions, extr_tmp, extr_tmp_test normalized correctly." << std::endl;
+}
+
+void DataLoader::InputLegoInitStruct::computePositionStats() {
+    if (positions.empty()) {
+        std::cerr << "Error: No position data available!" << std::endl;
+        return;
+    }
+
+    // **计算均值**
+    mean = glm::vec3(0.0, 0.0, 0.0);
+    for (const auto& pos : positions) {
+        mean += pos;
+    }
+    mean /= static_cast<float>(positions.size());
+
+    // **计算方差**
+    double sum = 0;
+    for (const auto& pos : positions) {
+        float dist = glm::length(pos - mean);  // **计算欧几里得距离**
+        sum += dist * dist;  // **累加平方距离**
+    }
+    variance = sum / static_cast<double>(positions.size());  // **求均值**
+
+    // **存储到结构体**
+    this->mean = mean;
+    this->variance = variance;
+
+    // **输出均值和方差**
+    std::cout << "Position Mean: (" << mean.x << ", " << mean.y << ", " << mean.z << ")" << std::endl;
+    std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
 }
 
 
@@ -756,10 +948,18 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
     );
 
     extractExtrinsics(matchingFiles_test, data.extr_tmp_test);
+    
+    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/intrinsics/";
+    std::vector<std::string> matchingFiles_intr;
+    getFilesInDirectory(path, ".txt", matchingFiles_intr);
 
-    std::cout << "Extrinsics for training: " << data.extr_tmp.size() << std::endl;
-    std::cout << "Extrinsics for testing: " << data.extr_tmp_test.size() << std::endl;
+    std::sort(matchingFiles_intr.begin(), matchingFiles_intr.end(),
+        [](const std::string& a, const std::string& b) {
+            return extractNumber(a) < extractNumber(b);
+        });
 
+    extractIntrinsics(matchingFiles_intr, data.intr_tmp);
+    
     return data;
 }
 
@@ -894,3 +1094,77 @@ auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
     return data;
 }
 
+
+void DataLoader::saveToPLY_tinyply(const std::string& filename, const DataLoader::InputLegoInitStruct& data) {
+    std::ofstream outFile(filename, std::ios::binary);
+    if (!outFile.is_open()) {
+        std::cerr << "Error: Unable to open file " << filename << std::endl;
+        return;
+    }
+
+    tinyply::PlyFile plyFile;
+    size_t numPoints = data.positions.size();
+
+    // **存储数据**
+    std::vector<float> positions, scales, rotations, opacities, colors, f_rest;
+
+    positions.reserve(numPoints * 3);
+    scales.reserve(numPoints * 3);
+    rotations.reserve(numPoints * 4);
+    opacities.reserve(numPoints);
+    colors.reserve(numPoints * 3);
+    f_rest.reserve(numPoints * 45);
+
+    // **填充数据**
+    float stddev = glm::sqrt(data.variance) + 1e-6f;
+    for (size_t i = 0; i < numPoints; ++i) {
+        glm::vec3 pos = data.positions[i] * stddev + data.mean;
+        glm::vec3 scale = (i < data.scales.size()) ? data.scales[i] + glm::log(stddev) : glm::vec3(1.0f);
+        glm::vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : glm::vec4(0, 0, 0, 1);
+        float opacity = (i < data.opacities.size()) ? data.opacities[i] : 1.0f;
+        glm::vec3 color(1.0f, 1.0f, 1.0f);
+        std::vector<float> f_rest_values;
+
+        if (i < data.colors.size()) {
+            color = glm::vec3(
+                data.colors[i].values[0 * 16],
+                data.colors[i].values[1 * 16],
+                data.colors[i].values[2 * 16]
+            );
+            // **提取 `f_rest_0` ~ `f_rest_44`**
+            for (int j = 1; j < 16; j++)
+            {
+                f_rest_values.push_back(data.colors[i].values[0 * 16 + j]);
+                f_rest_values.push_back(data.colors[i].values[1 * 16 + j]);
+                f_rest_values.push_back(data.colors[i].values[2 * 16 + j]);
+            }
+        }
+
+        // **存入数据**
+        positions.insert(positions.end(), { pos.x, pos.y, pos.z });
+        scales.insert(scales.end(), { scale.x, scale.y, scale.z });
+        rotations.insert(rotations.end(), { rotation.x, rotation.y, rotation.z, rotation.w });
+        opacities.push_back(opacity);
+        colors.insert(colors.end(), { color.x, color.y, color.z });
+        f_rest.insert(f_rest.end(), f_rest_values.begin(), f_rest_values.end());
+    }
+
+    // **添加 PLY 头部**
+    plyFile.add_properties_to_element("vertex", { "x", "y", "z" }, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(positions.data()), tinyply::Type::INVALID, 0);
+    plyFile.add_properties_to_element("vertex", { "scale_0", "scale_1", "scale_2" }, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(scales.data()), tinyply::Type::INVALID, 0);
+    plyFile.add_properties_to_element("vertex", { "rot_0", "rot_1", "rot_2", "rot_3" }, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(rotations.data()), tinyply::Type::INVALID, 0);
+    plyFile.add_properties_to_element("vertex", { "opacity" }, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(opacities.data()), tinyply::Type::INVALID, 0);
+    plyFile.add_properties_to_element("vertex", { "f_dc_0", "f_dc_1", "f_dc_2" }, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(colors.data()), tinyply::Type::INVALID, 0);
+
+    // **添加 `f_rest_0` ~ `f_rest_44`**
+    for (int i = 0; i < 45; ++i) {
+        std::string rest_name = "f_rest_" + std::to_string(i);
+        plyFile.add_properties_to_element("vertex", { rest_name }, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(&f_rest[i * numPoints]), tinyply::Type::INVALID, 0);
+    }
+
+    // **写入 PLY 文件**
+    plyFile.write(outFile, true);
+    outFile.close();
+
+    std::cout << "Saved " << numPoints << " points to " << filename << " using tinyply." << std::endl;
+}

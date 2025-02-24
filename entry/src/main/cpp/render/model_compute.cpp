@@ -39,12 +39,13 @@ void VulkanComputeExample::loadTestData()
 {
     inputeGaussian = DataLoader::loadInputLegoInitData();
 //     inputeGaussian = DataLoader::loadInputLegoInitDatav2();
-
-    random_generator.initialize(inputeGaussian.img_list.size());
+    inputeGaussian.computeNormalization();
+    inputeGaussian.computePositionStats();
+    inputeGaussian.normalizeData();
     splat_count = inputeGaussian.positions.size();
-
-    intr_render_tmp = std::vector<float>({ 508.6300048828125, 509.0169677734375, 243.5619812011718750, 318.46099853515625 });
-//     intr_render_tmp = std::vector<float>({ 508.669, 509.195, 242.395, 320.688 });
+    random_generator.initialize(inputeGaussian.img_list.size());
+    
+    intr_render_tmp = inputeGaussian.intr_tmp[0];
     intr_tmp = std::vector<float>(4);
     for (int i = 0; i < 4; i++)
         intr_tmp[i] = intr_render_tmp[i] * low_resolotion_scale;
@@ -253,6 +254,16 @@ void VulkanComputeExample::imageToBufferCmd()
             compute.commandBuffer,
             intr_render_tmp.data()
         );
+        if (inputeGaussian.intr_tmp.size() > 1)
+        {
+            auto intr_tmp_low_resolution = inputeGaussian.intr_tmp[current_img_idx];
+            for (int i = 0; i < 4; i++)
+                intr_tmp_low_resolution[i] = intr_tmp_low_resolution[i] * low_resolotion_scale;
+            splat_buffers.intr_params.FromCpu(
+                compute.commandBuffer,
+                intr_tmp_low_resolution.data()
+            );
+        }
     }
     else
     {
@@ -629,6 +640,14 @@ void VulkanComputeExample::updRenderCmd()
         // inputeGaussian.extr_tmp[0].data()
         inputeGaussian.extr_tmp_test[render_index % inputeGaussian.extr_tmp_test.size()].data()
     );
+    
+    if (inputeGaussian.intr_tmp.size() > 1)
+    {
+        splat_buffers.intr_params_render.FromCpu(
+            compute.commandBuffer,
+            inputeGaussian.intr_tmp[render_index % inputeGaussian.intr_tmp.size()].data()
+        );
+    }
     TransComputeBarrierBlock();
 }
 
@@ -719,7 +738,14 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
-    
+    if (trainign_step == save_step)
+    {
+        createGpu2CpuCopy(splat_buffers.xyz_array);
+        createGpu2CpuCopy(splat_buffers.scale_array);
+        createGpu2CpuCopy(splat_buffers.rotate_array);
+        createGpu2CpuCopy(splat_buffers.sh_coeff);
+        createGpu2CpuCopy(splat_buffers.opacity);
+    }
 }
 
 
@@ -2849,13 +2875,12 @@ void VulkanComputeExample::bindPipeline2CommandBuffer(
     // Push constants
     uint32_t xyz_size = splat_count;
     if (float_constant) {
-        float start_lr = 0.00016 / 5;
-        float end_lr = 0.0000016 / 5;
+        float start_lr = 0.00016;
+        float end_lr = 0.0000016;
         // Linear learning rate decay
-        float pos_lr = (start_lr - ((start_lr - end_lr) * (trainign_step / max_trainign_step))) * 5;
-        // Exponential learning rate decay
-        // float pos_lr = start_lr * pow(end_lr / start_lr, (float)trainign_step / (float)max_trainign_step);
-        // float pos_lr = start_lr;
+//         float pos_lr = (start_lr - ((start_lr - end_lr) * (trainign_step / max_trainign_step)));
+        float pos_lr = (start_lr - ((start_lr - end_lr) * (trainign_step / 30000)));
+        
         std::vector<float> pushConstants = { static_cast<float>(xyz_size), static_cast<float>((int)(current_scale * image_width)), static_cast<float>((int)(current_scale * image_height)), pos_lr, static_cast<float>(sh_degree), 0, 0, 0};
         vkCmdPushConstants(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float) * 8, pushConstants.data());
     }else{
@@ -3415,6 +3440,17 @@ void VulkanComputeExample::calculatePSNR(float mse, int width, int height) {
     }
 }
 
+template<typename T>
+void copyGpuBufferToVector(const vkgs::Buffer& buffer, std::vector<T>& destVector, int pointNum, int length) {
+    const vkgs::CpuBuffer& cpu_buffer = buffer.cpu_buffer;
+    if (!cpu_buffer.isInit) return;  // 确保 CPU Buffer 已经同步
+
+    int size = cpu_buffer.size() / sizeof(T);  // 计算 buffer 内的数据数量
+    size = std::min(size, pointNum * length);  // 限制拷贝的数据量
+
+    const T* dataPtr = reinterpret_cast<const T*>(cpu_buffer.data());
+    destVector.assign(dataPtr, dataPtr + size);  // **复制到目标 vector**
+}
 
 void VulkanComputeExample::draw()
 {
@@ -3502,10 +3538,64 @@ void VulkanComputeExample::draw()
         }
     } 
     
-    queryEventTime();
+    
+    if (trainign_step == save_step)
+    {
 
-//     if (trainign_step > 2100)
-//         printGpuBuffers();
+        std::vector<float> positionData;
+        copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
+        inputeGaussian.positions.clear();
+        for (int i = 0; i < splat_count; i++) {
+            inputeGaussian.positions.emplace_back(
+                positionData[i * 3], 
+                positionData[i * 3 + 1], 
+                positionData[i * 3 + 2]
+            );
+        }
+        
+        std::vector<float> scaleData;
+        copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
+        inputeGaussian.scales.clear();
+        for (int i = 0; i < splat_count; i++) {
+            inputeGaussian.scales.emplace_back(
+                scaleData[i * 3], 
+                scaleData[i * 3 + 1], 
+                scaleData[i * 3 + 2]
+            );
+        }
+        
+        std::vector<float> rotationData;
+        copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
+        inputeGaussian.rotations.clear();
+        for (int i = 0; i < splat_count; i++) {
+            inputeGaussian.rotations.emplace_back(
+                rotationData[i * 4], 
+                rotationData[i * 4 + 1], 
+                rotationData[i * 4 + 2], 
+                rotationData[i * 4 + 3]
+            );
+        }
+        
+        std::vector<float> featureData;
+        copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
+        inputeGaussian.colors.clear();
+        for (int i = 0; i < splat_count; i++) {
+            DataLoader::InputLegoInitStruct::Data colorData;
+            for (int j = 0; j < 48; j++) {
+                colorData.values[j] = featureData[i * 48 + j];
+            }
+            inputeGaussian.colors.push_back(colorData);
+        }
+        
+        copyGpuBufferToVector(splat_buffers.opacity, inputeGaussian.opacities, splat_count, 1);
+
+        std::cout << "Successfully copied GPU buffers to inputeGaussian!" << std::endl;
+        auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
+        DataLoader::saveToPLY_tinyply(basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/outputGS.ply", inputeGaussian);
+    }
+    
+    queryEventTime();
+    
 }
 
 void VulkanComputeExample::queryCmdTimeStart(std::string eventName)
