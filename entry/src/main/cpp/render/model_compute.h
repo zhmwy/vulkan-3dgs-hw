@@ -92,6 +92,8 @@ public:
     RandomGenerator random_generator;
     int current_img_idx = 0;
 
+    std::string basepath = "";
+    
     struct sortBuffers {
         vkgs::Buffer key;
         vkgs::Buffer index;

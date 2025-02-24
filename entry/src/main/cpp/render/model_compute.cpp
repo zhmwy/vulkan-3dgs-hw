@@ -43,6 +43,7 @@ void VulkanComputeExample::loadTestData()
     inputeGaussian.computePositionStats();
     inputeGaussian.normalizeData();
     splat_count = inputeGaussian.positions.size();
+    this->basepath = inputeGaussian.basepath;
     random_generator.initialize(inputeGaussian.img_list.size());
     
     intr_render_tmp = inputeGaussian.intr_tmp[0];
@@ -237,7 +238,7 @@ void VulkanComputeExample::imageToBufferCmd()
 
     // int current_img_idx = trainign_step % inputeGaussian.img_list.size();
     current_img_idx = random_generator.generate();
-
+    
 //     current_img_idx = 0;
     
     if (trainign_step >= 1000)
@@ -3590,8 +3591,7 @@ void VulkanComputeExample::draw()
         copyGpuBufferToVector(splat_buffers.opacity, inputeGaussian.opacities, splat_count, 1);
 
         std::cout << "Successfully copied GPU buffers to inputeGaussian!" << std::endl;
-        auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
-        DataLoader::saveToPLY_tinyply(basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/outputGS.ply", inputeGaussian);
+        DataLoader::saveToPLY_tinyply(this->basepath + "/" + "assets/AREngine/2024_09_27_11_20_29/outputGS.ply", inputeGaussian);
     }
     
     queryEventTime();

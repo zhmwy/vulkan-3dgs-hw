@@ -237,6 +237,8 @@ public:
         glm::vec3 mean;
         float variance = 0;
         
+        std::string basepath = "";
+        
         // Print the first vertex's data for verification
         void print() const {
             std::cout << "Loaded " << positions.size() << " vertices." << std::endl;

@@ -782,6 +782,7 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
     const std::string filepath = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/input_AREngine.ply";
 
     DataLoader::InputLegoInitStruct data;
+    data.basepath = basePath;
 
     std::ifstream file(filepath, std::ios::binary);
     if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
