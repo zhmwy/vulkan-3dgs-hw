@@ -12,3 +12,8 @@ assets
 
 .clang*
 .idea
+
+alpha_blending_backward.slang
+alpha_blending_backward_glsl.comp
+int_to_float_gradient.comp
+

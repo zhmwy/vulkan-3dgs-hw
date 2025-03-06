@@ -213,7 +213,7 @@ public:
         }
     };
 
-    struct InputLegoInitStruct {
+    struct InputInitStruct {
         std::vector<glm::vec3> positions;      // 3D positions (x, y, z)
         std::vector<glm::vec3> scales;         // Scaling factors (scale_x, scale_y, scale_z)
         std::vector<glm::vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
@@ -284,11 +284,13 @@ public:
     static EvalSHForwardStruct loadEvalSHForwardData();
     static EvalSHBackwardStruct loadEvalSHBackwardData();
     static InputGaussianStruct loadInputGaussianData();
-    static InputLegoInitStruct loadInputLegoInitData();
-    static InputLegoInitStruct loadInputLegoInitDatav2();
+    static InputInitStruct loadInputLegoInitData();
+    static InputInitStruct loadInputInitDataPM();
+    
+    static InputInitStruct loadInputLegoInitDatav2();
     
     
-    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputLegoInitStruct& data);
+    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data);
     
     static void printPlyHeader(const std::string& filepath);
     

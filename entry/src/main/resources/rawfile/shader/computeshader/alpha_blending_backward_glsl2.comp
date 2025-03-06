@@ -1,0 +1,348 @@
+#version 460
+#extension GL_EXT_shader_atomic_float : require
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+#define BLOCK_X 16
+#define BLOCK_Y 16
+#define PIXELS_PER_TILE (BLOCK_X * BLOCK_Y)
+
+layout(local_size_x = BLOCK_X, local_size_y = BLOCK_Y, local_size_z = 1) in;
+
+layout (push_constant, std430) uniform PushConstants {
+    uint _xyz_size;
+    uint _W;
+    uint _H;
+    uint _temp;
+};
+
+layout(std430, binding = 0) buffer _uvd_array {
+    float uvd_array[];
+};
+
+layout(std430, binding = 1) buffer _conic_array {
+    float conic_array[];
+};
+
+layout(std430, binding = 2) buffer _opacity_array {
+    float opacity_array[];
+};
+
+layout(std430, binding = 3) buffer _feature_array {
+    float feature_array[];
+};
+
+layout(std430, binding = 4) buffer _sort_idx_array {
+    int sort_idx_array[];
+};
+
+layout(std430, binding = 5) buffer _tile_range_array {
+    ivec2 tile_range_array[];
+};
+
+layout(std430, binding = 6) buffer _background_array {
+    float background_array[];
+};
+
+layout(std430, binding = 8) buffer _final_T_array {
+    float final_T_array[];
+};
+
+layout(std430, binding = 9) buffer _ncontrib_array {
+    int ncontrib_array[];
+};
+
+layout(std430, binding = 10) buffer _dL_drfeat_array {
+    float dL_drfeat_array[];
+};
+
+layout(std430, binding = 11) buffer _dL_duvd_array {
+    float dL_duvd_array[];
+};
+
+layout(std430, binding = 12) buffer _dL_dconic_array {
+    float dL_dconic_array[];
+};
+
+layout(std430, binding = 13) buffer _dL_dopacity_array {
+    float dL_dopacity_array[];
+};
+
+layout(std430, binding = 14) buffer _dL_dfeature_array {
+    float dL_dfeature_array[];
+};
+
+layout(std430, binding = 15) buffer _dL_dndc_array {
+    float dL_dndc_array[];
+};
+
+layout(std430, binding = 16) buffer _dL_dbackground_array {
+    float dL_dbackground_array[];
+};
+
+shared int shared_idx[PIXELS_PER_TILE];
+shared vec3 shared_uvd[PIXELS_PER_TILE];
+shared vec3 shared_invcov[PIXELS_PER_TILE];
+shared float shared_opacity[PIXELS_PER_TILE];
+shared vec3 shared_feature[PIXELS_PER_TILE];
+
+uint t2i(uint i, uint j, uint width) {
+    return i * width + j;
+}
+
+uint t2i(uint c, uint i, uint j, uint height, uint width) {
+    return c * height * width + i * width + j;
+}
+
+void main() {
+
+    uint dispatchThreadID_x = gl_GlobalInvocationID.x;
+    uint dispatchThreadID_y = gl_GlobalInvocationID.y;
+
+    // float oldvalueX1 = 1.0;
+    bool need_grad = true;
+    int W = int(_W);
+    int H = int(_H);
+    int gridDim_x = (W + BLOCK_X - 1) / BLOCK_X;
+
+    // index of tile
+    int tile_idx_x = int(dispatchThreadID_x) / BLOCK_X;
+    int tile_idx_y = int(dispatchThreadID_y) / BLOCK_Y;
+    int tile_idx = tile_idx_y * gridDim_x + tile_idx_x;
+
+    // index of shared gaussian in a chunk
+    int local_x = int(dispatchThreadID_x) % BLOCK_X;
+    int local_y = int(dispatchThreadID_y) % BLOCK_Y;
+    int item_idx = local_x + local_y * BLOCK_X;
+
+    // pixel col and row in the image
+    uvec2 p = uvec2(tile_idx_x * BLOCK_X + local_x, tile_idx_y * BLOCK_Y + local_y);
+
+    bool withinBounds = p.x < W && p.y < H;
+    // bool thread_active = withinBounds;
+
+    // Process gaussians in a tile in Chunks.
+    ivec2 gaussian_range = tile_range_array[tile_idx];
+    int gaussian_num = gaussian_range.y - gaussian_range.x;
+    int num_chunk = (gaussian_num + PIXELS_PER_TILE - 1) / PIXELS_PER_TILE;
+
+    vec3 dL_duvd_reg;
+    vec3 dL_dconic_reg;
+    vec2 dL_dndc_reg;
+    float dL_dopacity_reg;
+
+    float final_trans = withinBounds ? final_T_array[t2i(p.y, p.x, W)] : 0.0;
+    float trans = final_trans;
+    int remain_gaussian_num = gaussian_num;
+    int current_process_idx = gaussian_num;
+    int last_involved = withinBounds ? ncontrib_array[t2i(p.y, p.x, W)] : 0;
+
+    vec3 accum_feat_term = vec3(0.0);
+    // float originalSum = 0.0;
+
+    for (int i = 0; i < num_chunk; i++, remain_gaussian_num -= PIXELS_PER_TILE) {
+        // memoryBarrierShared();
+        barrier();
+
+        int num_loaded = i * PIXELS_PER_TILE + item_idx;
+        if (gaussian_range.x + num_loaded < gaussian_range.y) {
+            int gidx = sort_idx_array[gaussian_range.y - num_loaded - 1];
+            shared_idx[item_idx] = gidx;
+            shared_uvd[item_idx] = vec3(
+                uvd_array[3 * gidx],
+                uvd_array[3 * gidx + 1],
+                uvd_array[3 * gidx + 2]
+            );
+            shared_invcov[item_idx] = vec3(
+                conic_array[3 * gidx],
+                conic_array[3 * gidx + 1],
+                conic_array[3 * gidx + 2]
+            );
+            shared_opacity[item_idx] = opacity_array[gidx];
+            shared_feature[item_idx] = vec3(
+                feature_array[3 * gidx],
+                feature_array[3 * gidx + 1],
+                feature_array[3 * gidx + 2]
+            );
+        }
+        // memoryBarrierShared();
+        barrier();
+
+        int num_to_process = min(PIXELS_PER_TILE, remain_gaussian_num);
+
+        // vec3 local_dL_dfeature = vec3(0.0);
+        // vec3 local_dL_dconic = vec3(0.0);
+        // float local_dL_dopacity = 0.0;
+        // vec3 local_dL_duvd = vec3(0.0);
+        // vec2 local_dL_dndc = vec2(0.0);
+
+        for (int j = 0; j < num_to_process; j++) {
+
+            uint valid = 1;
+
+            current_process_idx--;
+            if (current_process_idx >= last_involved) {
+                // continue;
+                valid = 0;
+            }
+
+            vec2 vec = vec2(shared_uvd[j].x - float(p.x), shared_uvd[j].y - float(p.y));
+            
+            // squared Mahalanobis distance
+            vec3 shared_invcov_reg = shared_invcov[j];
+            float maha_distance = shared_invcov_reg.x * vec.x * vec.x 
+                                 + shared_invcov_reg.y * vec.x * vec.y * 2.0
+                                 + shared_invcov_reg.z * vec.y * vec.y;
+
+            float power = -0.5f * maha_distance;
+            if (power > 0.0f) {
+                // continue;
+                valid = 0;
+            }
+
+            float G = exp(power);
+            float current_opacity = shared_opacity[j];
+            float alpha = min(0.99f, current_opacity * G);
+            if (alpha < 1.0f / 255.0f){
+                // continue;
+                valid = 0;
+            }
+
+            if (subgroupAdd(valid) == 0){
+                continue;
+            }
+
+            // if (valid == 0)
+            //     trans = 0;
+
+            float tmp = 1.0 / (1.0 - alpha);
+            if (valid == 1)
+                trans = trans * tmp;
+
+            vec3 dL_dalpha = vec3(0.0);
+            vec3 dL_dG = vec3(0.0);
+            vec2 dG_dvec = vec2(
+                -G * vec.x * shared_invcov_reg.x - G * vec.y * shared_invcov_reg.y,
+                -G * vec.y * shared_invcov_reg.z - G * vec.x * shared_invcov_reg.y
+            );
+
+            dL_duvd_reg = vec3(0.0);
+            dL_dconic_reg = vec3(0.0);
+            dL_dndc_reg = vec2(0.0);
+            dL_dopacity_reg = 0.0;
+
+            // MTR
+            // from feature_array
+            vec3 current_feature = shared_feature[j];
+            vec3 dL_drfeat_reg = vec3(
+                dL_drfeat_array[t2i(0, p.y, p.x, H, W)],
+                dL_drfeat_array[t2i(1, p.y, p.x, H, W)],
+                dL_drfeat_array[t2i(2, p.y, p.x, H, W)]
+            );
+            dL_dalpha = (current_feature * trans - accum_feat_term * tmp) * dL_drfeat_reg;
+            accum_feat_term += alpha * current_feature * trans;
+
+            // from background_array
+            vec3 bg = vec3(
+                background_array[t2i(0, p.y, p.x, H, W)],
+                background_array[t2i(1, p.y, p.x, H, W)],
+                background_array[t2i(2, p.y, p.x, H, W)]
+            );
+            dL_dalpha -= bg * final_trans * tmp * dL_drfeat_reg;
+            dL_dG = current_opacity * dL_dalpha;
+
+            dL_duvd_reg.x += (dL_dG.x + dL_dG.y + dL_dG.z) * dG_dvec.x;
+            dL_duvd_reg.y += (dL_dG.x + dL_dG.y + dL_dG.z) * dG_dvec.y;
+
+            if (need_grad) {
+                dL_dndc_reg += (dL_dG.x + dL_dG.y + dL_dG.z) * dG_dvec * 0.5 * vec2(float(W), float(H));
+            }
+
+            dL_dconic_reg.x += -0.5f * G * vec.x * vec.x * (dL_dG.x + dL_dG.y + dL_dG.z);
+            dL_dconic_reg.y += -G * vec.x * vec.y * (dL_dG.x + dL_dG.y + dL_dG.z);
+            dL_dconic_reg.z += -0.5f * G * vec.y * vec.y * (dL_dG.x + dL_dG.y + dL_dG.z);
+            dL_dopacity_reg += G * (dL_dalpha.x + dL_dalpha.y + dL_dalpha.z);
+
+            /////////////////////////////////
+
+            vec3 local_dL_dfeature = vec3(0.0);
+            vec3 local_dL_dconic = vec3(0.0);
+            float local_dL_dopacity = 0.0;
+            vec3 local_dL_duvd = vec3(0.0);
+            vec2 local_dL_dndc = vec2(0.0);
+
+            // vec3 temp_feature = vec3(0.0);
+            // vec3 temp_dconic = vec3(0.0);
+            // float temp_dopacity = 0.0;
+            // vec3 temp_duvd = vec3(0.0);
+            // vec2 temp_dndc = vec2(0.0);
+
+            if (valid == 1) {
+                dL_drfeat_reg = alpha * trans * dL_drfeat_reg;
+
+                // temp_feature = (alpha * trans * dL_drfeat_reg);
+                // temp_dconic = dL_dconic_reg;
+                // temp_dopacity = dL_dopacity_reg;
+                // temp_duvd = dL_duvd_reg;
+                // temp_dndc = dL_dndc_reg;
+            }
+            else {
+                dL_drfeat_reg = vec3(0);
+                dL_dconic_reg = vec3(0);
+                dL_dopacity_reg = 0;
+                dL_duvd_reg = vec3(0);
+                dL_dndc_reg = vec2(0);
+            }
+
+            // local_dL_dfeature = subgroupAdd(temp_feature);
+            // local_dL_dconic = subgroupAdd(temp_dconic);
+            // local_dL_duvd = subgroupAdd(temp_duvd);
+            // local_dL_dndc = subgroupAdd(temp_dndc);
+            // local_dL_dopacity = subgroupAdd(temp_dopacity);
+
+            local_dL_dfeature = subgroupAdd(dL_drfeat_reg);
+            local_dL_dconic = subgroupAdd(dL_dconic_reg);
+            local_dL_duvd = subgroupAdd(dL_duvd_reg);
+            local_dL_dndc = subgroupAdd(dL_dndc_reg);
+            local_dL_dopacity = subgroupAdd(dL_dopacity_reg);
+            
+            // if (valid == 1){
+            //     local_dL_dfeature = subgroupAdd(alpha * trans * dL_drfeat_reg);
+            //     local_dL_dconic = subgroupAdd(dL_dconic_reg);
+            //     local_dL_duvd = subgroupAdd(dL_duvd_reg);
+            //     local_dL_dndc = subgroupAdd(dL_dndc_reg);
+            //     local_dL_dopacity = subgroupAdd(dL_dopacity_reg);
+            // }
+
+            if (gl_SubgroupInvocationID == 0) {
+                atomicAdd(dL_dfeature_array[shared_idx[j] * 3 + 0], local_dL_dfeature.x);
+                atomicAdd(dL_dfeature_array[shared_idx[j] * 3 + 1], local_dL_dfeature.y);
+                atomicAdd(dL_dfeature_array[shared_idx[j] * 3 + 2], local_dL_dfeature.z);
+                
+                atomicAdd(dL_dconic_array[shared_idx[j] * 3 + 0], local_dL_dconic.x);
+                atomicAdd(dL_dconic_array[shared_idx[j] * 3 + 1], local_dL_dconic.y);
+                atomicAdd(dL_dconic_array[shared_idx[j] * 3 + 2], local_dL_dconic.z);
+
+                atomicAdd(dL_duvd_array[shared_idx[j] * 3 + 0], local_dL_duvd.x);
+                atomicAdd(dL_duvd_array[shared_idx[j] * 3 + 1], local_dL_duvd.y);
+
+                if (need_grad) {
+                    atomicAdd(dL_dndc_array[shared_idx[j] * 2 + 0], local_dL_dndc.x);
+                    atomicAdd(dL_dndc_array[shared_idx[j] * 2 + 1], local_dL_dndc.y);
+                }
+
+                atomicAdd(dL_dopacity_array[shared_idx[j]], local_dL_dopacity);
+
+            }
+        }
+    }
+
+    // Background updates
+    if (withinBounds) {
+        dL_dbackground_array[t2i(0, p.y, p.x, H, W)] = final_trans * dL_drfeat_array[t2i(0, p.y, p.x, H, W)];
+        dL_dbackground_array[t2i(1, p.y, p.x, H, W)] = final_trans * dL_drfeat_array[t2i(1, p.y, p.x, H, W)];
+        dL_dbackground_array[t2i(2, p.y, p.x, H, W)] = final_trans * dL_drfeat_array[t2i(2, p.y, p.x, H, W)];
+    }
+    
+}
+

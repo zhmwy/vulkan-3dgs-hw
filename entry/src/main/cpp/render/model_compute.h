@@ -80,8 +80,8 @@ public:
     static const int MAX_TIME_QUERY_NUM = 100;
     static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;
-    int trainign_step = 0;
-    int max_trainign_step = 10000;
+    int training_step = 0;
+    int max_training_step = 10000;
     int last_step_tag = 0;
     int render_index = 0;
     bool upd_cmd_buffer = true;
@@ -199,6 +199,12 @@ public:
         vkgs::Buffer curPointsNum;
         vkgs::Buffer xyz_gradient_mean;
 
+        vkgs::Buffer dL_duvd_int;
+        vkgs::Buffer dL_dconic_int;
+        vkgs::Buffer dL_dopacity_act_array_int;
+        vkgs::Buffer dL_dfeature_int;
+        vkgs::Buffer dL_dndc_int;
+        
         vkgs::Buffer psnr_sum;
         
     } splat_buffers;
@@ -260,6 +266,10 @@ public:
     Compute3DGS pipe_compute_tile;
     Compute3DGS pipe_inverse;
     Compute3DGS pipe_blending;
+    
+    Compute3DGS pipe_blending_int;
+    Compute3DGS pipe_int2float;
+    
     Compute3DGS pipe_optimize;
     Compute3DGS pipe_loss;
     Compute3DGS pipe_copy_img2buffer;
@@ -371,6 +381,8 @@ public:
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
+    void setAlphaBlendingIntPipeline();
+    void setIntToFloatGradientPipeline();
     void setOptimizitionPipeline();
     void setLossPipeline();
     void setComputeSHPipeline();
@@ -384,7 +396,7 @@ public:
     void forwardCmdTime();
     
     void backwardCmd();
-    void zeroGardCmd();
+    void zeroGradCmd();
     void imageToBufferCmd();
     void bufferToImageCmd();
     void optimizeStepCmd();
@@ -449,8 +461,8 @@ public:
 
         draw();
         render_count++;
-        if (trainign_step < max_trainign_step){
-            trainign_step++;
+        if (training_step < max_training_step){
+            training_step++;
         }
     }
     #ifdef VULKAN_PC
