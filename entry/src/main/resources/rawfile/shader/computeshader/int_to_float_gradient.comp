@@ -1,0 +1,69 @@
+#version 460
+
+// #extension GL_ARB_gpu_shader_int64 : enable
+// #extension GL_NV_shader_atomic_int64 : enable
+// #extension GL_EXT_shader_atomic_int64 : enable
+
+#define SCALE 1E9
+
+layout(std430, binding = 0) buffer _dL_duvd_array_int {
+    int dL_duvd_array_int[];
+};
+
+layout(std430, binding = 1) buffer _dL_dconic_array_int {
+    int dL_dconic_array_int[];
+};
+
+layout(std430, binding = 2) buffer _dL_dopacity_array_int {
+    int dL_dopacity_array_int[];
+};
+
+layout(std430, binding = 3) buffer _dL_dfeature_array_int {
+    int dL_dfeature_array_int[];
+};
+
+layout(std430, binding = 4) buffer _dL_dndc_array_int {
+    int dL_dndc_array_int[];
+};
+
+layout(std430, binding = 5) buffer _dL_duvd_array {
+    float dL_duvd_array[];
+};
+
+layout(std430, binding = 6) buffer _dL_dconic_array {
+    float dL_dconic_array[];
+};
+
+layout(std430, binding = 7) buffer _dL_dopacity_array {
+    float dL_dopacity_array[];
+};
+
+layout(std430, binding = 8) buffer _dL_dfeature_array {
+    float dL_dfeature_array[];
+};
+
+layout(std430, binding = 9) buffer _dL_dndc_array {
+    float dL_dndc_array[];
+};
+
+
+layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+
+    dL_dfeature_array[index * 3 + 0] = float(dL_dfeature_array_int[index * 3 + 0]) / SCALE;
+    dL_dfeature_array[index * 3 + 1] = float(dL_dfeature_array_int[index * 3 + 1]) / SCALE;
+    dL_dfeature_array[index * 3 + 2] = float(dL_dfeature_array_int[index * 3 + 2]) / SCALE;
+
+    dL_dconic_array[index * 3 + 0] = float(dL_dconic_array_int[index * 3 + 0]) / SCALE;
+    dL_dconic_array[index * 3 + 1] = float(dL_dconic_array_int[index * 3 + 1]) / SCALE;
+    dL_dconic_array[index * 3 + 2] = float(dL_dconic_array_int[index * 3 + 2]) / SCALE;
+
+    dL_duvd_array[index * 3 + 0] = float(dL_duvd_array_int[index * 3 + 0]) / SCALE;
+    dL_duvd_array[index * 3 + 1] = float(dL_duvd_array_int[index * 3 + 1]) / SCALE;
+
+    dL_dopacity_array[index] = float(dL_dopacity_array_int[index]) / SCALE;
+
+    // dL_dndc_array[index * 2 + 0] = float(dL_dndc_array_int[index * 2 + 0]) / SCALE;
+    // dL_dndc_array[index * 2 + 1] = float(dL_dndc_array_int[index * 2 + 1]) / SCALE;
+}
