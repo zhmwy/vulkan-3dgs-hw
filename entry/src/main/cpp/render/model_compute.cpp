@@ -37,18 +37,18 @@
 /********************* For Unit Test ****************************/
 void VulkanComputeExample::loadTestData()
 {
-//     inputeGaussian = DataLoader::loadInputLegoInitData();
-    inputeGaussian = DataLoader::loadInputInitDataPM();
+//     inputGaussian = DataLoader::loadInputLegoInitData();
+    inputGaussian = DataLoader::loadInputInitDataPM();
     
-//     inputeGaussian = DataLoader::loadInputLegoInitDatav2();
-    inputeGaussian.computeNormalization();
-    inputeGaussian.computePositionStats();
-    inputeGaussian.normalizeData();
-    splat_count = inputeGaussian.positions.size();
-    this->basepath = inputeGaussian.basepath;
-    random_generator.initialize(inputeGaussian.img_list.size());
+//     inputGaussian = DataLoader::loadInputLegoInitDatav2();
+    inputGaussian.computeNormalization();
+    inputGaussian.computePositionStats();
+    inputGaussian.normalizeData();
+    splat_count = inputGaussian.positions.size();
+    this->basepath = inputGaussian.basepath;
+    random_generator.initialize(inputGaussian.img_list.size());
     
-    intr_render_tmp = inputeGaussian.intr_tmp[0];
+    intr_render_tmp = inputGaussian.intr_tmp[0];
     intr_tmp = std::vector<float>(4);
     for (int i = 0; i < 4; i++)
         intr_tmp[i] = intr_render_tmp[i] * low_resolotion_scale;
@@ -56,36 +56,36 @@ void VulkanComputeExample::loadTestData()
 
 void VulkanComputeExample::encodeCpu2Gpu()
 {
-    inputeGaussian.rotations.resize(MAX_SPLAT_COUNT);
-    inputeGaussian.positions.resize(MAX_SPLAT_COUNT);
-    inputeGaussian.scales.resize(MAX_SPLAT_COUNT);
-    inputeGaussian.opacities.resize(MAX_SPLAT_COUNT);
-    inputeGaussian.colors.resize(MAX_SPLAT_COUNT);
+    inputGaussian.rotations.resize(MAX_SPLAT_COUNT);
+    inputGaussian.positions.resize(MAX_SPLAT_COUNT);
+    inputGaussian.scales.resize(MAX_SPLAT_COUNT);
+    inputGaussian.opacities.resize(MAX_SPLAT_COUNT);
+    inputGaussian.colors.resize(MAX_SPLAT_COUNT);
 
     splat_buffers.xyz_array.FromCpu(
         compute.commandBuffer,
-        inputeGaussian.positions.data()
+        inputGaussian.positions.data()
     );
     /*splat_buffers.scale_array.FromCpu(
         compute.commandBuffer,
-        inputeGaussian.scales.data()
+        inputGaussian.scales.data()
     );*/
     splat_buffers.rotate_array.FromCpu(
         compute.commandBuffer,
-        inputeGaussian.rotations.data()
+        inputGaussian.rotations.data()
     );
      splat_buffers.opacity.FromCpu(
          compute.commandBuffer,
-         inputeGaussian.opacities.data()
+         inputGaussian.opacities.data()
      );
     splat_buffers.sh_coeff.FromCpu(
         compute.commandBuffer,
-        inputeGaussian.colors.data()
+        inputGaussian.colors.data()
     );
     
     splat_buffers.extr_params.FromCpu(
         compute.commandBuffer,
-        inputeGaussian.extr_tmp[0].data()
+        inputGaussian.extr_tmp[0].data()
     );
 
     splat_buffers.intr_params.FromCpu(
@@ -233,7 +233,7 @@ void VulkanComputeExample::imageToBufferCmd()
     copyRegionI.imageOffset = { 0, 0, 0 };
     copyRegionI.imageExtent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1 };
 
-    // int current_img_idx = training_step % inputeGaussian.img_list.size();
+    // int current_img_idx = training_step % inputGaussian.img_list.size();
     current_img_idx = random_generator.generate();
     
 //     current_img_idx = 0;
@@ -242,8 +242,8 @@ void VulkanComputeExample::imageToBufferCmd()
     {
         vkCmdCopyImageToBuffer(
             compute.commandBuffer,
-            inputeGaussian.images[current_img_idx].image,
-            inputeGaussian.images[current_img_idx].imageLayout,
+            inputGaussian.images[current_img_idx].image,
+            inputGaussian.images[current_img_idx].imageLayout,
             splat_buffers.input_image_alpha_array,
             1,
             &copyRegionI
@@ -252,9 +252,9 @@ void VulkanComputeExample::imageToBufferCmd()
             compute.commandBuffer,
             intr_render_tmp.data()
         );
-        if (inputeGaussian.intr_tmp.size() > 1)
+        if (inputGaussian.intr_tmp.size() > 1)
         {
-            auto intr_tmp_low_resolution = inputeGaussian.intr_tmp[current_img_idx];
+            auto intr_tmp_low_resolution = inputGaussian.intr_tmp[current_img_idx];
             for (int i = 0; i < 4; i++)
                 intr_tmp_low_resolution[i] = intr_tmp_low_resolution[i] * low_resolotion_scale;
             splat_buffers.intr_params.FromCpu(
@@ -267,8 +267,8 @@ void VulkanComputeExample::imageToBufferCmd()
     {
         vkCmdCopyImageToBuffer(
                 compute.commandBuffer,
-                inputeGaussian.images_low_res[current_img_idx].image,
-                inputeGaussian.images_low_res[current_img_idx].imageLayout,
+                inputGaussian.images_low_res[current_img_idx].image,
+                inputGaussian.images_low_res[current_img_idx].imageLayout,
                 splat_buffers.input_image_alpha_array,
                 1,
                 &copyRegionI
@@ -277,7 +277,7 @@ void VulkanComputeExample::imageToBufferCmd()
     
     splat_buffers.extr_params.FromCpu(
         compute.commandBuffer,
-        inputeGaussian.extr_tmp[current_img_idx].data()
+        inputGaussian.extr_tmp[current_img_idx].data()
     );
 
     TransComputeBarrierBlock();
@@ -607,7 +607,7 @@ void VulkanComputeExample::densifyCmd()
     vkCmdFillBuffer(compute.commandBuffer, splat_buffers.max_radii2D, 0, VK_WHOLE_SIZE, 0);
 }
 
-void VulkanComputeExample::updRenderCmd()
+void VulkanComputeExample::updRenderCmd( /**/ )
 {
     VkImageCopy copyRegionI2I = {};
     copyRegionI2I.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -633,8 +633,8 @@ void VulkanComputeExample::updRenderCmd()
 
         vkCmdCopyImage(
             compute.commandBuffer,
-            inputeGaussian.images[6].image,
-            inputeGaussian.images[6].imageLayout,
+            inputGaussian.images[6].image,
+            inputGaussian.images[6].imageLayout,
             textureColorMap.image,
             textureColorMap.imageLayout,
             1,
@@ -643,15 +643,15 @@ void VulkanComputeExample::updRenderCmd()
     }
     splat_buffers.extr_params_render.FromCpu(
         compute.commandBuffer,
-        // inputeGaussian.extr_tmp[0].data()
-        inputeGaussian.extr_tmp_test[render_index % inputeGaussian.extr_tmp_test.size()].data()
+        // inputGaussian.extr_tmp[0].data()
+        inputGaussian.extr_tmp_test[render_index % inputGaussian.extr_tmp_test.size()].data()
     );
     
-    if (inputeGaussian.intr_tmp.size() > 1)
+    if (inputGaussian.intr_tmp.size() > 1)
     {
         splat_buffers.intr_params_render.FromCpu(
             compute.commandBuffer,
-            inputeGaussian.intr_tmp[render_index % inputeGaussian.intr_tmp.size()].data()
+            inputGaussian.intr_tmp[render_index % inputGaussian.intr_tmp.size()].data()
         );
     }
     TransComputeBarrierBlock();
@@ -2860,7 +2860,7 @@ void VulkanComputeExample::resizeAndUploadTexture(
 void VulkanComputeExample::loadAssets(float scale) {
     std::cout << "Loading assets..." << std::endl;
     
-    std::string filename = inputeGaussian.img_list[0];
+    std::string filename = inputGaussian.img_list[0];
     std::cout << "[loadAssets] filename: " << filename << std::endl;
     
     // 使用stb_image加载图像文件（无论是PNG还是JPEG）
@@ -2890,8 +2890,8 @@ void VulkanComputeExample::loadAssets(float scale) {
     image_width = textureColorMap.width;
     image_height = textureColorMap.height;
 
-    // 遍历 inputeGaussian.img_list 一次性加载图像
-    for (const std::string& filename : inputeGaussian.img_list) {
+    // 遍历 inputGaussian.img_list 一次性加载图像
+    for (const std::string& filename : inputGaussian.img_list) {
         // 加载图像
         int width, height, channels;
         unsigned char* image_data = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
@@ -2920,14 +2920,14 @@ void VulkanComputeExample::loadAssets(float scale) {
         resizeAndUploadTexture(texture_resized, image_data, width, height, scale, vulkanDevice, queue);
 
         // 存入对应的 vector
-        inputeGaussian.images.push_back(texture_original);
-        inputeGaussian.images_low_res.push_back(texture_resized);
+        inputGaussian.images.push_back(texture_original);
+        inputGaussian.images_low_res.push_back(texture_resized);
 
         // 释放 STB 读取的图像数据
         stbi_image_free(image_data);
     }
 
-    std::cout << "Total images loaded: " << inputeGaussian.images.size() << std::endl;
+    std::cout << "Total images loaded: " << inputGaussian.images.size() << std::endl;
 }
 
 
@@ -3693,9 +3693,9 @@ void VulkanComputeExample::draw()
 
         std::vector<float> positionData;
         copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
-        inputeGaussian.positions.clear();
+        inputGaussian.positions.clear();
         for (int i = 0; i < splat_count; i++) {
-            inputeGaussian.positions.emplace_back(
+            inputGaussian.positions.emplace_back(
                 positionData[i * 3], 
                 positionData[i * 3 + 1], 
                 positionData[i * 3 + 2]
@@ -3704,9 +3704,9 @@ void VulkanComputeExample::draw()
         
         std::vector<float> scaleData;
         copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
-        inputeGaussian.scales.clear();
+        inputGaussian.scales.clear();
         for (int i = 0; i < splat_count; i++) {
-            inputeGaussian.scales.emplace_back(
+            inputGaussian.scales.emplace_back(
                 scaleData[i * 3], 
                 scaleData[i * 3 + 1], 
                 scaleData[i * 3 + 2]
@@ -3715,9 +3715,9 @@ void VulkanComputeExample::draw()
         
         std::vector<float> rotationData;
         copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
-        inputeGaussian.rotations.clear();
+        inputGaussian.rotations.clear();
         for (int i = 0; i < splat_count; i++) {
-            inputeGaussian.rotations.emplace_back(
+            inputGaussian.rotations.emplace_back(
                 rotationData[i * 4], 
                 rotationData[i * 4 + 1], 
                 rotationData[i * 4 + 2], 
@@ -3727,19 +3727,19 @@ void VulkanComputeExample::draw()
         
         std::vector<float> featureData;
         copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
-        inputeGaussian.colors.clear();
+        inputGaussian.colors.clear();
         for (int i = 0; i < splat_count; i++) {
-            DataLoader::InputLegoInitStruct::Data colorData;
+            DataLoader::InputInitStruct::Data colorData;
             for (int j = 0; j < 48; j++) {
                 colorData.values[j] = featureData[i * 48 + j];
             }
-            inputeGaussian.colors.push_back(colorData);
+            inputGaussian.colors.push_back(colorData);
         }
         
-        copyGpuBufferToVector(splat_buffers.opacity, inputeGaussian.opacities, splat_count, 1);
+        copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
 
-        std::cout << "Successfully copied GPU buffers to inputeGaussian!" << std::endl;
-        DataLoader::saveToPLY_tinyply(this->basepath + "/" + "assets/AREngine/2024_09_27_11_20_29/outputGS.ply", inputeGaussian);
+        std::cout << "Successfully copied GPU buffers to inputGaussian!" << std::endl;
+        DataLoader::saveToPLY_tinyply(this->basepath + "/" + "assets/AREngine/2024_09_27_11_20_29/outputGS.ply", inputGaussian);
     }
     
     queryEventTime();

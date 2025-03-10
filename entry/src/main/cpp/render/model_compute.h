@@ -68,8 +68,8 @@ public:
 
     VmaAllocator allocator;
 
-    // DataLoader::InputGaussianStruct inputeGaussian;
-    DataLoader::InputLegoInitStruct inputeGaussian;
+    // DataLoader::InputGaussianStruct inputGaussian;
+    DataLoader::InputInitStruct inputGaussian;
     std::vector<float> extr_tmp;
     std::vector<float> intr_tmp; 
     std::vector<float> intr_render_tmp;
