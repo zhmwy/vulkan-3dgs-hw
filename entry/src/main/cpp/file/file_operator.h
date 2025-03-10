@@ -36,15 +36,15 @@ public:
     void CopyRawDir(std::string assetsDirName);
     void SetRawMgr(NativeResourceManager *mgr);
     std::string GetHapFilesDir();
+    NativeResourceManager *mgr_;
 
 private:
     static FileOperator m_fileOperator;
     std::string UnwrapStringFromJs(napi_env env, napi_value param);
-    NativeResourceManager *mgr_;
     napi_env m_env;
     napi_value m_stageContext;
     std::string m_defaultDir = "/data/storage/el2/base/haps/entry/files";
-    std::string m_sCurrentHapFilesDir;
+    std::string m_sCurrentHapFilesDir = "/data/storage/el2/base/haps/entry/files";
 };
 
 #endif // FILE_FILE_OPERATOR_H

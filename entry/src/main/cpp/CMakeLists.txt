@@ -18,30 +18,8 @@ include_directories(
     ${NATIVERENDER_ROOT_PATH}/include
 )
 
-add_library(nativerender SHARED
-    render/plugin_render.cpp
-    render/algorithm/fsr.cpp
-    manager/plugin_manager.cpp
-    napi_init.cpp
-    vulkanbase/VulkanOhos.cpp
-    vulkanbase/VulkanBuffer.cpp
-    vulkanbase/VulkanDevice.cpp
-    vulkanbase/vulkanexamplebase.cpp
-    vulkanbase/VulkanInitializers.hpp
-    vulkanbase/VulkanSwapChain.cpp
-    vulkanbase/VulkanTools.cpp
-    vulkanbase/VulkanTexture.cpp
-    file/file_operator.cpp
-    file/file.cpp
-    # render/model_3d_sponza.cpp
-    render/vulkan_obj_model.cpp
-    render/vulkan_obj_mesh.cpp
-    render/model_compute.cpp
-    cores/buffer.cpp
-    cores/cpu_buffer.cpp
-    cores/dataloader.cpp
-    cores/tinyply.cpp
-)
+add_library(nativerender SHARED napi_init.cpp main.cpp )
+target_link_libraries(nativerender PUBLIC ${NATIVERENDER_ROOT_PATH}/../../../libs/${OHOS_ARCH}/lib3dgs.so)
 
 
 # ktx
@@ -123,3 +101,65 @@ find_library(
 
 target_link_libraries(nativerender PUBLIC
  ${hilog-lib} ${libace-lib} ${libnapi-lib} ${libuv-lib} libnative_window.so libc++.a libktx librawfile.z.so libassimp ${xengine-lib} vk_radix_sort)
+
+# Human Part
+target_link_libraries(nativerender PUBLIC ${NATIVERENDER_ROOT_PATH}/../../../libs/${OHOS_ARCH}/libsmpl.so)
+target_include_directories(nativerender PRIVATE SMPL/include)
+target_include_directories(nativerender PRIVATE segmentation)
+
+target_link_libraries(nativerender PUBLIC libace_napi.z.so
+                                   libhilog_ndk.z.so
+                                   libohfileio.so
+                                   librawfile.z.so
+                                   libneural_network_core.so
+                                   libneural_network_runtime.so
+                                   mindspore_lite_ndk
+                                   ${hiai_foundation-lib}
+                                   libpixelmap_ndk.z.so
+                                   libimage_source_ndk.z.so)
+# OpenCV相关
+target_include_directories(nativerender PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/opencv/${OHOS_ARCH}/include/opencv4)
+target_link_libraries(nativerender PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_calib3d.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_core.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_dnn.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_features2d.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_flann.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_gapi.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_highgui.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_imgcodecs.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_imgproc.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_ml.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_objdetect.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_photo.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_stitching.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_video.so.408
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_videoio.so.408)
+
+#Eigen和Ceres-solver相关
+target_link_libraries(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/lib/libceres.a)
+target_link_libraries(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/lib/libgflags_nothreads.a
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/lib/libgflags.a)
+target_link_libraries(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/lib/libGKlib.a)
+
+target_link_libraries(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgmock_main.a
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgmock.a
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgtest_main.a
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgtest.a)
+
+target_link_libraries(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/lib/libmetis.a)
+target_link_libraries(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/glog/libglog.so.1)
+
+target_include_directories(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/include)
+target_include_directories(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/eigen/${OHOS_ARCH}/include/eigen3)
+target_include_directories(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/include)
+target_include_directories(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/include)
+target_include_directories(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/glog/${OHOS_ARCH}/include)
+
+target_include_directories(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock
+                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock/internal
+                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock/internal/custom
+                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest
+                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest/internal
+                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest/internal/custom)
+target_include_directories(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/include)
+target_include_directories(nativerender PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json/${OHOS_ARCH}/include)

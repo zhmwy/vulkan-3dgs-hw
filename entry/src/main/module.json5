@@ -18,7 +18,7 @@
         "icon": "$media:icon",
         "label": "$string:EntryAbility_label",
         "startWindowIcon": "$media:icon",
-        "orientation": "landscape",
+        "orientation": "portrait",
         "startWindowBackground": "$color:start_window_background",
         "exported": true,
         "skills": [

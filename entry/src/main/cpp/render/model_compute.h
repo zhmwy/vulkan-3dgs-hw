@@ -7,6 +7,7 @@
 *
 * This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
 */
+#pragma once
 
 #ifndef VULKANEXAMPLE_H
 #define VULKANEXAMPLE_H
@@ -18,6 +19,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <opencv2/opencv.hpp>
 #include "file/file_operator.h"
 // #include "vulkan_obj_model.h"
 // #include "common/common.h"
@@ -29,13 +31,26 @@
 #include "cores/dataloader.h"
 #include "cores/random.h"
 #include "cores/timer.h"
+// #include "vulkanbase\VulkanOhos.h"
+#include "cores/dataloader.h"
+#include <assert.h>
+#include <cmath> // For log function
+#include <random>
+#include <chrono>
+#include <cstdint>
+
+#include "vk_mem_alloc.h"
+#include "cores/buffer.h"
+#include "cores/cpu_buffer.h"
+
+#include <vulkan/vulkan.h>
 
 #define ENABLE_VALIDATION false
 
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
-#define SORT_SIZE 256
+#define SORT_SIZE 100    // must be equal to TILE_NUM_AVG_MAX!!!!!!!!
 
 #define VULKAN_HW
 // #define VULKAN_PC
@@ -52,8 +67,8 @@ struct Vertex {
 class VulkanComputeExample : public VulkanExampleBase
 {
 public:
-    void loadTestData();
-    void encodeCpu2Gpu();
+    void loadTestData(std::string& dataFolder, bool load_head=false);
+    void encodeCpu2Gpu(bool special_call=false);
     void createGpu2CpuCopys();
     VulkanComputeExample();
     ~VulkanComputeExample();
@@ -63,27 +78,32 @@ public:
     uint32_t screenHeight;
     #endif
 
-    int render_count = 0;
+//     int render_count = 0;
     Timer timer;
 
     VmaAllocator allocator;
 
-    // DataLoader::InputGaussianStruct inputeGaussian;
-    DataLoader::InputLegoInitStruct inputeGaussian;
+    // DataLoader::InputGaussianStruct inputGaussian;
+    DataLoader::InputLegoInitStruct inputGaussian;
     std::vector<float> extr_tmp;
     std::vector<float> intr_tmp; 
-
+    std::vector<float> intr_render_tmp;
+    std::string basepath = "";
+    
     // Predefine 3DGS hyperparameters
-    int MAX_SPLAT_COUNT = 20000;
+    int MAX_SPLAT_COUNT = 200000;
     static const int MAX_TIME_QUERY_NUM = 100;
     static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;
-    int trainign_step = 0;
-    int max_trainign_step = 10000;
+    int training_step = 0;
+    int max_training_step = 10000;
     int last_step_tag = 0;
     int render_index = 0;
     bool upd_cmd_buffer = true;
-
+    float low_resolotion_scale = 0.25;
+    int sh_degree = 16;
+    int save_step = 198;
+    
     RandomGenerator random_generator;
     int current_img_idx = 0;
 
@@ -116,6 +136,7 @@ public:
         vkgs::Buffer scale_array;   // [P, 3]
         vkgs::Buffer rotate_array;
         vkgs::Buffer intr_params;   // [4]
+        vkgs::Buffer intr_params_render;
         vkgs::Buffer extr_params;   // [3, 4]
         vkgs::Buffer extr_params_render;   // [3, 4]
         vkgs::Buffer visible;
@@ -191,8 +212,12 @@ public:
         vkgs::Buffer curPointsNum;
         vkgs::Buffer xyz_gradient_mean;
 
+        vkgs::Buffer psnr_sum;
+        
     } splat_buffers;
 
+    bool hasKNN = false;
+    
     // Input image
     vks::Texture2D textureColorMap;
     // Storage image that the compute shader uses to apply the filter effect to
@@ -260,6 +285,10 @@ public:
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
     Compute3DGS pipe_reset_opacity;
+    
+    Compute3DGS pipe_knn;
+    Compute3DGS pipe_prune;
+    
     Compute3DGS pipe_sort_even;
     Compute3DGS pipe_sort_odd;
     Compute3DGS pipe_hist_even;
@@ -271,6 +300,14 @@ public:
     uint32_t vertexBufferSize;
 
     std::vector<std::string> filterNames;
+    
+    double total_psnr = 0;
+    long long total_sort_point_count = 0;
+    double max_avg_splat_tile_num = 0;
+    float current_scale=1.0;
+    int image_height;
+    int image_width;
+    
     
     int use_method = 0;
     int cur_method = 0;
@@ -334,6 +371,7 @@ public:
     void setBuffer2ImagePipeline();
     void prepare3dgsBuffers();
     void setProjectionPipeline();  
+    void setKNNPipeline();
     void setProjectionRenderPipeline();
     void setSortPipeline(); 
     void setComputeKeyPipeline();
@@ -341,6 +379,7 @@ public:
     void setDensificationStatsPipeline();
     void setMeanGradPipeline();
     void setClonePipeline();
+    void setPrunePipeline();
     void setSplitPipeline();
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
@@ -364,23 +403,36 @@ public:
     void optimizeStepCmd();
     void densifyCmd();
     void updRenderCmd();
+    void updRenderCmd(int index);
+    virtual void encodeInitBuffersValues2CommandBuffer();
+    virtual void encoderenderSelectedImage();
+    void encodeGetImageBuffer()
+    {
+        createGpu2CpuCopy(splat_buffers.rfeat);
+    }
     void radixSortCmd(uint32_t numInstances);
 
     // Methods
     void prepreAllocator();
     void prepareStorageImage();
-    void loadAssets();
+    void resizeAndUploadTexture(vks::Texture2D& texture, const unsigned char* original_image_data, int width, int height, float scale, vks::VulkanDevice* vulkanDevice, VkQueue queue);
+    void loadAssets(float scale);
     void buildCommandBuffers();
-    void encodePipeline2CommandBuffer();
-    void buildComputeCommandBuffer();
+    
+    virtual void encodePipeline2CommandBuffer();
+    void buildComputeCommandBuffer(std::function<void()> func);
+    
     void generateQuad();
     void setupDescriptorPool();
     void prepareGraphics();
     void prepareCompute();
     void prepareUniformBuffers();
     void updateUniformBuffers();
-    bool prepare();
-    void draw();
+    virtual bool prepare();
+    void calculatePSNR(float mse, int width, int height);
+    virtual void draw(){};
+    virtual void printLog();
+    void executeComputeCommand();
     // void drawUI(const VkCommandBuffer commandBuffer);
 
     void queryEventTime();
@@ -388,43 +440,117 @@ public:
     void queryCmdTimeEnd(std::string enventName);
     
     void printGpuBuffers();
-
+    void saveGaussians();
     virtual void getEnabledFeatures() override;
     virtual void getEnabledExtensions() override;
-
+    
     virtual void render()
     {
         if (!prepared) {
             return;
         }
-        if (render_count < 2)
-        {
-            // buildComputeCommandBuffer();
-            buildCommandBuffers();
-        }
-        if (cur_method != use_method || upd_cmd_buffer) {
-            upd_cmd_buffer = false;
-//             buildComputeCommandBuffer();
-            buildCommandBuffers();
-            #ifdef VULKAN_HW
-//             LOGI("VulkanExample rebuild command buffers");
-            #elif defined(VULKAN_PC)
-            // std::cout << "VulkanExample rebuild command buffers" << std::endl;
-            #endif
-            cur_method = use_method;
-        }
-        buildComputeCommandBuffer();
-        if (camera.updated) {
-            updateUniformBuffers();
-        }
-//         std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        buildComputeCommandBuffer([this]() { 
+            encodePipeline2CommandBuffer(); 
+        });
 
-        draw();
-        render_count++;
-        if (trainign_step < max_trainign_step){
-            trainign_step++;
+        executeComputeCommand();
+        
+//         draw();
+        
+        printLog();
+        if (training_step < max_training_step){
+            training_step++;
         }
     }
+    int selected_image_index = 0;
+    virtual void initBuffersValues()
+    {
+        if (!prepared) { return; }
+
+        buildComputeCommandBuffer([this]() { 
+            encodeInitBuffersValues2CommandBuffer(); 
+         });
+
+        executeComputeCommand();
+        //draw();
+        queryEventTime();
+
+        if (training_step < max_training_step) {
+            training_step++;
+        }
+    }
+    virtual void renderImage(int index)
+    {
+        if (!prepared) {
+            return;
+        }
+
+        selected_image_index = index;
+
+        buildComputeCommandBuffer([this]() {
+            encoderenderSelectedImage();
+            });
+
+        executeComputeCommand();
+//         draw();
+    }
+    
+    const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
+    
+    void renderRGB2Cpu(int i)
+    {
+        if (!prepared) {
+            return;
+        }
+
+        buildComputeCommandBuffer([this]() {
+            encodeGetImageBuffer();
+            });
+
+        executeComputeCommand();
+        
+        const float* num= reinterpret_cast<const float*> (getArrayFromGpuBuffer(splat_buffers.rfeat));
+        int point_num = splat_buffers.rfeat.size() / 3 / sizeof(float);
+        
+        int width = 480;
+        int height = 640;
+        
+        // Create OpenCV Mat for the image (8-bit, 3 channels)
+        cv::Mat image(height, width, CV_8UC3);
+    
+        // Convert from planar format (RRRGGGBBB) to interleaved format (BGR for OpenCV)
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pixelIndex = y * width + x;
+                
+                // Make sure we don't go out of bounds
+                if (pixelIndex < point_num) {
+                    // Get RGB values from planar format
+                    float r = num[pixelIndex];                // R value
+                    float g = num[point_num + pixelIndex];    // G value
+                    float b = num[2 * point_num + pixelIndex]; // B value
+                    
+                    // Convert float values [0,1] to uchar [0,255]
+                    uchar r_uchar = static_cast<uchar>(std::min(std::max(r * 255.0f, 0.0f), 255.0f));
+                    uchar g_uchar = static_cast<uchar>(std::min(std::max(g * 255.0f, 0.0f), 255.0f));
+                    uchar b_uchar = static_cast<uchar>(std::min(std::max(b * 255.0f, 0.0f), 255.0f));
+                    
+                    // OpenCV uses BGR format
+                    image.at<cv::Vec3b>(y, x) = cv::Vec3b(b_uchar, g_uchar, r_uchar);
+                }
+            }
+        }
+        
+        // Create the directory if it doesn't exist
+        std::string save_dir = inputGaussian.basepath + "/temp";
+        std::filesystem::create_directories(save_dir);
+        
+        // Save the image
+        std::string filename = save_dir + "/" + std::to_string(i) + ".jpg";
+        LOGI("Saving rendered image to: %{public}s", filename.c_str());
+        cv::imwrite(filename, image);
+    }
+    
     #ifdef VULKAN_PC
     void OnUpdateUIOverlay(vks::UIOverlay* overlay)
     {

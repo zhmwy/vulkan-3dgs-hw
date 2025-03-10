@@ -1,103 +1,78 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import nativeRender from 'libnativerender.so';
 import CommonConstants from '../common/CommonConstants';
-import { ContextType } from '../entryability/EntryAbility';
-// import { resourceManager } from '@kit.LocalizationKit';
-
-const nativePageLifecycle: Record<string, () => void> =
-  nativeRender.getContext(ContextType.PAGE_LIFECYCLE) as Record<string, () => void>;
+import image from '@ohos.multimedia.image'
+import { BusinessError } from '@kit.BasicServicesKit';
+const context = getContext(this);
+const filesDir = context.filesDir;
 
 @Entry
 @Component
 struct Index {
   private xComponentContext: Record<string, (a: number | boolean | undefined) => void> = {};
-  // private resMgr: resourceManager.ResourceManager = getContext(this).resourceManager;
+  private resmgr = getContext().resourceManager;
 
-  aboutToAppear(): void {
-    console.log('[LIFECYCLE-Index] aboutToAppear');
-    // nativeRender.initResMgr(this.resMgr);
-    nativePageLifecycle.aboutToAppear();
+  @State progressValue: number = 0;
+  @State message: string = "3DGS Training";
+  @State isTraining: boolean = false;
+  @State pixelMap : PixelMap | undefined = undefined;
+  @State currentImage: number = 0;
+
+  aboutToAppear() {
+    // 调用自定义的getSyncPixelMap接口，获取pixelMap
+    // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/case1_head/images/15506175713000.jpg")
+    this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/case2/test/0.jpg")
+
   }
 
-  aboutToDisappear(): void {
-    console.log('[LIFECYCLE-Index] aboutToDisappear');
-    nativePageLifecycle.aboutToDisappear();
+  async train3DGS(inputPath: string) {
+    if (this.isTraining) return;
+      this.isTraining = true;
+    try {
+      nativeRender.initTrainProgress((progress: number) => {
+        this.progressValue = progress;
+      });
+      await nativeRender.train3DGS(this.resmgr, inputPath);
+      this.message = "Training Complete!";
+    } catch (error) {
+      // Handle error
+    }
   }
 
-  onPageShow(): void {
-    console.log('[LIFECYCLE-Page] onPageShow');
-    nativePageLifecycle.onPageShow();
-  }
-
-  onPageHide(): void {
-    console.log('[LIFECYCLE-Page] onPageHide');
-    nativePageLifecycle.onPageHide();
+  async switchImage(){
+    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/temp/" + this.currentImage.toString() + ".jpg")
+    this.currentImage = (this.currentImage + 1) % 1000
   }
 
   build() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      XComponent({
-        id: CommonConstants.XCOMPONENT_ID,
-        type: XComponentType.SURFACE,
-        libraryname: CommonConstants.XCOMPONENT_LIBRARY_NAME
-      })
-        .onLoad((xComponentContext?: object| Record<string, (a: number | boolean |undefined) => void>) => {
-          if (xComponentContext) {
-            this.xComponentContext = xComponentContext as Record<string, (a: number | boolean | undefined) => void>;
-          }})
-        .width('100%')
-        .height('100%')
+    Row() {
+      Column() {
+        Text(this.message)
+          .fontSize(50)
+          .fontWeight(FontWeight.Bold)
+          .margin(10)
 
-      Row() {
-        Column() {
-          Select([{ value: 'no upscale'},
-            { value: 'spatial upscale'},
-            { value: 'fsr upscale'}
-          ])
-            .selected(0)
-            .value('choose upscale method')
-            .font({ size: 16, weight: 500 })
-            .fontColor('#182431')
-            .selectedOptionFont({ size: 16, weight: 400 })
-            .optionFont({ size: 16, weight: 400 })
-            .onSelect((index: number) => {
-              console.info('Select:' + index)
-              this.xComponentContext.setUpscaleMethod(index);
-            })
-        }.width('50%')
+        Button(this.isTraining ? 'Training...' : 'Start Training')
+          .onClick(() => {
+            if (!this.isTraining) {
+              this.train3DGS("/assets/case2");
+            }
+          })
+          .margin(10)
+          .enabled(!this.isTraining)
 
-        Column() {
-          Checkbox({name: 'checkbox1',  group: 'checkboxGroup'})
-            .height(20)
-            .width(20)
-            .select(false)
-            .selectedColor(0xed6f21)
-            .onChange((value: boolean) => {
-              if (this.xComponentContext) {
-                console.info('onchange')
-                this.xComponentContext.setVRSUsed(value);
-              }
-              console.info('Checkbox1 change is'+ value)
-            })
-          Text('useVRS')
-        }
+        Progress({ value: this.progressValue, total: 100, type: ProgressType.Ring })
+          .width(100)
+          .height(100)
+          .margin(20)
 
-      }.height('10%').width('60%')
-
-    }.width('100%').height('100%').align(Alignment.TopStart)
+        Image(this.pixelMap)
+          .width(240)
+          .height(320)
+          .onClick(()=>this.switchImage())
+      }
+      .width('100%')
+      .height('100%')
+    }
   }
 }

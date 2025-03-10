@@ -16,51 +16,39 @@
 #include <hilog/log.h>
 #include "file/file_operator.h"
 #include "manager/plugin_manager.h"
+#include "render/plugin_render.h"
 #include "common/common.h"
 #include <rawfile/raw_file.h>
 #include <rawfile/raw_dir.h>
 #include <rawfile/raw_file_manager.h>
+#include "render/render_to_cv_mat.h"
+#include "main.h"
 
-// static napi_value InitResMgr(napi_env env, napi_callback_info info)
-// {
-//     size_t argc = 1;
-//     napi_value args[1];
-//     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
-//     auto resMgr = OH_ResourceManager_InitNativeResourceManager(env, args[0]);
-//     auto fileOperator = FileOperator::GetInstance();
-//     fileOperator->SetRawMgr(resMgr);
-//     fileOperator->InitEnv(env);
-//     fileOperator->GetHapFilesDir();
-//     fileOperator->CopyRawDir("");
-//     return 0;
-// }
+int init_called = 0;
+
 
 EXTERN_C_START
 static napi_value Init(napi_env env, napi_value exports)
 {
-    LOGI("napi_init start");
-
-    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_PRINT_DOMAIN, "Init", "Init begins");
-    if ((nullptr == env) || (nullptr == exports)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "Init", "env or exports is null");
-        return nullptr;
-    }
+    LOGI("napi_init starting for the %{public}dth time.", init_called);
+    init_called++;
 
     napi_property_descriptor desc[] = {
-        {"getContext", nullptr, PluginManager::GetContext, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"train3DGS", nullptr, Train3DGS, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"initTrainProgress", nullptr, InitProgress, nullptr, nullptr, nullptr, napi_default, nullptr},
+        { "getSyncPixelMap", nullptr, getSyncPixelMap, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getSandBoxPixelMap", nullptr, getSandBoxPixelMap, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
     };
     if (napi_ok != napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc)) {
         OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "Init", "napi_define_properties failed");
         return nullptr;
     }
 
-    PluginManager::GetInstance()->Export(env, exports);
-    FileOperator::GetInstance()->InitEnv(env);
-    FileOperator::GetInstance()->CopyRawDir("");
-    LOGI("napi_init successfully");
     return exports;
 }
 EXTERN_C_END
+
 
 static napi_module nativerenderModule = {
     .nm_version = 1,
