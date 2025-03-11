@@ -41,9 +41,9 @@ void VulkanComputeExample::loadTestData()
     inputGaussian = DataLoader::loadInputInitDataPM();
     
 //     inputGaussian = DataLoader::loadInputLegoInitDatav2();
-    inputGaussian.computeNormalization();
-    inputGaussian.computePositionStats();
-    inputGaussian.normalizeData();
+//     inputGaussian.computeNormalization();
+//     inputGaussian.computePositionStats();
+//     inputGaussian.normalizeData();
     splat_count = inputGaussian.positions.size();
     this->basepath = inputGaussian.basepath;
     random_generator.initialize(inputGaussian.img_list.size());
@@ -148,16 +148,12 @@ void VulkanComputeExample::createGpu2CpuCopys()
     
     createGpu2CpuCopy(splat_buffers.extr_params_render);
     createGpu2CpuCopy(splat_buffers.intr_params);
-    createGpu2CpuCopy(splat_buffers.uvd);
 //     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
     createGpu2CpuCopy(splat_buffers.rfeat);
     createGpu2CpuCopy(splat_buffers.rfeat_alpha);
     
     createGpu2CpuCopy(splat_buffers.input_image_array); 
     createGpu2CpuCopy(splat_buffers.input_image_alpha_array);
-    
-    createGpu2CpuCopy(splat_buffers.dL_duvd);             // Copy dL_duvd
-    createGpu2CpuCopy(splat_buffers.dL_dxyz);
     
     createGpu2CpuCopy(splat_buffers.dL_duvd_int);
     createGpu2CpuCopy(splat_buffers.dL_dconic_int);
@@ -181,6 +177,11 @@ int cumsum_cpu(const vkgs::Buffer& buffer){
 void VulkanComputeExample::printGpuBuffers()
 {
     LOGW("Current image index: %{public}d, training step: %{public}d", current_img_idx, training_step);
+    
+    printGpuBuffer<float>("xyz", splat_buffers.xyz_array, 4, 3);
+    printGpuBuffer<float>("opacity", splat_buffers.opacity, 4, 1);
+    
+    
     printGpuBuffer<float>("dL_duvd", splat_buffers.dL_duvd, 4, 3);
     printGpuBuffer<float>("dL_dconic", splat_buffers.dL_dconic, 4, 3);
     printGpuBuffer<float>("dL_dfeature", splat_buffers.dL_dfeature, 4, 3);
@@ -248,20 +249,6 @@ void VulkanComputeExample::imageToBufferCmd()
             1,
             &copyRegionI
         );
-        splat_buffers.intr_params.FromCpu(
-            compute.commandBuffer,
-            intr_render_tmp.data()
-        );
-        if (inputGaussian.intr_tmp.size() > 1)
-        {
-            auto intr_tmp_low_resolution = inputGaussian.intr_tmp[current_img_idx];
-            for (int i = 0; i < 4; i++)
-                intr_tmp_low_resolution[i] = intr_tmp_low_resolution[i] * low_resolotion_scale;
-            splat_buffers.intr_params.FromCpu(
-                compute.commandBuffer,
-                intr_tmp_low_resolution.data()
-            );
-        }
     }
     else
     {
@@ -273,6 +260,26 @@ void VulkanComputeExample::imageToBufferCmd()
                 1,
                 &copyRegionI
             );
+    }
+    
+    if (inputGaussian.intr_tmp.size() > 1)
+    {
+        auto intr_tmp_low_resolution = inputGaussian.intr_tmp[current_img_idx];
+        for (int i = 0; i < 4; i++)
+            intr_tmp_low_resolution[i] = intr_tmp_low_resolution[i] * current_scale;
+        splat_buffers.intr_params.FromCpu(
+            compute.commandBuffer,
+            intr_tmp_low_resolution.data()
+        );
+    }
+    else {
+        auto intr_tmp_low_resolution = inputGaussian.intr_tmp[0];
+        for (int i = 0; i < 4; i++)
+            intr_tmp_low_resolution[i] = intr_tmp_low_resolution[i] * current_scale;
+        splat_buffers.intr_params.FromCpu(
+            compute.commandBuffer,
+            intr_tmp_low_resolution.data()
+        );
     }
     
     splat_buffers.extr_params.FromCpu(
@@ -607,7 +614,7 @@ void VulkanComputeExample::densifyCmd()
     vkCmdFillBuffer(compute.commandBuffer, splat_buffers.max_radii2D, 0, VK_WHOLE_SIZE, 0);
 }
 
-void VulkanComputeExample::updRenderCmd( /**/ )
+void VulkanComputeExample::updRenderCmd()
 {
     VkImageCopy copyRegionI2I = {};
     copyRegionI2I.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -643,7 +650,7 @@ void VulkanComputeExample::updRenderCmd( /**/ )
     }
     splat_buffers.extr_params_render.FromCpu(
         compute.commandBuffer,
-        // inputGaussian.extr_tmp[0].data()
+//         inputGaussian.extr_tmp_test[0].data()
         inputGaussian.extr_tmp_test[render_index % inputGaussian.extr_tmp_test.size()].data()
     );
     
@@ -710,7 +717,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
         backwardCmd();
 
         queryCmdTimeStart("20. training optimize");
-        optimizeStepCmd();
+//         optimizeStepCmd();
         queryCmdTimeEnd("20. training optimize");
         
         bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
@@ -729,17 +736,17 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     current_scale = 1.0;
     
     ComputeTransBarrierBlock();
-    updRenderCmd();
-    vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
-    TransComputeBarrierBlock();
-    bindPipeline2CommandBuffer(pipe_buffer_fill, 0, X, 1, 1);
-    bindPipeline2CommandBuffer(pipe_project_render, FORWARD_PIPE, X, 1, 1);
-    bindPipeline2CommandBuffer(pipe_sh_render, FORWARD_PIPE, X, 1, 1, true);
-    forwardCmd();
-    ComputeTransBarrierBlock();
-    bufferToImageCmd();
+//     updRenderCmd();
+//     vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
+//     TransComputeBarrierBlock();
+//     bindPipeline2CommandBuffer(pipe_buffer_fill, 0, X, 1, 1);
+//     bindPipeline2CommandBuffer(pipe_project_render, FORWARD_PIPE, X, 1, 1);
+//     bindPipeline2CommandBuffer(pipe_sh_render, FORWARD_PIPE, X, 1, 1, true);
+//     forwardCmd();
+//     ComputeTransBarrierBlock();
+//     bufferToImageCmd();
     
-
+    
 //     createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
@@ -752,6 +759,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
         createGpu2CpuCopy(splat_buffers.sh_coeff);
         createGpu2CpuCopy(splat_buffers.opacity);
     }
+
 }
 
 
