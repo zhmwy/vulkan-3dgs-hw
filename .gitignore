@@ -13,3 +13,5 @@ assets
 .clang*
 .idea
 entry/src/main/cpp/human/SMPL/src/smpl/smpl_male.cpp
+ 
+ 
