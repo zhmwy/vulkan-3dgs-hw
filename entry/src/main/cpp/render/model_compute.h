@@ -55,6 +55,7 @@
 #define LOAD_HEAD 0
 #define LOAD_EXTRA 1
 
+
 #define VULKAN_HW
 // #define VULKAN_PC
 
@@ -89,12 +90,13 @@ public:
     VmaAllocator allocator;
 
     // DataLoader::InputGaussianStruct inputGaussian;
-    DataLoader::InputLegoInitStruct inputGaussian;
+
+    std::string basepath = "";
+    DataLoader::InputInitStruct inputGaussian;
     std::vector<float> extr_tmp;
     std::vector<float> intr_tmp; 
     std::vector<float> intr_render_tmp;
-    std::string basepath = "";
-    
+
     // Predefine 3DGS hyperparameters
     int MAX_SPLAT_COUNT = 200000;
     static const int MAX_TIME_QUERY_NUM = 100;
@@ -106,13 +108,16 @@ public:
     int render_index = 0;
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
+
     int low_resolution_steps = 200;
     int sh_degree = 16;
     int save_step = 198;
+
     
     RandomGenerator random_generator;
     int current_img_idx = 0;
 
+    
     struct sortBuffers {
         vkgs::Buffer key;
         vkgs::Buffer index;
@@ -218,6 +223,13 @@ public:
         vkgs::Buffer curPointsNum;
         vkgs::Buffer xyz_gradient_mean;
 
+
+        vkgs::Buffer dL_duvd_int;
+        vkgs::Buffer dL_dconic_int;
+        vkgs::Buffer dL_dopacity_act_array_int;
+        vkgs::Buffer dL_dfeature_int;
+        vkgs::Buffer dL_dndc_int;
+
         vkgs::Buffer psnr_sum;
         
     } splat_buffers;
@@ -279,6 +291,10 @@ public:
     Compute3DGS pipe_compute_tile;
     Compute3DGS pipe_inverse;
     Compute3DGS pipe_blending;
+    
+    Compute3DGS pipe_blending_int;
+    Compute3DGS pipe_int2float;
+    
     Compute3DGS pipe_optimize;
     Compute3DGS pipe_loss;
     Compute3DGS pipe_copy_img2buffer;
@@ -311,6 +327,7 @@ public:
     long long total_sort_point_count = 0;
     double max_avg_splat_tile_num = 0;
     float current_scale=1.0;
+
     int image_height;
     int image_width;
     
@@ -390,6 +407,8 @@ public:
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
+    void setAlphaBlendingIntPipeline();
+    void setIntToFloatGradientPipeline();
     void setOptimizitionPipeline();
     void setLossPipeline();
     void setComputeSHPipeline();
@@ -403,7 +422,7 @@ public:
     void forwardCmdTime();
     
     void backwardCmd();
-    void zeroGardCmd();
+    void zeroGradCmd();
     void imageToBufferCmd();
     void bufferToImageCmd();
     void optimizeStepCmd();
@@ -434,11 +453,13 @@ public:
     void prepareCompute();
     void prepareUniformBuffers();
     void updateUniformBuffers();
+
     virtual bool prepare();
     void calculatePSNR(float mse, int width, int height);
     virtual void draw(){};
     virtual void printLog();
     void executeComputeCommand();
+
     // void drawUI(const VkCommandBuffer commandBuffer);
 
     void queryEventTime();
@@ -459,11 +480,10 @@ public:
             encodePipeline2CommandBuffer(); 
         });
 
+
         executeComputeCommand();
-        
-//         draw();
-        
         printLog();
+
         if (training_step < max_training_step){
             training_step++;
         }

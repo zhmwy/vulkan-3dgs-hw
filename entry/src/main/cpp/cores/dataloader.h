@@ -8,6 +8,7 @@
 #include "vulkanexamplebase.h"
 #include "file/file_operator.h"
 
+
 using namespace tinyply;
 
 // DataLoader Tool Class
@@ -214,7 +215,7 @@ public:
         }
     };
 
-    struct InputLegoInitStruct {
+    struct InputInitStruct {
         std::vector<glm::vec3> positions;      // 3D positions (x, y, z)
         std::vector<glm::vec3> scales;         // Scaling factors (scale_x, scale_y, scale_z)
         std::vector<glm::vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
@@ -231,14 +232,17 @@ public:
         std::vector<std::vector<float>> extr_tmp;  
         std::vector<std::vector<float>> extr_tmp_test; 
         std::vector<std::vector<float>> intr_tmp;
+
         std::vector<float> head_bbox;
-        
+
         std::vector<glm::vec3> cam_centers;
         glm::vec3 translate;
         float radius;
         glm::vec3 mean;
         float variance = 0;
-        std::string basepath="";
+
+        std::string basepath = "";
+
         // Print the first vertex's data for verification
         void print() const {
             std::cout << "Loaded " << positions.size() << " vertices." << std::endl;
@@ -283,17 +287,20 @@ public:
     static ProjectEWABackwardStruct loadEWABackwardData();
     static EvalSHForwardStruct loadEvalSHForwardData();
     static EvalSHBackwardStruct loadEvalSHBackwardData();
-    static InputLegoInitStruct loadInputLegoInitData();
-    static void loadInputLegoInitDatav2(std::string dataFolder, DataLoader::InputLegoInitStruct& data, bool& resumed);
-    static InputLegoInitStruct loadHeadGaussians(std::string dataFolder, DataLoader::InputLegoInitStruct& gaussian);
-    static void loadInputGaussianData(std::string& gaussianPath, DataLoader::InputLegoInitStruct& data);
-    static void loadExtraGaussianData(std::string& gaussianPath, DataLoader::InputLegoInitStruct& data);
 
-    static void loadExtrinsics(std::string dataPath, DataLoader::InputLegoInitStruct& data);
-    static void loadIntrinsics(std::string dataPath, DataLoader::InputLegoInitStruct& data);
+    static InputInitStruct loadInputLegoInitData();
+    static void loadInputLegoInitDatav2(std::string dataFolder, DataLoader::InputInitStruct& data, bool& resumed);
+    static InputInitStruct loadHeadGaussians(std::string dataFolder, DataLoader::InputInitStruct& gaussian);
+    static void loadInputGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data);
+    static void loadExtraGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data);
+
+    static void loadExtrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
+    static void loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
     
     
-    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputLegoInitStruct& data, bool save_head);
+    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head);
+    static InputInitStruct loadInputInitDataPM();
+
     
     static void printPlyHeader(const std::string& filepath);
     

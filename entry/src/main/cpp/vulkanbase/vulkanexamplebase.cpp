@@ -147,6 +147,7 @@ void VulkanExampleBase::renderLoop()
             frameCounter = 0;
             lastTimestamp = tEnd;
         }
+
         bool updateView = false;
     }
 	// Flush device to make sure all resources can be freed

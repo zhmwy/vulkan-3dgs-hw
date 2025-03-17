@@ -12,6 +12,8 @@ assets
 
 .clang*
 .idea
+
 entry/src/main/cpp/human/SMPL/src/smpl/smpl_male.cpp
- 
- 
+alpha_blending_backward_glsl.comp
+int_to_float_gradient.comp
+

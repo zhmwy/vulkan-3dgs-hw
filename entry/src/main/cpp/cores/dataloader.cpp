@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include "human/human.h"
 
+
 int extractNumberKtx(const std::string& str) {
     std::regex re("r_(\\d+)\\.ktx");
     std::smatch match;
@@ -425,7 +426,6 @@ void extractIntrinsics(const std::vector<std::string>& file_list, std::vector<st
     }
 }
 
-
 void extractExtrinsics(const std::vector<std::string>& files, std::vector<std::vector<float>>& extrinsics) {
     for (const auto& entry : files) {
         if (entry.find("cameras.txt") == std::string::npos) {
@@ -519,7 +519,7 @@ struct Vec3Equal {
 };
 
 
-void DataLoader::InputLegoInitStruct::computeNormalization() {
+void DataLoader::InputInitStruct::computeNormalization() {
     cam_centers.clear();  // 清空之前存的相机中心
 
     // 遍历所有相机的外参矩阵
@@ -578,7 +578,7 @@ void DataLoader::InputLegoInitStruct::computeNormalization() {
     return;
 }
 
-void DataLoader::InputLegoInitStruct::normalizeData() {
+void DataLoader::InputInitStruct::normalizeData() {
     if (positions.empty()) {
         std::cerr << "Error: No data available for normalization!" << std::endl;
         return;
@@ -655,7 +655,8 @@ void DataLoader::InputLegoInitStruct::normalizeData() {
     std::cout << "Positions, extr_tmp, extr_tmp_test normalized correctly." << std::endl;
 }
 
-void DataLoader::InputLegoInitStruct::computePositionStats() {
+
+void DataLoader::InputInitStruct::computePositionStats() {
     if (positions.empty()) {
         std::cerr << "Error: No position data available!" << std::endl;
         return;
@@ -686,7 +687,7 @@ void DataLoader::InputLegoInitStruct::computePositionStats() {
 }
 
 
-void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::InputLegoInitStruct& data) {
+void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data) {
     std::ifstream file(gaussianPath, std::ios::binary);
     if (!file.is_open()){
         LOGE("Failed to open PLY file from %{public}s.", gaussianPath.c_str());
@@ -774,7 +775,7 @@ void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::In
         data.opacities.push_back(reinterpret_cast<float*>(opacity->buffer.get())[i]);
 
         // 处理颜色数据
-        DataLoader::InputLegoInitStruct::Data colorData = {};
+        DataLoader::InputInitStruct::Data colorData = {};
         for (size_t j = 0; j < colorProps.size(); ++j) {
             float value = reinterpret_cast<float*>(colorProps[j]->buffer.get())[i];
             if(j < 3){
@@ -795,7 +796,7 @@ void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::In
     LOGI("Resume from gaussians OK! Read %{public}zu points.", data.positions.size());
 }
 
-void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::InputLegoInitStruct& data) {
+void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data) {
     std::ifstream file(gaussianPath, std::ios::binary);
     if (!file.is_open()){
         LOGE("Failed to open PLY file from %{public}s.", gaussianPath.c_str());
@@ -871,7 +872,7 @@ void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::In
         data.opacities.push_back(reinterpret_cast<float*>(opacity->buffer.get())[i]);
 
         // 处理颜色数据
-        DataLoader::InputLegoInitStruct::Data colorData = {};
+        DataLoader::InputInitStruct::Data colorData = {};
         for (size_t j = 0; j < colorProps.size(); ++j) {
             float value = reinterpret_cast<float*>(colorProps[j]->buffer.get())[i];
             if(j < 3){
@@ -893,10 +894,10 @@ void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::In
 }
 
 #if 1
-DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
+DataLoader::InputInitStruct DataLoader::loadInputLegoInitData() {
     auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
     std::string filepath = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/input_AREngine.ply";
-    DataLoader::InputLegoInitStruct data;
+    DataLoader::InputInitStruct data;
     data.basepath = basePath;
 #if 1
     std::ifstream file(filepath, std::ios::binary);
@@ -987,7 +988,7 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
         data.opacities.push_back(reinterpret_cast<float*>(opacity->buffer.get())[i]);
 
         // 处理颜色数据
-        DataLoader::InputLegoInitStruct::Data colorData = {};
+        DataLoader::InputInitStruct::Data colorData = {};
         for (size_t j = 0; j < colorProps.size(); ++j) {
             float value = reinterpret_cast<float*>(colorProps[j]->buffer.get())[i];
             if(j < 3){
@@ -1006,6 +1007,7 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
         data.colors.push_back(colorData);
     }
 #endif
+
 
     // Get the list of PNG and JPG files in the directory
     std::string path = basePath + "/assets/AREngine/2024_09_27_11_20_29/images";
@@ -1090,12 +1092,11 @@ DataLoader::InputLegoInitStruct DataLoader::loadInputLegoInitData() {
 }
 #endif
 
-void load3DPoints(std::string& pointsFilePath, DataLoader::InputLegoInitStruct& data){
+void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
     std::ifstream pointsFile(pointsFilePath);
     if (!pointsFile.is_open()) {
         LOGE("Failed to open %{public}s file.", pointsFilePath.c_str());
     }
-    
     std::string line;
     std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
     float C0 = 0.28209479177387814;
@@ -1123,11 +1124,13 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputLegoInitStruct& 
         // Default attributes (scales, rotations, opacities) to zeros.
         data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
         data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+
         data.opacities.push_back(-2.197225f);
         
         // Process the color data.
         // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
-        DataLoader::InputLegoInitStruct::Data colorData = {};
+        DataLoader::InputInitStruct::Data colorData = {};
+
         // Save r in index 0, g in index 16, and b in index 32.
         colorData.values[0]  = static_cast<float>((r/255.0-0.5)/C0);
         colorData.values[16] = static_cast<float>((g/255.0-0.5)/C0);
@@ -1137,15 +1140,180 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputLegoInitStruct& 
     LOGI("Unique points loaded: %{public}zu", data.positions.size());
 }
 
-void DataLoader::loadExtrinsics(std::string dataPath, DataLoader::InputLegoInitStruct& data){
+
+DataLoader::InputInitStruct DataLoader::loadInputInitDataPM() {
+    auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
+    const std::string filepath = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/downsample.ply";
+
+    DataLoader::InputInitStruct data;
+    data.basepath = basePath;
+
+    std::ifstream file(filepath, std::ios::binary);
+    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
+
+    PlyFile plyFile;
+    plyFile.parse_header(file);
+
+    // Declare shared pointers to request each property from the PLY file
+    std::shared_ptr<PlyData> x, y, z;
+    std::shared_ptr<PlyData> r, g, b;
+
+    try {
+        x = plyFile.request_properties_from_element("vertex", { "x" });
+        y = plyFile.request_properties_from_element("vertex", { "y" });
+        z = plyFile.request_properties_from_element("vertex", { "z" });
+        r = plyFile.request_properties_from_element("vertex", { "red" });
+        g = plyFile.request_properties_from_element("vertex", { "green" });
+        b = plyFile.request_properties_from_element("vertex", { "blue" });
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error reading properties: " << e.what() << std::endl;
+    }
+
+    plyFile.read(file);
+    size_t numVertices = x->count;
+
+    // 记录唯一的点
+    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
+
+    // 预分配空间
+    data.positions.reserve(numVertices);
+    data.scales.reserve(numVertices);
+    data.rotations.reserve(numVertices);
+    data.opacities.reserve(numVertices);
+    data.colors.reserve(numVertices);
+    
+    float C0 = 0.28209479177387814;
+    for (size_t i = 0; i < numVertices; ++i) {
+        glm::vec3 pos(
+            reinterpret_cast<float*>(x->buffer.get())[i],
+            reinterpret_cast<float*>(y->buffer.get())[i],
+            reinterpret_cast<float*>(z->buffer.get())[i]
+        );
+
+        // 检查点是否已经存在
+        if (uniquePoints.find(pos) != uniquePoints.end()) {
+            continue;  // 如果已经存在，则跳过
+        }
+
+        // 添加到哈希表中
+        uniquePoints.insert(pos);
+
+        // 继续存储其他属性
+        data.positions.push_back(pos);
+
+        data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
+        data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+        data.opacities.push_back(-2.197224617004395);
+        
+        // 处理颜色数据
+        DataLoader::InputInitStruct::Data colorData = {};
+        
+        float _r = (reinterpret_cast<uint8_t*>(r->buffer.get())[i] / 255.0 - 0.5) / C0;
+        float _g = (reinterpret_cast<uint8_t*>(g->buffer.get())[i] / 255.0 - 0.5) / C0;
+        float _b = (reinterpret_cast<uint8_t*>(b->buffer.get())[i] / 255.0 - 0.5) / C0;
+        
+        colorData.values[0] = _r;
+        colorData.values[16] = _g;
+        colorData.values[32] = _b;
+        data.colors.push_back(colorData);
+    }
+
+    std::cout << "Unique points: " << data.positions.size() << " / " << numVertices << std::endl;
+
+    // Get the list of PNG and JPG files in the directory
+    std::string path = basePath + "/assets/AREngine/2024_09_27_11_20_29/images";
+    std::vector<std::string> imgListPng;
+    std::vector<std::string> imgListJpg;
+
+    // Get PNG and JPG files
+    getFilesInDirectory(path, ".png", imgListPng);
+    getFilesInDirectory(path, ".jpg", imgListJpg);
+
+    // Combine the two lists
+    imgListPng.insert(imgListPng.end(), imgListJpg.begin(), imgListJpg.end());
+
+    // Sort the combined image list
+    std::sort(
+        imgListPng.begin(),
+        imgListPng.end(),
+        [](const std::string& a, const std::string& b) {
+            return extractNumber(a) < extractNumber(b);
+        }
+    );
+    std::vector<std::string> filteredList;
+    for (size_t i = 0; i < imgListPng.size(); i += 3) {
+        filteredList.push_back(imgListPng[i]);
+    }
+
+    //data.img_list = filteredList;
+    // Assign the combined and sorted list to data.img_list
+    data.img_list = filteredList;
+
+    std::cout << "data.img_list.size() = " << data.img_list.size() << std::endl;
+
+    // Process the extrinsic files for training
+    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/sparse/";
+    std::vector<std::string> matchingFiles;
+    getFilesInDirectory(path, ".txt", matchingFiles);
+
+    // Sort txt list
+    std::sort(
+        matchingFiles.begin(),
+        matchingFiles.end(),
+        [](const std::string& a, const std::string& b) {
+            return extractNumber(a) < extractNumber(b);
+        }
+    );
+
+    extractExtrinsics(matchingFiles, data.extr_tmp);
+    std::vector<std::vector<float>> filteredExtrList;
+    for (size_t i = 0; i < data.extr_tmp.size(); i += 3) {
+        filteredExtrList.push_back(data.extr_tmp[i]);
+    }
+    data.extr_tmp = filteredExtrList;
+
+    // Process the extrinsic files for testing
+    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/sparse_test/";
+    std::vector<std::string> matchingFiles_test;
+    getFilesInDirectory(path, ".txt", matchingFiles_test);
+
+    // Sort txt list
+    std::sort(
+        matchingFiles_test.begin(),
+        matchingFiles_test.end(),
+        [](const std::string& a, const std::string& b) {
+            return extractNumber(a) < extractNumber(b);
+        }
+    );
+
+    extractExtrinsics(matchingFiles_test, data.extr_tmp_test);
+    
+    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/intrinsics/";
+    std::vector<std::string> matchingFiles_intr;
+    getFilesInDirectory(path, ".txt", matchingFiles_intr);
+
+    std::sort(matchingFiles_intr.begin(), matchingFiles_intr.end(),
+        [](const std::string& a, const std::string& b) {
+            return extractNumber(a) < extractNumber(b);
+        });
+
+    extractIntrinsics(matchingFiles_intr, data.intr_tmp);
+    
+    return data;
+}
+
+
+void DataLoader::loadExtrinsics(std::string dataPath, DataLoader::InputInitStruct& data){
     std::string imagesFilePath = dataPath + "/slam/images.txt";
     std::string imageFolder = "/images/";
     std::ifstream imagesFile(imagesFilePath);
     if (!imagesFile.is_open()) {
         throw std::runtime_error("Failed to open images.txt file.");
     }
-    
+
     std::string line;
+
     while (std::getline(imagesFile, line)) {
         if (line.empty()) continue;
         std::istringstream iss(line);
@@ -1227,7 +1395,7 @@ void DataLoader::loadExtrinsics(std::string dataPath, DataLoader::InputLegoInitS
     data.extr_tmp = filteredExtrList;
 }
 
-void DataLoader::loadIntrinsics(std::string dataPath, DataLoader::InputLegoInitStruct &data){
+void DataLoader::loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct &data){
     std::string cameraFilePath = dataPath + "/slam/cameras2.txt";
     std::ifstream camerasFile(cameraFilePath);
     std::string line;
@@ -1260,7 +1428,7 @@ void DataLoader::loadIntrinsics(std::string dataPath, DataLoader::InputLegoInitS
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
 }
 
-void DataLoader::loadInputLegoInitDatav2(std::string dataFolder, DataLoader::InputLegoInitStruct& data, bool& resumed) {
+void DataLoader::loadInputLegoInitDatav2(std::string dataFolder, DataLoader::InputInitStruct& data, bool& resumed) {
     auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
     std::string resume_gaussian_path = basePath + dataFolder + "/point_cloud.ply";
 
@@ -1296,13 +1464,13 @@ void DataLoader::loadInputLegoInitDatav2(std::string dataFolder, DataLoader::Inp
 }
 
 
-DataLoader::InputLegoInitStruct DataLoader::loadHeadGaussians(std::string dataPath, DataLoader::InputLegoInitStruct& data) {
+DataLoader::InputInitStruct DataLoader::loadHeadGaussians(std::string dataPath, DataLoader::InputInitStruct& data) {
     std::string resume_gaussian_path = data.basepath + dataPath + "/head/point_cloud.ply";
     loadInputGaussianData(resume_gaussian_path, data );
     return data;
 }
 
-void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLoader::InputLegoInitStruct& data, bool save_head) {
+void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLoader::InputInitStruct& data, bool save_head) {
     if (!data.head_bbox.empty() && data.head_bbox.size() == 6 && save_head) {
         float x_min = data.head_bbox[0];
         float x_max = data.head_bbox[1];
@@ -1349,7 +1517,7 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
             bool inside = (pos.x >= x_min && pos.x <= x_max) &&
                           (pos.y >= y_min && pos.y <= y_max) &&
                           (pos.z >= z_min && pos.z <= z_max);
-
+            LOGI("x: %{public}f, y: %{public}f, z: %{public}f", pos.x, pos.y, pos.z);
             glm::vec3 scale = (i < data.scales.size()) ? data.scales[i] : glm::vec3(1.0f);
             glm::vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : glm::vec4(0, 0, 0, 1);
             float opacity = (i < data.opacities.size()) ? data.opacities[i] : 1.0f;
