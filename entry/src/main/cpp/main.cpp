@@ -37,9 +37,9 @@ struct TrainingConfig {
     napi_deferred deferred;
     NativeResourceManager* resourceMgr;
     std::string dataFolder;
-    std::vector<int> max_steps={200, 2000, 1000};
+    std::vector<int> max_steps={2000, 2000, 1000};
     int result=0;
-    bool focus_on_face = true;
+    bool focus_on_face = false;
 };
 
 
