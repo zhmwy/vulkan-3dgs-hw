@@ -1,0 +1,11 @@
+prefix=/home/muliyanpo/NJU/Projects/HW_SMPL/tpc_c_cplusplus/lycium/usr/glog/arm64-v8a
+exec_prefix=/home/muliyanpo/NJU/Projects/HW_SMPL/tpc_c_cplusplus/lycium/usr/glog/arm64-v8a/bin
+libdir=/home/muliyanpo/NJU/Projects/HW_SMPL/tpc_c_cplusplus/lycium/usr/glog/arm64-v8a/lib
+includedir=/home/muliyanpo/NJU/Projects/HW_SMPL/tpc_c_cplusplus/lycium/usr/glog/arm64-v8a/include
+
+Name: libglog
+Description: Google Log (glog) C++ logging framework
+Version: 0.6.0
+Libs: -L${libdir} -lglog
+Libs.private: -lgflags
+Cflags: -I${includedir}

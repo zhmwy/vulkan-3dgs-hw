@@ -98,7 +98,7 @@ void FileOperator::InitEnv(napi_env env)
         LOGE("FileOperator get abilityContext failed");
         return;
     }
-
+#if 0
     status = napi_get_named_property(env, m_stageContext, "resourceManager", &resMgr);
     if (status != napi_ok) {
         LOGE("FileOperator get resourceManager failed");
@@ -108,6 +108,7 @@ void FileOperator::InitEnv(napi_env env)
     if (mgr_ == nullptr) {
         LOGE("FileOperator init native resource manager failed");
     }
+#endif
     m_env = env;
     GetHapFilesDir();
 }
@@ -176,7 +177,7 @@ void FileOperator::CopyRawDir(std::string assetsDirName)
 {
     RawDir *rawDir = OH_ResourceManager_OpenRawDir(mgr_, assetsDirName.c_str());
     int count = OH_ResourceManager_GetRawFileCount(rawDir);
-    LOGI("FileOperator: Copy num %{public}d", count);
+    LOGI("FileOperator: Copy num %{public}d from %{public}s", count, assetsDirName.c_str());
     if (count == 0) {
         LOGW("FileOperator: Nothing to copy");
         return;

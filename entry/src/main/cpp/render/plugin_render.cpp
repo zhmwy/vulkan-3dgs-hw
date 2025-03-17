@@ -19,12 +19,165 @@
 #include "common/common.h"
 #include "file/file_operator.h"
 #include "plugin_render.h"
+#include "queue"
 
-std::mutex PluginRender::m_mutex;
-std::condition_variable PluginRender::m_con;
-bool PluginRender::stop = false;
-std::unordered_map<std::string, PluginRender *> PluginRender::m_instance;
-OH_NativeXComponent_Callback PluginRender::m_callback;
+#if 0
+struct ThreadData {
+    napi_env env;
+    napi_threadsafe_function tsfn;
+    std::string dataFolder;
+    NativeResourceManager* resourceMgr;
+};
+
+void TrainingThread(ThreadData* data) {
+    FileOperator::GetInstance()->mgr_ = data->resourceMgr;
+    FileOperator::GetInstance()->CopyRawDir("");
+
+    VulkanComputeExample* vulkanExample = new VulkanComputeExample();
+    vulkanExample->loadTestData(data->dataFolder);
+    vulkanExample->initVulkan();
+
+    for (int step = 0; step < 1000; step++) {
+        if (!vulkanExample->prepare()) {
+            LOGE("Preparation failed at step %d", step);
+            break;
+        }
+        LOGI("Starting the %{public}d step.", step);
+        vulkanExample->SetMethod(0);
+        vulkanExample->renderLoop();
+        LOGI("Render Loop exited");
+        // Report progress
+        napi_value progress;
+        napi_create_int32(data->env, step + 1, &progress);
+        napi_call_threadsafe_function(data->tsfn, progress, napi_tsfn_blocking);
+    }
+
+    delete vulkanExample;
+    napi_release_threadsafe_function(data->tsfn, napi_tsfn_release);
+    delete data;
+}
+
+napi_value Train3DGS(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value argv[3];
+    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+
+    // Get ResourceManager and data folder
+    NativeResourceManager* resourceMgr = OH_ResourceManager_InitNativeResourceManager(env, argv[0]);
+    char datafolderBuf[256];
+    size_t datafolderSize;
+    napi_get_value_string_utf8(env, argv[1], datafolderBuf, sizeof(datafolderBuf), &datafolderSize);
+    std::string dataFolder(datafolderBuf, datafolderSize);
+
+    // Create threadsafe function
+    napi_threadsafe_function tsfn;
+    napi_create_threadsafe_function(
+        env,
+        argv[2],    // JavaScript callback
+        nullptr,    // Optional async name
+        nullptr,    // Resource name (deprecated)
+        0,          // Unlimited queue size
+        1,          // Initial thread count
+        nullptr,    // Finalize data
+        nullptr,    // Finalize callback
+        nullptr,    // Context
+        // Correctly typed callback wrapper
+        [](napi_env env, napi_value js_cb, void* context, void* data) {
+            napi_handle_scope scope;
+            napi_open_handle_scope(env, &scope);
+        
+            // Validate callback type
+            napi_valuetype cb_type;
+            napi_typeof(env, js_cb, &cb_type);
+            if (cb_type != napi_function) {
+                OH_LOG_ERROR(LOG_APP, "Invalid callback type: %{public}d", cb_type);
+                napi_close_handle_scope(env, scope);
+                return;
+            }
+        
+            int* progress = static_cast<int*>(data);
+            LOGI("Dispatching progress: %{public}d", *progress);
+        
+            // Create progress value
+            napi_value progress_val;
+            napi_status create_status = napi_create_int32(env, *progress, &progress_val);
+            delete progress;
+            if (create_status != napi_ok) {
+                OH_LOG_ERROR(LOG_APP, "Create int failed: %{public}d", create_status);
+                napi_close_handle_scope(env, scope);
+                return;
+            }
+        
+            // Call JS function
+            napi_value undefined;
+            napi_get_undefined(env, &undefined);
+            
+            napi_value result;
+            napi_status call_status = napi_call_function(
+                env,
+                undefined,       // recv
+                js_cb,           // function
+                1,               // argc
+                &progress_val,   // argv
+                &result          // result
+            );
+            
+            if (call_status != napi_ok) {
+                OH_LOG_ERROR(LOG_APP, "Call failed: %{public}d", call_status);
+            }
+        
+            napi_close_handle_scope(env, scope);
+        },
+        &tsfn
+    );
+
+    // Start training thread
+    ThreadData* threadData = new ThreadData{env, tsfn, dataFolder, resourceMgr};
+    std::thread thr(TrainingThread, threadData);
+    thr.detach();
+
+    napi_value result;
+    napi_create_int32(env, 0, &result);
+    return result;
+}
+
+napi_value Train3DGS(napi_env env, napi_callback_info info){
+    size_t argc = 2;
+    napi_value argv[2] = {nullptr, nullptr};
+    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    
+    NativeResourceManager* resourceMgr = OH_ResourceManager_InitNativeResourceManager(env, argv[0]);
+    if (resourceMgr == nullptr) {
+        OH_LOG_ERROR(LOG_APP, "OH_ResourceManager_InitNativeResourceManager failed");
+        napi_value errorCode;
+        napi_create_int32(env, -1, &errorCode);
+        return errorCode;
+    }
+    
+    char datafolderBuf[256];
+    size_t datafolderSize;
+    napi_get_value_string_utf8(env, argv[1], datafolderBuf, sizeof(datafolderBuf), &datafolderSize);
+    std::string dataFolder(datafolderBuf, datafolderSize);
+    
+    FileOperator::GetInstance()->InitEnv(env);
+    FileOperator::GetInstance()->mgr_ = resourceMgr;
+    FileOperator::GetInstance()->CopyRawDir("");
+    
+    VulkanComputeExample* vulkanExample= new VulkanComputeExample();
+    vulkanExample->loadTestData(dataFolder);
+    vulkanExample->initVulkan();
+    //vulkanExample->setupWindow(hInstance, WndProc)
+    while (true) {
+        bool prepared = vulkanExample->prepare();
+        if (!prepared) {
+            LOGE("vulkan example is not prepared");
+            break;
+        }
+        vulkanExample->SetMethod(0);
+        vulkanExample->renderLoop();
+    }
+    delete(vulkanExample);
+}
 
 void OnSurfaceCreatedCB(OH_NativeXComponent *component, void *window)
 {
@@ -201,17 +354,17 @@ napi_value PluginRender::SetVRSUsed(napi_env env, napi_callback_info info)
 //     }
     return nullptr;
 }
-
+#endif
 PluginRender::PluginRender(std::string &id)
 {
     this->m_id = id;
 //     this->m_vulkanexample = new VulkanExample();
     this->m_vulkanexample = new VulkanComputeExample();
     OH_NativeXComponent_Callback *renderCallback = &PluginRender::m_callback;
-    renderCallback->OnSurfaceCreated = OnSurfaceCreatedCB;
-    renderCallback->OnSurfaceChanged = OnSurfaceChangedCB;
-    renderCallback->OnSurfaceDestroyed = OnSurfaceDestroyedCB;
-    renderCallback->DispatchTouchEvent = DispatchTouchEventCB;
+//     renderCallback->OnSurfaceCreated = OnSurfaceCreatedCB;
+//     renderCallback->OnSurfaceChanged = OnSurfaceChangedCB;
+//     renderCallback->OnSurfaceDestroyed = OnSurfaceDestroyedCB;
+//     renderCallback->DispatchTouchEvent = DispatchTouchEventCB;
     LOGI("PluginRender Initialized");
 }
 
@@ -225,7 +378,7 @@ PluginRender *PluginRender::GetInstance(std::string &id)
         return m_instance[id];
     }
 }
-
+#if 1
 void PluginRender::Export(napi_env env, napi_value exports)
 {
     LOGI("PluginRender export for %{public}s", m_id.c_str());
@@ -234,14 +387,14 @@ void PluginRender::Export(napi_env env, napi_value exports)
         return;
     }
 
-    napi_property_descriptor desc[] = {
-        {"setUpscaleMethod", nullptr, PluginRender::SetUpscaleMethod, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"setVRSUsed", nullptr, PluginRender::SetVRSUsed, nullptr, nullptr, nullptr, napi_default, nullptr}
-    };
-
-    if (napi_ok != napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc)) {
-        LOGE("PluginRender Export: napi_define_properties failed");
-    }
+//     napi_property_descriptor desc[] = {
+//         {"setUpscaleMethod", nullptr, PluginRender::SetUpscaleMethod, nullptr, nullptr, nullptr, napi_default, nullptr},
+//         {"setVRSUsed", nullptr, PluginRender::SetVRSUsed, nullptr, nullptr, nullptr, napi_default, nullptr}
+//     };
+//
+//     if (napi_ok != napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc)) {
+//         LOGE("PluginRender Export: napi_define_properties failed");
+//     }
 }
 
 void PluginRender::Release(std::string &id)
@@ -256,3 +409,4 @@ void PluginRender::Release(std::string &id)
         delete render->m_vulkanexample;
     }
 }
+#endif

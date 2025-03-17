@@ -2,14 +2,13 @@
 #include <iostream>
 #include <vector>
 #include "tinyply.h"
+#define GLM_FORCE_PRECISION_HIGH     // 高精度
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES  // 确保默认对齐方式
 #include <glm/glm.hpp>
 #include "vulkanexamplebase.h"
-#define VULKAN_HW
-// #define VULKAN_PC
+#include "file/file_operator.h"
 
 using namespace tinyply;
-
-
 
 // DataLoader Tool Class
 class DataLoader
@@ -39,7 +38,7 @@ public:
         std::vector<glm::vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
         std::vector<float> opacities;          // Opacity
         std::vector<glm::vec3> colors;         // RGB colors (r, g, b)
-
+        
         // Print the first vertex's data for verification
         void print() const {
             std::cout << "Loaded " << positions.size() << " vertices." << std::endl;
@@ -226,17 +225,24 @@ public:
         };
         std::vector<Data> colors;         // RGB colors (r, g, b)
         std::vector<vks::Texture2D> images;   // Images
+        std::vector<vks::Texture2D> images_low_res;
 
         std::vector<std::string> img_list;
         std::vector<std::vector<float>> extr_tmp;  
         std::vector<std::vector<float>> extr_tmp_test; 
-        // std::vector<std::vector<float>> intr_tmp;
-
+        std::vector<std::vector<float>> intr_tmp;
+        std::vector<float> head_bbox;
+        
+        std::vector<glm::vec3> cam_centers;
+        glm::vec3 translate;
+        float radius;
+        glm::vec3 mean;
+        float variance = 0;
+        std::string basepath="";
         // Print the first vertex's data for verification
         void print() const {
             std::cout << "Loaded " << positions.size() << " vertices." << std::endl;
             if (!positions.empty()) {
-#ifdef VULKAN_PC
                 std::cout << "\nFirst vertex data:" << std::endl;
 
                 // Print position (x, y, z)
@@ -263,37 +269,12 @@ public:
                 for (int i = 0; i < 12; ++i) {
                     std::cout << extr_tmp[0][i] << " ";
                 }
-#endif
-#ifdef VULKAN_HW
-                LOGI("First vertex data:");
-                LOGI("Position (x, y, z): (%{public}f, %{public}f, %{public}f)", positions[0].x, positions[0].y, positions[0].z);
-                LOGI("Scale (x, y, z): (%{public}f, %{public}f, %{public}f)", scales[0].x, scales[0].y, scales[0].z);
-                LOGI("Color (r, g, b): (%{public}f, %{public}f, %{public}f)", colors[0].values[0], colors[0].values[1], colors[0].values[2]);
-                LOGI("Image list: : %{public}s", img_list[0].c_str());
-                LOGI("Extrinsic parameters: ");
-                std::ostringstream oss;
-                for (int i = 0; i < 12; ++i) {
-                    oss << extr_tmp[0][i];
-                    if (i < 12 - 1) {
-                        oss << " ";
-                    }
-                }
-                std::string result = oss.str();
-                LOGI("%{public}s", result.c_str());
-                LOGI("Extrinsic parameters for render: ");
-                oss.str("");
-                oss.clear();
-                for (int i = 0; i < 12; ++i) {
-                    oss << extr_tmp_test[0][i];
-                    if (i < 12 - 1) {
-                        oss << " ";
-                    }
-                }
-                result = oss.str();
-                LOGI("%{public}s", result.c_str());
-#endif
             }
         }
+    
+        void computeNormalization();
+        void normalizeData();
+        void computePositionStats();
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);
@@ -302,9 +283,18 @@ public:
     static ProjectEWABackwardStruct loadEWABackwardData();
     static EvalSHForwardStruct loadEvalSHForwardData();
     static EvalSHBackwardStruct loadEvalSHBackwardData();
-    static InputGaussianStruct loadInputGaussianData();
     static InputLegoInitStruct loadInputLegoInitData();
+    static void loadInputLegoInitDatav2(std::string dataFolder, DataLoader::InputLegoInitStruct& data, bool& resumed);
+    static InputLegoInitStruct loadHeadGaussians(std::string dataFolder, DataLoader::InputLegoInitStruct& gaussian);
+    static void loadInputGaussianData(std::string& gaussianPath, DataLoader::InputLegoInitStruct& data);
+    static void loadExtraGaussianData(std::string& gaussianPath, DataLoader::InputLegoInitStruct& data);
 
+    static void loadExtrinsics(std::string dataPath, DataLoader::InputLegoInitStruct& data);
+    static void loadIntrinsics(std::string dataPath, DataLoader::InputLegoInitStruct& data);
+    
+    
+    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputLegoInitStruct& data, bool save_head);
+    
     static void printPlyHeader(const std::string& filepath);
     
 };

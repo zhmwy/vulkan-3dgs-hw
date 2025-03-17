@@ -23,7 +23,7 @@ void VulkanSwapChain::initSurface(NativeWindow* window)
 	err = vkCreateSurfaceOHOS(instance, &surfaceCreateInfo, NULL, &surface);
 
 	if (err != VK_SUCCESS) {
-		std::cout << "Could not create surface!" << std::endl;
+		LOGE("Could not create surface!");
 	}
 
 	// Get available queue family properties

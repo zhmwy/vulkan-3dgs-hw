@@ -95,15 +95,15 @@ void VulkanExampleBase::createPipelineCache()
 
 bool VulkanExampleBase::prepare()
 {
-	initSwapchain();
+// 	initSwapchain();
 	createCommandPool();
-	setupSwapChain();
-	createCommandBuffers();
+// 	setupSwapChain();
+// 	createCommandBuffers();
 	createSynchronizationPrimitives();
 	setupDepthStencil();
 	setupRenderPass();
 	createPipelineCache();
-	setupFrameBuffer();
+// 	setupFrameBuffer();
     LOGI("VulkanExampleBase prepare end");
     return true;
 }
@@ -147,7 +147,6 @@ void VulkanExampleBase::renderLoop()
             frameCounter = 0;
             lastTimestamp = tEnd;
         }
-        LOGD("VulkanExampleBase cost time: %{public}f", fpsTimer);
         bool updateView = false;
     }
 	// Flush device to make sure all resources can be freed

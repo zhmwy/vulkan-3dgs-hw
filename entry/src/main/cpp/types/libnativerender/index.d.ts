@@ -13,4 +13,11 @@
  * limitations under the License.
  */
 import resourceManager from '@ohos.resourceManager';
+import { image } from '@kit.ImageKit';
+
+export const getSyncPixelMap: (resMgr: resourceManager.ResourceManager, src: string) => image.PixelMap;
+export const getSandBoxPixelMap: (sandboxPath: string, src: string) => image.PixelMap;
+
 export const getContext: (a: number) => any;
+export const train3DGS: (resmgr: resourceManager.ResourceManager, folderPath: string) => Promise<number>;
+export const initTrainProgress: (cb: (progress: number) => void) => void;

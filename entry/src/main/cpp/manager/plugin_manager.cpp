@@ -85,9 +85,15 @@ napi_value PluginManager::GetContext(napi_env env, napi_callback_info info)
     return exports;
 }
 
+int lifecycle_called = 0;
+
 void PluginManager::RegisterLifecycle(napi_env env, napi_value exports, int64_t value)
 {
+    LOGI("register life cycle called for the %{public}d time", lifecycle_called);
+    lifecycle_called++;
     if ((nullptr == env) || (nullptr == exports)) {
+        LOGI("register life cycle called for the %{public}d time, but it is invalid.", lifecycle_called);
+        
         return;
     }
 
