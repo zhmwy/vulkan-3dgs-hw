@@ -1396,7 +1396,7 @@ void DataLoader::loadExtrinsics(std::string dataPath, DataLoader::InputInitStruc
 }
 
 void DataLoader::loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct &data){
-    std::string cameraFilePath = dataPath + "/slam/cameras2.txt";
+    std::string cameraFilePath = dataPath + "/slam/cameras.txt";
     std::ifstream camerasFile(cameraFilePath);
     std::string line;
     data.intr_tmp.clear();

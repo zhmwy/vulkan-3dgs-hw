@@ -50,11 +50,6 @@ bool readCameraIntrinsics(const std::string& filename, CameraIntrinsics& intrins
     std::string model;
     ss >> camera_id >> model >> intrinsics.width >> intrinsics.height;
     ss >> intrinsics.fx >> intrinsics.fy >> intrinsics.cx >> intrinsics.cy;
-    
-    intrinsics.fx /= 3;
-    intrinsics.fy /= 3;
-    intrinsics.cx /= 3;
-    intrinsics.cy /= 3;
 
     infile.close();
     return true;

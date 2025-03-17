@@ -193,7 +193,6 @@ int ProcessKeypoints(const std::string& inputPath) {
                     data += to_string(x) + " " + to_string(y) + " " + to_string(conf) + "\n";
                 }
                 // cout<<data<<endl;
-                LOGI("%{public}s", data.c_str());
                 keypoints_outputs[0].push_back(data);
             }
         }
@@ -356,6 +355,7 @@ int ProcessKeypoints(const std::string& inputPath) {
         ofstream ofs(outputPath, ios::out);
         for (const auto& line : keypoints_outputs[i]) {
             // cout<<"x:"<<x<<" line:"<<line<<endl;
+            LOGI("Keypoints written: %{public}s", line.c_str());
             ofs << line;
         }
         ofs.close();

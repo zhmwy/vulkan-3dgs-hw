@@ -144,8 +144,8 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         FullTrainer->initBuffersValues();
         for (int step = 0; step < config->max_steps[2]; ++step) {
             FullTrainer->render();
-            FullTrainer->renderImage(step);
-            FullTrainer->renderRGB2Cpu(step);
+//             FullTrainer->renderImage(step);
+//             FullTrainer->renderRGB2Cpu(step);
             int progress = (step * 100) / config->max_steps[2];
             ReportProgressTrain(progress);
         }
