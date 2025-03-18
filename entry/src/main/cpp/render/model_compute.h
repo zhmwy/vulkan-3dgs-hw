@@ -72,9 +72,9 @@ class VulkanComputeExample : public VulkanExampleBase
 {
 public:
     void loadTestData(std::string& dataFolder, int flag=-1);
-    void loadIntrinsics(std::string& dataFolder);
+//     void loadIntrinsics(std::string& dataFolder);
     
-    void encodeCpu2Gpu(bool special_call=false);
+    void encodeCpu2Gpu();
     void createGpu2CpuCopys();
     VulkanComputeExample();
     ~VulkanComputeExample();
@@ -109,14 +109,12 @@ public:
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
 
-    int low_resolution_steps = 200;
+    int low_resolution_steps = 1000;
     int sh_degree = 16;
-    int save_step = 198;
-
+    int save_step = 20000;
     
     RandomGenerator random_generator;
     int current_img_idx = 0;
-
     
     struct sortBuffers {
         vkgs::Buffer key;
@@ -148,8 +146,8 @@ public:
         vkgs::Buffer rotate_array;
         vkgs::Buffer intr_params;   // [4]
         vkgs::Buffer intr_params_render;
-        vkgs::Buffer extr_params;   // [3, 4]
-        vkgs::Buffer extr_params_render;   // [3, 4]
+        vkgs::Buffer extr_params;           // [1, 7]
+        vkgs::Buffer extr_params_render;    // [1, 7]
         vkgs::Buffer visible;
         vkgs::Buffer uvd;     // [P, 3]
         vkgs::Buffer cov2d;
@@ -157,7 +155,12 @@ public:
         vkgs::Buffer radius;
         vkgs::Buffer tiles;
         vkgs::Buffer tiles_rect;
-
+        vkgs::Buffer extr_mat;          // 12 parameters
+        vkgs::Buffer extr_act;          // 5  normalized, [w, x, y, z, norm, norm^3]
+        vkgs::Buffer camera_center;     // 3  parameters
+        vkgs::Buffer camera_extrs;
+        
+        
         // alpha blending buffers
         vkgs::Buffer conic;
         vkgs::Buffer opacity;
@@ -200,6 +203,9 @@ public:
         vkgs::Buffer feature_array_exp_avg;
         vkgs::Buffer opacity_array_exp_avg;
 
+        vkgs::Buffer camera_extrs_avg;
+        vkgs::Buffer camera_extrs_exp_avg;
+        
         // for groundtruth
         vkgs::Buffer input_image_array;
         vkgs::Buffer input_image_alpha_array;
@@ -436,7 +442,8 @@ public:
         createGpu2CpuCopy(splat_buffers.rfeat);
     }
     void radixSortCmd(uint32_t numInstances);
-
+    void copyExtrCmd();
+    
     // Methods
     void prepreAllocator();
     void prepareStorageImage();
@@ -479,8 +486,7 @@ public:
         buildComputeCommandBuffer([this]() { 
             encodePipeline2CommandBuffer(); 
         });
-
-
+        
         executeComputeCommand();
         printLog();
 
@@ -501,9 +507,9 @@ public:
         //draw();
         queryEventTime();
 
-        if (training_step < max_training_step) {
-            training_step++;
-        }
+//         if (training_step < max_training_step) {
+//             training_step++;
+//         }
     }
     virtual void renderImage(int index)
     {

@@ -37,7 +37,7 @@ struct TrainingConfig {
     napi_deferred deferred;
     NativeResourceManager* resourceMgr;
     std::string dataFolder;
-    std::vector<int> max_steps={2000, 2000, 1000};
+    std::vector<int> max_steps={2500, 2000, 1000};
     int result=0;
     bool focus_on_face = false;
 };
@@ -77,7 +77,8 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         int progress = (step * 100) / config->max_steps[0];
         ReportProgressTrain(progress);
     }
-    for (int i = 0; i < 129; i++){
+    
+    for (int i = 0; i < InitlTrainer->inputGaussian.img_list.size(); i++){
         InitlTrainer->renderImage(i);
         InitlTrainer->renderRGB2Cpu(i);
     }
@@ -86,7 +87,7 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         InitlTrainer->training_step = 0;
     
         InitlTrainer->loadTestData(config->dataFolder, LOAD_HEAD);
-        InitlTrainer->encodeCpu2Gpu(true);
+        InitlTrainer->encodeCpu2Gpu();
         InitlTrainer->ComputeMemoryBarrierBlock();
         InitlTrainer->executeComputeCommand();
     
@@ -108,21 +109,6 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         HeadTrainer->initVulkan();
         HeadTrainer->prepare();
         HeadTrainer->initBuffersValues();
-#if 0
-        vulkanExample->encodeCpu2Gpu(true);
-        vulkanExample->ComputeMemoryBarrierBlock();
-        vulkanExample->executeComputeCommand();
-        std::string old_sub_str = "images";
-        for (int i=0; i < vulkanExample->inputGaussian.img_list.size(); ++i) {
-            std::string img_path = vulkanExample->inputGaussian.img_list[i];
-            size_t pos = img_path.find(old_sub_str); // Find the position of the old substring
-            if (pos != std::string::npos) {    // If the substring is found
-                img_path.replace(pos, old_sub_str.length(), "head/images"); // Replace it
-            }
-            vulkanExample->inputGaussian.img_list[i] = img_path;
-        }
-        vulkanExample->loadAssets(0.25);
-#endif 
         
         for (int step = 0; step < config->max_steps[1]; ++step) {
             HeadTrainer->render();
