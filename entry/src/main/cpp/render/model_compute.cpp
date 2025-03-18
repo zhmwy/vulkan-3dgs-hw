@@ -279,7 +279,7 @@ void VulkanComputeExample::imageToBufferCmd()
     // int current_img_idx = training_step % inputGaussian.img_list.size();
     current_img_idx = random_generator.generate();
 
-    current_img_idx = 0;
+//     current_img_idx = 0;
     
     if (training_step >= low_resolution_steps)
     {
@@ -331,7 +331,8 @@ void VulkanComputeExample::imageToBufferCmd()
     
     copyExtrCmd();
     
-    TransComputeBarrierBlock();
+//     TransComputeBarrierBlock();
+//     ComputeMemoryBarrierBlock();
     
     uint32_t X = 0;
     uint32_t Y = 0;
@@ -793,6 +794,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     queryCmdTimeEnd("04. forward fill buffer");
     
     queryCmdTimeStart("05. forward EWA");
+    bindPipeline2CommandBuffer(pipe_extr_process, FORWARD_PIPE, 1, 1, 1);
     bindPipeline2CommandBuffer(pipe_project, FORWARD_PIPE, X, 1, 1);
     queryCmdTimeEnd("05. forward EWA");
     
@@ -804,7 +806,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     backwardCmd();
 
     queryCmdTimeStart("20. training optimize");
-//         optimizeStepCmd();
+    optimizeStepCmd();
     queryCmdTimeEnd("20. training optimize");
 
     bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
@@ -833,7 +835,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 //     ComputeTransBarrierBlock();
 //     bufferToImageCmd();
     
-    createGpu2CpuCopys();
+//     createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
@@ -1994,8 +1996,6 @@ void VulkanComputeExample::setOptimizitionPipeline()
         &splat_buffers.camera_extrs,
         &splat_buffers.camera_extrs_avg,
         &splat_buffers.camera_extrs_exp_avg
-
-
     };
 
     updateDescriptorSet(pipe_optimize.descriptorSet, splatBuffers);
@@ -2706,6 +2706,46 @@ void VulkanComputeExample::setSortOddPipeline()
     ); 
 }
 
+void VulkanComputeExample::setExtrProcessPipeline()
+{
+    uint32_t bindingCount = 4;
+    createPipelineLayout(
+        pipe_extr_process,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.extr_params,
+        &splat_buffers.extr_act,
+        &splat_buffers.extr_mat,
+        &splat_buffers.camera_center
+    };
+
+    updateDescriptorSet(pipe_extr_process.descriptorSet, splatBuffers);
+
+    pipe_extr_process.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/extr_process.comp.spv");
+#ifdef VULKAN_PC
+    shaderCode = "../../shaders/glsl/computeshader/extr_process.comp.spv";
+    std::cout << "[setInverseIndexPipeline] shaderCode: " << shaderCode << std::endl;
+#endif
+    
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_extr_process.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelines(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_extr_process.pipelines[0]
+        )
+    ); 
+}
+
 void VulkanComputeExample::setImage2BufferPipeline()
 {
     const uint32_t bindingCount = 2;
@@ -3298,6 +3338,7 @@ void VulkanComputeExample::createGpu2CpuCopy(vkgs::Buffer &buffer)
         cpu_buffer,
         1, &region
     );
+    TransComputeBarrierBlock();
 }
 
 void VulkanComputeExample::buildComputeCommandBuffer(std::function<void()> func)
@@ -3654,6 +3695,8 @@ bool VulkanComputeExample::prepare()
     setMeanGradPipeline();
     setResetOpacityPipeline();
     
+    setExtrProcessPipeline();
+    
     setKNNPipeline();
     setPrunePipeline();
     
@@ -3767,8 +3810,9 @@ void VulkanComputeExample::printLog()
         }
     }
     queryEventTime();
-    if (training_step >= 0)
-        printGpuBuffers();
+    if (training_step >= 0){
+//         printGpuBuffers();
+    }
 }
 
 void VulkanComputeExample::executeComputeCommand()

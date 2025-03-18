@@ -51,13 +51,13 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     if (idx >= curPointsNum[0])
         return;
     
-    AllMemoryBarrierWithGroupSync();
-    if (idx == 0) {
-        camera_center[0] = -(extr[0] * extr[3] + extr[4] * extr[7] + extr[8] * extr[11]);
-        camera_center[1] = -(extr[1] * extr[3] + extr[5] * extr[7] + extr[9] * extr[11]);
-        camera_center[2] = -(extr[2] * extr[3] + extr[6] * extr[7] + extr[10] * extr[11]);
-    }
-    AllMemoryBarrierWithGroupSync();
+    // AllMemoryBarrierWithGroupSync();
+    // if (idx == 0) {
+    //     camera_center[0] = -(extr[0] * extr[3] + extr[4] * extr[7] + extr[8] * extr[11]);
+    //     camera_center[1] = -(extr[1] * extr[3] + extr[5] * extr[7] + extr[9] * extr[11]);
+    //     camera_center[2] = -(extr[2] * extr[3] + extr[6] * extr[7] + extr[10] * extr[11]);
+    // }
+    // AllMemoryBarrierWithGroupSync();
 
     if (visible_array[idx] == 0)
         return;

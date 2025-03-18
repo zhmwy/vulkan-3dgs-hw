@@ -313,6 +313,7 @@ public:
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
     Compute3DGS pipe_reset_opacity;
+    Compute3DGS pipe_extr_process;
     
     Compute3DGS pipe_knn;
     Compute3DGS pipe_prune;
@@ -423,6 +424,9 @@ public:
     void setHistOddPipeline();
     void setSortEvenPipeline();
     void setSortOddPipeline();
+    
+    void setExtrProcessPipeline();
+    
     // 3dgs command buffer
     void forwardCmd();
     void forwardCmdTime();
