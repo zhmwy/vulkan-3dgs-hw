@@ -92,7 +92,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         xyz_array[3 * idx + 1] - camera_center[1],
         xyz_array[3 * idx + 2] - camera_center[2],
     };
-    
+
     float norm = sqrt(dir_un.x * dir_un.x + dir_un.y * dir_un.y + dir_un.z * dir_un.z);
     float3 dir = dir_un / norm;
 

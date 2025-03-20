@@ -110,7 +110,7 @@ public:
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 1000;
-    int sh_degree = 16;
+    int sh_degree = 1;
     int save_step = 20000;
     
     RandomGenerator random_generator;
@@ -302,6 +302,8 @@ public:
     Compute3DGS pipe_int2float;
     
     Compute3DGS pipe_optimize;
+    Compute3DGS pipe_optimize_extr;
+    
     Compute3DGS pipe_loss;
     Compute3DGS pipe_copy_img2buffer;
     Compute3DGS pipe_copy_buffer2img; 
@@ -416,7 +418,9 @@ public:
     void setAlphaBlendingPipeline();
     void setAlphaBlendingIntPipeline();
     void setIntToFloatGradientPipeline();
-    void setOptimizitionPipeline();
+    void setOptimizationPipeline();
+    void setExtrOptimizationPipeline();
+    
     void setLossPipeline();
     void setComputeSHPipeline();
     void setComputeSHRenderPipeline();

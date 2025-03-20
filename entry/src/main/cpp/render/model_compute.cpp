@@ -190,6 +190,8 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.camera_extrs);
     
     createGpu2CpuCopy(splat_buffers.dL_dextr_params);
+    createGpu2CpuCopy(splat_buffers.dL_dshs_array);
+    
 }
 
 int cumsum_cpu(const vkgs::Buffer& buffer){
@@ -207,17 +209,10 @@ int cumsum_cpu(const vkgs::Buffer& buffer){
 void VulkanComputeExample::printGpuBuffers()
 {
     LOGW("Current image index: %{public}d, training step: %{public}d", current_img_idx, training_step);
-
+    
     printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
-    printGpuBuffer<float>("extr_mat", splat_buffers.extr_mat, 3, 4);
-    printGpuBuffer<float>("extr_act", splat_buffers.extr_act, 1, 6);
-    printGpuBuffer<float>("camera_center", splat_buffers.camera_center, 1, 3);
     printGpuBuffer<float>("dL_dextr_params", splat_buffers.dL_dextr_params, 1, 7);
-    
-    printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
-    
-    printGpuBuffer<float>("feature", splat_buffers.feature, 4, 3);
-    
+
 }
 
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
@@ -275,8 +270,7 @@ void VulkanComputeExample::imageToBufferCmd()
     copyRegionI.imageSubresource.layerCount = 1;
     copyRegionI.imageOffset = { 0, 0, 0 };
     copyRegionI.imageExtent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1 };
-
-    // int current_img_idx = training_step % inputGaussian.img_list.size();
+    
     current_img_idx = random_generator.generate();
 
 //     current_img_idx = 0;
@@ -324,16 +318,9 @@ void VulkanComputeExample::imageToBufferCmd()
         );
     }
 
-//     splat_buffers.extr_params.FromCpu(
-//         compute.commandBuffer,
-//         inputGaussian.extr_tmp[current_img_idx].data()
-//     );
-    
+
     copyExtrCmd();
-    
-//     TransComputeBarrierBlock();
-//     ComputeMemoryBarrierBlock();
-    
+ 
     uint32_t X = 0;
     uint32_t Y = 0;
     X = ((unsigned int)(image_width * current_scale) + 16 - 1) / 16; // Ceiling division
@@ -562,7 +549,7 @@ void VulkanComputeExample::backwardCmd()
     /*********************  Compute SH backward ***********************/
     queryCmdTimeStart("17. Backward SH");
     X = (splat_count + 256 - 1) / 256; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_sh, BACKWARD_PIPE, X, 1, 1);
+    bindPipeline2CommandBuffer(pipe_sh, BACKWARD_PIPE, X, 1, 1, true);
     queryCmdTimeEnd("17. Backward SH");
     /*********************  Compute SH backward ***********************/
     
@@ -587,6 +574,8 @@ void VulkanComputeExample::optimizeStepCmd()
     /*********************  Adam optimizer ***********************/
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_optimize, FORWARD_PIPE, X, 1, 1, true);
+    X = 1;
+    bindPipeline2CommandBuffer(pipe_optimize_extr, FORWARD_PIPE, X, 1, 1, true);
     /*********************  Adam optimizer ***********************/
 }
 
@@ -1958,9 +1947,9 @@ void VulkanComputeExample::setComputeSHRenderPipeline()
 
 }
 
-void VulkanComputeExample::setOptimizitionPipeline()
+void VulkanComputeExample::setOptimizationPipeline()
 {
-    const uint32_t bindingCount = 26;
+    const uint32_t bindingCount = 22;
     createPipelineLayout(
         pipe_optimize,
         bindingCount,  // Number of descriptor set bindings
@@ -1991,11 +1980,7 @@ void VulkanComputeExample::setOptimizitionPipeline()
         &splat_buffers.opacity_array_avg,         // 19
         &splat_buffers.curPointsNum, // 20
         //& splat_buffers.visible,
-        & splat_buffers.radius,
-        &splat_buffers.dL_dextr_params,
-        &splat_buffers.camera_extrs,
-        &splat_buffers.camera_extrs_avg,
-        &splat_buffers.camera_extrs_exp_avg
+        & splat_buffers.radius
     };
 
     updateDescriptorSet(pipe_optimize.descriptorSet, splatBuffers);
@@ -2020,8 +2005,52 @@ void VulkanComputeExample::setOptimizitionPipeline()
         )
     );
 
-    std::cout << "[setOptimizitionPipeline] Optimizition Pipeline set" << std::endl;
+    std::cout << "[setOptimizationPipeline] Optimizition Pipeline set" << std::endl;
 }
+
+
+void VulkanComputeExample::setExtrOptimizationPipeline()
+{
+    const uint32_t bindingCount = 4;
+    createPipelineLayout(
+        pipe_optimize_extr,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 8 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.dL_dextr_params,
+        &splat_buffers.camera_extrs,
+        &splat_buffers.camera_extrs_avg,
+        &splat_buffers.camera_extrs_exp_avg
+    };
+
+    updateDescriptorSet(pipe_optimize_extr.descriptorSet, splatBuffers);
+
+    pipe_optimize_extr.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/adam_extr.comp.spv");
+#ifdef VULKAN_PC
+    shaderCode = "../../shaders/glsl/computeshader/adam_extr.comp.spv";
+    std::cout << "[setComputeKeyPipeline] shaderCode: " << shaderCode << std::endl;
+#endif
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_optimize_extr.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelines(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_optimize_extr.pipelines[FORWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setExtrOptimizationPipeline] Optimizition Pipeline set" << std::endl;
+}
+
 
 void VulkanComputeExample::setLossPipeline()
 {
@@ -3682,7 +3711,9 @@ bool VulkanComputeExample::prepare()
     setIntToFloatGradientPipeline();
     setAlphaBlendingIntPipeline();
     
-    setOptimizitionPipeline();
+    setOptimizationPipeline();
+    setExtrOptimizationPipeline();
+    
     setLossPipeline();
     setImage2BufferPipeline();
     setBuffer2ImagePipeline();
@@ -3933,7 +3964,7 @@ void VulkanComputeExample::queryEventTime()
     }
     queryTime.clear();
 
-    if ((training_step) % QUERY_TIME_RANGE == 0)
+    if ((training_step + 1) % QUERY_TIME_RANGE == 0)
     {
         for (const auto& query : elapsedTimeSum)
         {

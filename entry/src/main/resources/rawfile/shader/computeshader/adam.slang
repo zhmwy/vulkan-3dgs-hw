@@ -27,6 +27,11 @@
 [[vk::binding(20)]] StructuredBuffer<int32_t> curPointsNum;
 [[vk::binding(21)]] RWStructuredBuffer<uint32_t> visible;
 
+// [[vk::binding(22)]] RWStructuredBuffer<float> dL_dextr_params;
+// [[vk::binding(23)]] RWStructuredBuffer<float> camera_extrs;
+// [[vk::binding(24)]] RWStructuredBuffer<float> camera_extrs_avg;
+// [[vk::binding(25)]] RWStructuredBuffer<float> camera_extrs_exp_avg;
+
 // static const int D = 16;
 
 // Adam hyperparameters
@@ -149,7 +154,7 @@ void update_adam(
 
 void update_adam_for_features(
     uint idx,                              // Index of the current element to process
-    uint degree,                       // Length of the vector (e.g., 3, 48, etc.)
+    uint vec_length,                       // Length of the vector (e.g., 3, 48, etc.)
     StructuredBuffer<float> grad_array,    // Input gradient array (read-only)
     RWStructuredBuffer<float> param_array, // Input parameter array to be updated (read-write)
     RWStructuredBuffer<float> m_array,     // First-order moment array (read-write)
@@ -157,66 +162,66 @@ void update_adam_for_features(
 )
 {
 
-    for (uint i = 0; i < 3; i++) {
-        for (uint j = 0; j < degree; j++) {
-            uint offset = idx * DD * 3 + i * DD + j;
+    // for (uint i = 0; i < 3; i++) {
+    //     for (uint j = 0; j < vec_length; j++) {
+    //         uint offset = idx * DD * 3 + i * DD + j;
 
-            // Read the gradient, first-order moment, and second-order moment for the current dimension
-            float grad = grad_array[offset];
-            float m = m_array[offset];
-            float v = v_array[offset];
+    //         // Read the gradient, first-order moment, and second-order moment for the current dimension
+    //         float grad = grad_array[offset];
+    //         float m = m_array[offset];
+    //         float v = v_array[offset];
 
-            // Update first-order moment (moving average of gradients)
-            m = beta1 * m + (1.0 - beta1) * grad;
+    //         // Update first-order moment (moving average of gradients)
+    //         m = beta1 * m + (1.0 - beta1) * grad;
 
-            // Update second-order moment (moving average of squared gradients)
-            v = beta2 * v + (1.0 - beta2) * grad * grad;
+    //         // Update second-order moment (moving average of squared gradients)
+    //         v = beta2 * v + (1.0 - beta2) * grad * grad;
 
-            // Compute the step size using Adam formula
-            float step;
-            if (j % DD == 0)
-                step = -learning_rate_features * m / (sqrt(v) + eps);
-            else
-                step = -learning_rate_features_rest * m / (sqrt(v) + eps);
+    //         // Compute the step size using Adam formula
+    //         float step;
+    //         if (j % DD == 0)
+    //             step = -learning_rate_features * m / (sqrt(v) + eps);
+    //         else
+    //             step = -learning_rate_features_rest * m / (sqrt(v) + eps);
 
-            // Update the parameter
-            param_array[offset] += step;
+    //         // Update the parameter
+    //         param_array[offset] += step;
 
-            // Write back the updated first-order and second-order moments
-            m_array[offset] = m;
-            v_array[offset] = v;
-        }
-    }
-
-    // // Loop through each dimension of the vector
-    // for (uint i = 0; i < degree; ++i) {
-    //     uint offset = idx * degree + i;
-
-    //     // Read the gradient, first-order moment, and second-order moment for the current dimension
-    //     float grad = grad_array[offset];
-    //     float m = m_array[offset];
-    //     float v = v_array[offset];
-
-    //     // Update first-order moment (moving average of gradients)
-    //     m = beta1 * m + (1.0 - beta1) * grad;
-
-    //     // Update second-order moment (moving average of squared gradients)
-    //     v = beta2 * v + (1.0 - beta2) * grad * grad;
-
-    //     // Compute the step size using Adam formula
-    //     float step;
-    //     if (i % D == 0)
-    //         step = -learning_rate_features * m / (sqrt(v) + eps);
-    //     else 
-    //         step = -learning_rate_features_rest * m / (sqrt(v) + eps);
-
-    //     // Update the parameter
-    //     param_array[offset] += step;
-
-    //     // Write back the updated first-order and second-order moments
-    //     m_array[offset] = m;
-    //     v_array[offset] = v;
+    //         // Write back the updated first-order and second-order moments
+    //         m_array[offset] = m;
+    //         v_array[offset] = v;
+    //     }
     // }
+
+    // Loop through each dimension of the vector
+    for (uint i = 0; i < vec_length; ++i) {
+        uint offset = idx * vec_length + i;
+
+        // Read the gradient, first-order moment, and second-order moment for the current dimension
+        float grad = grad_array[offset];
+        float m = m_array[offset];
+        float v = v_array[offset];
+
+        // Update first-order moment (moving average of gradients)
+        m = beta1 * m + (1.0 - beta1) * grad;
+
+        // Update second-order moment (moving average of squared gradients)
+        v = beta2 * v + (1.0 - beta2) * grad * grad;
+
+        // Compute the step size using Adam formula
+        float step;
+        if (i % D == 0)
+            step = -learning_rate_features * m / (sqrt(v) + eps);
+        else
+            step = -learning_rate_features_rest * m / (sqrt(v) + eps);
+
+        // Update the parameter
+        param_array[offset] += step;
+
+        // Write back the updated first-order and second-order moments
+        m_array[offset] = m;
+        v_array[offset] = v;
+    }
 }
 
 [shader("compute")]
@@ -231,6 +236,24 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
     uint idx = dispatchThreadID.x;
     if (idx >= xyz_size) return;
+    // AllMemoryBarrierWithGroupSync();
+    // if (idx == 0) {
+    //     for (int i = 0; i < 7; i++) {
+    //         int current_img_idx = int(current_img_idx);
+    //         float grad_extr = dL_dextr_params[i];
+    //         float m_extr = camera_extrs_exp_avg[current_img_idx * 7 + i];
+    //         float v_extr = camera_extrs_avg[current_img_idx * 7 + i];
+    //         m_extr = beta1 * m_extr + (1.0 - beta1) * grad_extr;
+    //         v_extr = beta2 * v_extr + (1.0 - beta2) * grad_extr * grad_extr;
+
+    //         float step_extr = -extr_lr * m_extr / (sqrt(v_extr) + eps);
+    //         camera_extrs[current_img_idx * 7 + i] += step_extr;
+
+    //         camera_extrs_exp_avg[current_img_idx * 7 + i] = m_extr;
+    //         camera_extrs_avg[current_img_idx * 7 + i] = v_extr;
+    //     }
+    // }
+    // AllMemoryBarrierWithGroupSync();
 
     if (visible[idx] == 0) return; // skip invisible points
 
@@ -272,7 +295,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
     update_adam_for_features(
         idx,
-        ((int)D),
+        ((int)D) * 3,
         dL_dfeature_array,
         feature_array,
         feature_array_exp_avg,
