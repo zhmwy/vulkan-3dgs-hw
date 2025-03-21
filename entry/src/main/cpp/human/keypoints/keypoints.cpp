@@ -210,7 +210,7 @@ int ProcessKeypoints(const std::string& inputPath) {
     
     // 根据统计结果确定哪些关键点整体检测不足（例如检测次数 < 15）
     vector<int> few_keypt;
-    for (int i = 5; i < 17; ++i) {///0-4是脸部kp，不需要补
+    for (int i = 0; i < 17; ++i) {///0-4是脸部kp，不需要补
         if (keypoint_count[i] < 15) {
             few_keypt.push_back(i);
         }
@@ -363,4 +363,3 @@ int ProcessKeypoints(const std::string& inputPath) {
 
     return 1;
 }
-    

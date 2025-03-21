@@ -101,43 +101,6 @@ const std::vector<std::pair<int, int>> matching_indices = {
     {16, 8}   // right ankle
 };
 
-int count_lines(const std::string& filename) {
-    std::ifstream file(filename);
-    int line_count = 0;
-    std::string line;
-    
-    while (std::getline(file, line)) {
-        line_count++;
-    }
-    
-    file.close();
-    return line_count;
-}
-
-void append_points3D(std::string& outputPath, Eigen::MatrixXd& vertices){
-    // Write vertices to points3D.txt
-    int num_lines = count_lines(outputPath);
-    OH_LOG_INFO(LOG_APP, "Original number of lines is: %{public}d", num_lines);
-    std::ofstream outFile(outputPath, std::ios::app);
-    num_lines = count_lines(outputPath);
-    OH_LOG_INFO(LOG_APP, "Number of lines after opening it: %{public}d", num_lines);
-    if (!outFile.is_open()) {
-        OH_LOG_ERROR(LOG_APP, "Failed to open file %{public}s for writing", outputPath.c_str());
-    } else {
-        outFile << std::fixed << std::setprecision(6);
-        for (int64_t i = 0; i < VERTEX_NUM; ++i) {
-            outFile << i << " "
-                    << vertices(i, 0) << " "
-                    << vertices(i, 1) << " "
-                    << vertices(i, 2) << " "
-                    << "125 125 125 1.000000\n";
-        }
-        num_lines = count_lines(outputPath);
-        OH_LOG_INFO(LOG_APP, "Number of lines after writing: %{public}d", num_lines);
-        outFile.close();
-        OH_LOG_INFO(LOG_APP, "Successfully wrote vertices to %{public}s", outputPath.c_str());
-    }
-}
 
 void write_points3D(std::string& outputPath, Eigen::MatrixXd& vertices, std::vector<float>& head_bbox){
     double x_min = 0, x_max = 0, y_min = 0, y_max = 0, z_min = 0, z_max = 0;

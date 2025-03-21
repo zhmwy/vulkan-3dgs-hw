@@ -1,13 +1,6 @@
-//
-// Created on 2024/11/19.
-//
-// Node APIs are not fully supported. To solve the compilation error of the interface cannot be found,
-// please include "napi/native_api.h".
 #include "fit_smpl.h"
 
-using namespace std;
-using namespace Eigen;
-
+#if 0
 // Joint names
 vector<string> skeleton_names = {
     "nose",
@@ -31,63 +24,6 @@ vector<string> skeleton_names = {
 
 // Map joint names to their coordinates
 map<string, Vector3d> current_joint_coords;
-
-// Function declarations
-Matrix3d get_joint_local_coordinate_system(const map<string, Vector3d>& joint_coords);
-Matrix3d get_subjoint_local_coordinate_system(const map<string, Vector3d>& joint_coords, const Matrix3d& parent_R, const string& parent_joint_name, const string& joint_name);
-Matrix3d get_knee_local_coordinate_system(const map<string, Vector3d>& joint_coords, const Matrix3d& parent_R, const string& parent_joint_name, const string& joint_name);
-Vector3d calculate_axis_angle(const Vector3d& local_vector, const string& side, const Vector3d& default_axis, int ignore_axis = -1);
-pair<Vector3d, Matrix3d> compute_joint_axis_angle(const string& side, const map<string, Vector3d>& joint_coords, const map<string, string>& joint_names, const vector<string>& parent_joints, const Vector3d& default_axis, int ignore_axis);
-Vector3d compute_subjoint_axis_angle(const string& side, const map<string, Vector3d>& joint_coords, const Matrix3d& parent_R, const map<string, string>& joint_names, const Vector3d& default_axis, int ignore_axis);
-pair<Vector3d, Matrix3d> compute_shoulder_axis_angle(const string& side, const map<string, Vector3d>& joint_coords);
-Vector3d compute_elbow_axis_angle(const string& side, const map<string, Vector3d>& joint_coords, const Matrix3d& parent_R);
-pair<Vector3d, Matrix3d> compute_hip_axis_angle(const string& side, const map<string, Vector3d>& joint_coords);
-Vector3d compute_knee_axis_angle(const string& side, const map<string, Vector3d>& joint_coords, const Matrix3d& parent_R);
-void print_axis_angle(const string& name, const Vector3d& axis_angle);
-bool read_ply_file(const string& filename, map<string, Vector3d>& joint_coords);
-
-int get_theta_from_skeleton(string path, std::vector<Vector3d>& thetas) {
-    string filename = path + "/skeleton.ply";  // Replace with your actual filename
-
-    // Read the skeleton data from the PLY file
-    if (!read_ply_file(filename, current_joint_coords)) {
-        cerr << "Failed to read skeleton data from " << filename << endl;
-        return 1;
-    }
-
-    // Compute axis-angle parameters for shoulders and elbows
-    auto [left_shoulder_axis_angle, left_R_shoulder] = compute_shoulder_axis_angle("left", current_joint_coords);
-    auto [right_shoulder_axis_angle, right_R_shoulder] = compute_shoulder_axis_angle("right", current_joint_coords);
-    thetas.push_back(left_shoulder_axis_angle);
-    thetas.push_back(right_shoulder_axis_angle);
-    
-    Vector3d left_elbow_axis_angle = compute_elbow_axis_angle("left", current_joint_coords, left_R_shoulder);
-    Vector3d right_elbow_axis_angle = compute_elbow_axis_angle("right", current_joint_coords, right_R_shoulder);
-    thetas.push_back(left_elbow_axis_angle);
-    thetas.push_back(right_elbow_axis_angle);
-    // Compute axis-angle parameters for hips and knees
-    auto [left_hip_axis_angle, left_R_hip] = compute_hip_axis_angle("left", current_joint_coords);
-    auto [right_hip_axis_angle, right_R_hip] = compute_hip_axis_angle("right", current_joint_coords);
-    thetas.push_back(left_hip_axis_angle);
-    thetas.push_back(right_hip_axis_angle);
-    
-    Vector3d left_knee_axis_angle = compute_knee_axis_angle("left", current_joint_coords, left_R_hip);
-    Vector3d right_knee_axis_angle = compute_knee_axis_angle("right", current_joint_coords, right_R_hip);
-    thetas.push_back(left_knee_axis_angle);
-    thetas.push_back(right_knee_axis_angle);
-    
-    // Print the results
-    print_axis_angle("Left Shoulder", left_shoulder_axis_angle);
-    print_axis_angle("Right Shoulder", right_shoulder_axis_angle);
-    print_axis_angle("Left Elbow", left_elbow_axis_angle);
-    print_axis_angle("Right Elbow", right_elbow_axis_angle);
-    print_axis_angle("Left Hip", left_hip_axis_angle);
-    print_axis_angle("Right Hip", right_hip_axis_angle);
-    print_axis_angle("Left Knee", left_knee_axis_angle);
-    print_axis_angle("Right Knee", right_knee_axis_angle);
-
-    return 0;
-}
 
 // Function to read the PLY file and populate joint_coords
 bool read_ply_file(const string& filename, map<string, Vector3d>& joint_coords) {
@@ -148,26 +84,60 @@ bool read_ply_file(const string& filename, map<string, Vector3d>& joint_coords) 
     return true;
 }
 
-// Function definitions
+int get_theta_from_skeleton(string path, std::vector<Vector3d>& thetas) {
+    string filename = path + "/skeleton.ply";  // Replace with your actual filename
+
+    // Read the skeleton data from the PLY file
+    if (!read_ply_file(filename, current_joint_coords)) {
+        cerr << "Failed to read skeleton data from " << filename << endl;
+        return 1;
+    }
+
+    // Compute axis-angle parameters for shoulders and elbows
+    auto [left_shoulder_axis_angle, left_R_shoulder] = compute_shoulder_axis_angle("left", current_joint_coords);
+    auto [right_shoulder_axis_angle, right_R_shoulder] = compute_shoulder_axis_angle("right", current_joint_coords);
+    thetas.push_back(left_shoulder_axis_angle);
+    thetas.push_back(right_shoulder_axis_angle);
+    
+    Vector3d left_elbow_axis_angle = compute_elbow_axis_angle("left", current_joint_coords, left_R_shoulder);
+    Vector3d right_elbow_axis_angle = compute_elbow_axis_angle("right", current_joint_coords, right_R_shoulder);
+    thetas.push_back(left_elbow_axis_angle);
+    thetas.push_back(right_elbow_axis_angle);
+    // Compute axis-angle parameters for hips and knees
+    auto [left_hip_axis_angle, left_R_hip] = compute_hip_axis_angle("left", current_joint_coords);
+    auto [right_hip_axis_angle, right_R_hip] = compute_hip_axis_angle("right", current_joint_coords);
+    thetas.push_back(left_hip_axis_angle);
+    thetas.push_back(right_hip_axis_angle);
+    
+    Vector3d left_knee_axis_angle = compute_knee_axis_angle("left", current_joint_coords, left_R_hip);
+    Vector3d right_knee_axis_angle = compute_knee_axis_angle("right", current_joint_coords, right_R_hip);
+    thetas.push_back(left_knee_axis_angle);
+    thetas.push_back(right_knee_axis_angle);
+
+    return 0;
+}
+#endif
+
 
 Matrix3d get_joint_local_coordinate_system(const map<string, Vector3d>& joint_coords) {
     /*
     Determines the local coordinate system at the shoulders or hips.
     Returns a rotation matrix whose columns are the local x, y, z axes.
     */
+    Vector3d left_ear = joint_coords.at("left_ear");
+    Vector3d right_ear = joint_coords.at("right_ear");
     Vector3d left_joint = joint_coords.at("left_shoulder");
     Vector3d right_joint = joint_coords.at("right_shoulder");
-    Vector3d left_hip = joint_coords.at("left_hip");
-    Vector3d right_hip = joint_coords.at("right_hip");
+
 
     // x-axis from right_joint to left_joint (consistent for both sides)
     Vector3d x_axis = left_joint - right_joint;
     x_axis.normalize();
 
     // y-axis is the average direction from hips to joints
-    Vector3d v1 = left_joint - left_hip;
+    Vector3d v1 = left_ear - left_joint;
     v1.normalize();
-    Vector3d v2 = right_joint - right_hip;
+    Vector3d v2 = right_ear - right_joint;
     v2.normalize();
     Vector3d y_axis = (v1 + v2) / 2.0;
     y_axis.normalize();

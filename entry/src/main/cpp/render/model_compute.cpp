@@ -29,8 +29,8 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
     }
     else {
         bool resumed = false;
-//         DataLoader::loadInputLegoInitDatav2(dataFolder, inputGaussian, resumed);
-        inputGaussian = DataLoader::loadInputInitDataPM();
+        DataLoader::loadInputLegoInitDatav2(dataFolder, inputGaussian, resumed);
+//         inputGaussian = DataLoader::loadInputInitDataPM();
         if(resumed) hasKNN = true;
 //         inputGaussian.computeNormalization();
 //         inputGaussian.computePositionStats();

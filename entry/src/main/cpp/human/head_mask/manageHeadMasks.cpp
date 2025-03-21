@@ -108,9 +108,10 @@ cv::Size processImages(
     const std::string& mask_folder, 
     const std::string& highres_folder,
     const std::string& images_folder,
-    const std::string& slam_folder) {
+    const std::string& slam_folder,
+    std::vector<float>& intr) {
     
-    std::string intrinsics_output_file = slam_folder + "/cameras2.txt";
+    std::string intrinsics_output_file = slam_folder + "/cameras.txt";
     
     // Get all mask files
     std::vector<fs::path> mask_files;
@@ -124,14 +125,14 @@ cv::Size processImages(
     std::sort(mask_files.begin(), mask_files.end());
     
     // Calculate the scale factor between high-res and mask images
-    const double scale_factor = 3.0; // 1440/480 = 1920/640 = 3
+    const double scale_factor = 2.25; // 1440/480 = 1920/640 = 3
     
     // Original camera intrinsics
-    double fx = 508.67;
-    double fy = 509.195;
-    double cx = 242.395;
-    double cy = 320.688;
-    
+    double fx = intr[0];
+    double fy = intr[1];
+    double cx = intr[2];
+    double cy = intr[3];
+
     // Gather all bounding boxes first to determine final size
     std::vector<BoundingBox> all_bboxes;
     
@@ -244,7 +245,7 @@ cv::Size processImages(
     return highres_bbox_size;
 }
 
-void manageHeadMasks(std::string dataPath, int& width, int& height) {
+void manageHeadMasks(std::string dataPath, int& width, int& height, std::vector<float>& intr) {
     // Default paths
     std::string mask_folder = dataPath + "/head/head_masks";
     std::string highres_folder = dataPath + "/images_orig";
@@ -263,7 +264,8 @@ void manageHeadMasks(std::string dataPath, int& width, int& height) {
     std::filesystem::copy_file(dataPath + "/slam/images.txt", output_slam_folder + "/images.txt", std::filesystem::copy_options::overwrite_existing);
 //     std::filesystem::copy_file(slam_folder + "/points3D.txt", output_slam_folder + "/points3D.txt", std::filesystem::copy_options::overwrite_existing);
 
-    cv::Size head_size = processImages(mask_folder, highres_folder, output_img_folder, output_slam_folder);
+    cv::Size head_size = processImages(mask_folder, highres_folder, 
+    output_img_folder, output_slam_folder, intr);
     width = head_size.width;
     height = head_size.height;
 }

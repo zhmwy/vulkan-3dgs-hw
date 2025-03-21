@@ -16,6 +16,10 @@
 #include "render/vulkanRender.h"
 #include "queue"
 #include "human/head_mask/manageHeadMasks.h"
+#include <sys/time.h>
+
+using ms = std::chrono::milliseconds;
+using clk = std::chrono::system_clock;
 
 napi_value Train3DGS(napi_env env, napi_callback_info info);
 

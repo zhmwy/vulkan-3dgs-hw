@@ -108,12 +108,14 @@ void multiViewTriangulation(
         for (const auto& frame_pair : frames) {
             const FrameData& frame = frame_pair.second;
             if (frame.keypoints.size() > k) {
-                all_confidences.push_back(frame.keypoints[k].confidence);
+                if(frame.keypoints[k].confidence > 0.7){
+                    all_confidences.push_back(frame.keypoints[k].confidence);
+                }
             }
         }
 
         double confidence_threshold = 0.8;  // default fallback
-        if (!all_confidences.empty()) {
+        if (all_confidences.size() >= 2) {
             // Sort confidences in descending order.
             std::sort(all_confidences.begin(), all_confidences.end(), std::greater<double>());
             // For example, choose the value at the 25th percentile index.
@@ -121,7 +123,13 @@ void multiViewTriangulation(
             if (idx >= all_confidences.size()) idx = all_confidences.size() - 1;
             confidence_threshold = all_confidences[idx];
         }
-
+        else {
+            OH_LOG_WARN(LOG_APP, "Not enough observations for keypoint %{public}d", k);
+            keypoints3d[k] = cv::Point3d(0, 0, 0); // Default value
+            continue;
+        }
+            
+        LOGI("Conf thresh for kpt %{public}d is %{public}f", k, confidence_threshold);
         std::vector<cv::Mat> As;
         std::vector<double> confidences;
 
@@ -178,7 +186,7 @@ void multiViewTriangulation(
             keypoints3d[k] = point3d;
         }
         else {
-            OH_LOG_ERROR(LOG_APP, "Not enough observations for keypoint %{public}d", k);
+            OH_LOG_WARN(LOG_APP, "Not enough observations for keypoint %{public}d", k);
             keypoints3d[k] = cv::Point3d(0, 0, 0); // Default value
         }
     }
@@ -293,14 +301,6 @@ void savePointsAndLinesToPLY(const std::vector<cv::Point3d>& points,
     ofs << "property uchar green\n";
     ofs << "property uchar blue\n";
 
-    // Number of edges (lines)
-    ofs << "element edge " << edges.size() << "\n";
-    ofs << "property int vertex1\n";
-    ofs << "property int vertex2\n";
-    ofs << "property uchar red\n";
-    ofs << "property uchar green\n";
-    ofs << "property uchar blue\n";
-
     ofs << "end_header\n";
 
     // Write vertex data with colors
@@ -311,21 +311,6 @@ void savePointsAndLinesToPLY(const std::vector<cv::Point3d>& points,
             << static_cast<int>(point_red) << " "
             << static_cast<int>(point_green) << " "
             << static_cast<int>(point_blue) << "\n";
-    }
-
-    // Write edge data with colors
-    for (const auto& edge : edges) {
-        // Ensure indices are valid
-        if (edge.first >= 0 && edge.first < points.size() &&
-            edge.second >= 0 && edge.second < points.size()) {
-
-            ofs << edge.first << " " << edge.second << " "
-                << static_cast<int>(line_red) << " "
-                << static_cast<int>(line_green) << " "
-                << static_cast<int>(line_blue) << "\n";
-        } else {
-            std::cerr << "Edge index out of bounds: " << edge.first << ", " << edge.second << std::endl;
-        }
     }
 
     ofs.close();

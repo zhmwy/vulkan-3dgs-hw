@@ -27,6 +27,7 @@
 #include "opencv2/opencv.hpp"
 #include <chrono>
 #include <sys/time.h>
+#include "common/common.h"
 
 // napi_value ProcessTriangulation(napi_env env, napi_callback_info info);
 double ProcessTriangulation(std::string inputPath);

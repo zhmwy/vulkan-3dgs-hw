@@ -523,7 +523,7 @@ public:
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
     
-    void renderRGB2Cpu(int i, int width=480, int height=640)
+    void renderRGB2Cpu(int i, std::string& dataFolder, int width=480, int height=640)
     {
         if (!prepared) {
             return;
@@ -564,7 +564,7 @@ public:
         }
         
         // Create the directory if it doesn't exist
-        std::string save_dir = inputGaussian.basepath + "/assets/case1/head/head_masks";
+        std::string save_dir = inputGaussian.basepath + dataFolder + "/head/head_masks";
         std::filesystem::create_directories(save_dir);
         
         // Save the image

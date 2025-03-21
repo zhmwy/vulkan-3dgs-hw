@@ -17,5 +17,6 @@
 #include <fstream>
 #include <algorithm>
 #include "common/common.h"
-void manageHeadMasks(std::string dataPath, int& width, int& height);
+
+void manageHeadMasks(std::string dataPath, int& width, int& height, std::vector<float>& intr);
 #endif //VULKAN_3DGS_HW_MANAGEHEADMASKS_H

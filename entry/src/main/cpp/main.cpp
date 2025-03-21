@@ -37,9 +37,9 @@ struct TrainingConfig {
     napi_deferred deferred;
     NativeResourceManager* resourceMgr;
     std::string dataFolder;
-    std::vector<int> max_steps={2000, 2000, 1000};
+    std::vector<int> max_steps={200, 500, 500};
     int result=0;
-    bool focus_on_face = false;
+    bool focus_on_face = true;
 };
 
 
@@ -57,7 +57,7 @@ void Render(napi_env env, void* cfg){
     
     for (int i = 0; i < 100; i++){
         vulkanExample->renderImage(i);
-        vulkanExample->renderRGB2Cpu(i);
+        vulkanExample->renderRGB2Cpu(i, config->dataFolder);
     }
 }
 
@@ -71,17 +71,21 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
     InitlTrainer->prepare();
     InitlTrainer->initBuffersValues();
 //     InitlTrainer->current_scale = 0.25;
+    auto begin = clk::now();
     
     for (int step = 0; step < config->max_steps[0]; ++step) {
         InitlTrainer->render();
+
         int progress = (step * 100) / config->max_steps[0];
         ReportProgressTrain(progress);
     }
-    for (int i = 0; i < 129; i++){
+    LOGW("Step 1 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+    for (int i = 0; i < 114; i++){
         InitlTrainer->renderImage(i);
-        InitlTrainer->renderRGB2Cpu(i);
+        InitlTrainer->renderRGB2Cpu(i, config->dataFolder);
     }
     if(config->focus_on_face){
+        begin = clk::now();
         InitlTrainer->saveGaussians(config->dataFolder, true);
         InitlTrainer->training_step = 0;
     
@@ -89,14 +93,20 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         InitlTrainer->encodeCpu2Gpu(true);
         InitlTrainer->ComputeMemoryBarrierBlock();
         InitlTrainer->executeComputeCommand();
-    
-        for (int i = 0; i < 129; i++){
+        LOGW("Saving and loading takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+        
+        begin = clk::now();
+        for (int i = 0; i < 114; i++){
             InitlTrainer->renderImage(i);
-            InitlTrainer->renderRGB2Cpu(i);
+            InitlTrainer->renderRGB2Cpu(i, config->dataFolder);
         }
-    
+        LOGW("Rendering takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+        
+        begin = clk::now();
         int width, height;
-        manageHeadMasks(sandbox_basepath + config->dataFolder, width, height);
+        manageHeadMasks(sandbox_basepath + config->dataFolder, width, height, InitlTrainer->inputGaussian.intr_tmp[0]);
+        LOGW("Processing head masks takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+        
         std::string head_folder = config->dataFolder + "/head";
         LOGI("Loading new intrinsics from head folder: %{public}s", head_folder.c_str());
 //         delete vulkanExample;
@@ -108,30 +118,21 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         HeadTrainer->initVulkan();
         HeadTrainer->prepare();
         HeadTrainer->initBuffersValues();
-#if 0
-        vulkanExample->encodeCpu2Gpu(true);
-        vulkanExample->ComputeMemoryBarrierBlock();
-        vulkanExample->executeComputeCommand();
-        std::string old_sub_str = "images";
-        for (int i=0; i < vulkanExample->inputGaussian.img_list.size(); ++i) {
-            std::string img_path = vulkanExample->inputGaussian.img_list[i];
-            size_t pos = img_path.find(old_sub_str); // Find the position of the old substring
-            if (pos != std::string::npos) {    // If the substring is found
-                img_path.replace(pos, old_sub_str.length(), "head/images"); // Replace it
-            }
-            vulkanExample->inputGaussian.img_list[i] = img_path;
-        }
-        vulkanExample->loadAssets(0.25);
-#endif 
+
+        begin = clk::now();
         
         for (int step = 0; step < config->max_steps[1]; ++step) {
             HeadTrainer->render();
+//             HeadTrainer->renderImage(step);
+//             HeadTrainer->renderRGB2Cpu(step, config->dataFolder, width, height);
             int progress = (step * 100) / config->max_steps[1];
             ReportProgressTrain(progress);
         }
-        for (int i = 0; i < 129; i++){
+        LOGW("Step 2 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+        
+        for (int i = 0; i < 114; i++){
             HeadTrainer->renderImage(i);
-            HeadTrainer->renderRGB2Cpu(i, width, height);
+            HeadTrainer->renderRGB2Cpu(i, config->dataFolder,width, height);
         }
         HeadTrainer->saveGaussians(config->dataFolder, false);
         
@@ -142,6 +143,9 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         FullTrainer->initVulkan();
         FullTrainer->prepare();
         FullTrainer->initBuffersValues();
+        
+        begin = clk::now();
+        
         for (int step = 0; step < config->max_steps[2]; ++step) {
             FullTrainer->render();
 //             FullTrainer->renderImage(step);
@@ -149,9 +153,11 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
             int progress = (step * 100) / config->max_steps[2];
             ReportProgressTrain(progress);
         }
-        for (int i = 0; i < 129; i++){
+        LOGW("Step 3 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+        
+        for (int i = 0; i < 100; i++){
             FullTrainer->renderImage(i);
-            FullTrainer->renderRGB2Cpu(i);
+            FullTrainer->renderRGB2Cpu(i, config->dataFolder);
         }
     }
 

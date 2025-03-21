@@ -20,8 +20,9 @@ struct Index {
 
   aboutToAppear() {
     // 调用自定义的getSyncPixelMap接口，获取pixelMap
-    // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/case1/test/0.jpg")
-    this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/AREngine/2024_09_27_11_20_29/images/1711495263510260.jpg")
+    this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/half-body/images/frame_0000.jpg")
+    // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/case1/images/15506175713000.jpg")
+    // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/AREngine/2024_09_27_11_20_29/images/1711495263510260.jpg")
   }
 
   async train3DGS(inputPath: string) {
@@ -54,7 +55,7 @@ struct Index {
         Button(this.isTraining ? 'Training...' : 'Start Training')
           .onClick(() => {
             if (!this.isTraining) {
-              this.train3DGS("/assets/case1");
+              this.train3DGS("/assets/half-body");
             }
           })
           .margin(10)
