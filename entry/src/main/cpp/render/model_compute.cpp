@@ -195,7 +195,7 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.camera_extrs);
     
     createGpu2CpuCopy(splat_buffers.dL_dextr_params);
-
+    
     
 }
 
@@ -226,9 +226,9 @@ void VulkanComputeExample::printGpuBuffers()
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
 {
     uint32_t launch_size = splat_count * SORT_SIZE;
-    uint32_t numRadixSortBlocksPerWorkgroup = 256;
+    uint32_t numRadixSortBlocksPerWorkgroup = 512;
     uint32_t invocationSize = (launch_size + numRadixSortBlocksPerWorkgroup - 1) / numRadixSortBlocksPerWorkgroup;
-    invocationSize = (invocationSize + 255) / 256;
+    invocationSize = (invocationSize + 511) / 512;
 
     for (uint32_t i = 0; i < 4; i++) {
 
@@ -239,6 +239,12 @@ void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
         pushConstants.push_back(numRadixSortBlocksPerWorkgroup);
         bindPipeline2CommandBufferPushConstants(
             i % 2 == 0 ? pipe_hist_even : pipe_hist_odd, 0, 
+            invocationSize, 1, 1, 
+            pushConstants
+        );
+        
+        bindPipeline2CommandBufferPushConstants(
+            pipe_hist_offset, 0,
             invocationSize, 1, 1, 
             pushConstants
         );
@@ -281,7 +287,7 @@ void VulkanComputeExample::imageToBufferCmd()
     
     current_img_idx = random_generator.generate();
 
-    current_img_idx = 323;
+//     current_img_idx = 0;
     
     if (training_step >= low_resolution_steps)
     {
@@ -819,7 +825,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 //     ComputeTransBarrierBlock();
 //     bufferToImageCmd();
     
-    createGpu2CpuCopys();
+//     createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
@@ -2522,7 +2528,7 @@ void VulkanComputeExample::setSortPipeline()
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
     );
     
-    uint32_t numWorkgroups = (splat_count * SORT_SIZE / 256 + 256 - 1) / 256;
+    uint32_t numWorkgroups = (splat_count * SORT_SIZE / 512 + 511) / 512;
     uint32_t radixBin = 256; //2^8
     sort_buffers.sortHistBuffer = vkgs::Buffer(
         allocator, 
@@ -2532,6 +2538,14 @@ void VulkanComputeExample::setSortPipeline()
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
     );
 
+    sort_buffers.sortHistOffsets = vkgs::Buffer(
+        allocator, 
+        numWorkgroups * radixBin * sizeof(uint32_t),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+    );
+    
     sort_buffers.sortKBufferEven = vkgs::Buffer(
         allocator, 
         MAX_SPLAT_COUNT * SORT_SIZE * sizeof(uint32_t),
@@ -2568,7 +2582,49 @@ void VulkanComputeExample::setSortPipeline()
     setHistOddPipeline();
     setSortEvenPipeline();
     setSortOddPipeline();
+    
+    setHist2Pipeline();
 }
+
+void VulkanComputeExample::setHist2Pipeline()
+{
+    uint32_t bindingCount = 2;
+    createPipelineLayout(
+        pipe_hist_offset,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &sort_buffers.sortHistBuffer,
+        &sort_buffers.sortHistOffsets
+    };
+    
+
+    updateDescriptorSet(pipe_hist_offset.descriptorSet, splatBuffers);
+
+    pipe_hist_offset.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/sort/hist2.spv");
+#ifdef VULKAN_PC
+    shaderCode = "../../shaders/glsl/sort/hist2.spv";
+    std::cout << "[setInverseIndexPipeline] shaderCode: " << shaderCode << std::endl;
+#endif
+    
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_hist_offset.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelines(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_hist_offset.pipelines[0]
+        )
+    ); 
+}
+
 
 void VulkanComputeExample::setHistEvenPipeline()
 {
@@ -2663,7 +2719,7 @@ void VulkanComputeExample::setSortEvenPipeline()
         &sort_buffers.sortKBufferOdd,
         &sort_buffers.sortVBufferEven,
         &sort_buffers.sortVBufferOdd,
-        &sort_buffers.sortHistBuffer,
+        &sort_buffers.sortHistOffsets,
         &sort_buffers.splat_visible_point_count
     };
 
@@ -2705,7 +2761,7 @@ void VulkanComputeExample::setSortOddPipeline()
         &sort_buffers.sortKBufferEven,
         &sort_buffers.sortVBufferOdd,
         &sort_buffers.sortVBufferEven,
-        &sort_buffers.sortHistBuffer,
+        &sort_buffers.sortHistOffsets,
         &sort_buffers.splat_visible_point_count
     };
 
@@ -3839,7 +3895,7 @@ void VulkanComputeExample::printLog()
     }
     queryEventTime();
     if (training_step >= 0){
-        printGpuBuffers();
+//         printGpuBuffers();
     }
 }
 

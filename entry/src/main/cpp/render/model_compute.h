@@ -134,6 +134,7 @@ public:
         vkgs::Buffer sortVBufferEven;
         vkgs::Buffer sortVBufferOdd;
         vkgs::Buffer sortHistBuffer;
+        vkgs::Buffer sortHistOffsets;
         
         VkQueryPool queryPool = VK_NULL_HANDLE;
         VrdxSorter sorter = VK_NULL_HANDLE;
@@ -324,6 +325,7 @@ public:
     Compute3DGS pipe_sort_odd;
     Compute3DGS pipe_hist_even;
     Compute3DGS pipe_hist_odd;
+    Compute3DGS pipe_hist_offset;
     
     vks::Buffer vertexBuffer;
     vks::Buffer indexBuffer;
@@ -424,6 +426,8 @@ public:
     void setLossPipeline();
     void setComputeSHPipeline();
     void setComputeSHRenderPipeline();
+    
+    void setHist2Pipeline();
     void setHistEvenPipeline();
     void setHistOddPipeline();
     void setSortEvenPipeline();
