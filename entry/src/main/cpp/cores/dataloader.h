@@ -6,6 +6,8 @@
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES  // 确保默认对齐方式
 #include <glm/glm.hpp>
 #include "vulkanexamplebase.h"
+#include <opencv2/opencv.hpp>
+
 #include "file/file_operator.h"
 
 
@@ -268,6 +270,7 @@ public:
     static void loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
     
     static InputInitStruct loadInputTo(const std::string _scenepath);
+    static InputInitStruct loadInput12(const std::string _scenepath);
     
     static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head);
     static void printPlyHeader(const std::string& filepath);

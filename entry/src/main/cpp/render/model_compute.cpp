@@ -28,7 +28,8 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
     }
     else {
 //         DataLoader::loadInputLegoInitDatav2(dataFolder, inputGaussian, resumed);
-        inputGaussian = DataLoader::loadInputTo(dataFolder);
+//         inputGaussian = DataLoader::loadInputTo(dataFolder);
+        inputGaussian = DataLoader::loadInput12(dataFolder);
         
         inputGaussian.computePositionStats();
         inputGaussian.normalizeData();

@@ -54,7 +54,8 @@ struct Index {
         Button(this.isTraining ? 'Training...' : 'Start Training')
           .onClick(() => {
             if (!this.isTraining) {
-              this.train3DGS("/assets/AREngine/2024_09_27_11_20_29");
+              // this.train3DGS("/assets/AREngine/2024_09_27_11_20_29");
+              this.train3DGS("/assets/12_data/AVATAR");
             }
           })
           .margin(10)
