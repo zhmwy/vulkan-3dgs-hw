@@ -76,6 +76,10 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         InitlTrainer->render();
         int progress = (step * 100) / config->max_steps[0];
         ReportProgressTrain(progress);
+        
+//         InitlTrainer->renderImage(step % InitlTrainer->inputGaussian.img_list.size());
+//         InitlTrainer->renderRGB2Cpu(step % InitlTrainer->inputGaussian.img_list.size());
+        
     }
     
     for (int i = 0; i < InitlTrainer->inputGaussian.img_list.size(); i++){

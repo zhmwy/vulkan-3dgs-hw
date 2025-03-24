@@ -177,6 +177,11 @@ void VulkanComputeExample::createGpu2CpuCopys()
     
     createGpu2CpuCopy(splat_buffers.dL_duvd);             // Copy dL_duvd
     createGpu2CpuCopy(splat_buffers.dL_dxyz);
+    createGpu2CpuCopy(splat_buffers.dL_dopacity);
+    createGpu2CpuCopy(splat_buffers.dL_dscale);
+    createGpu2CpuCopy(splat_buffers.dL_dshs_array);
+    createGpu2CpuCopy(splat_buffers.dL_drotate);
+    
 
     createGpu2CpuCopy(splat_buffers.dL_duvd_int);
     createGpu2CpuCopy(splat_buffers.dL_dconic_int);
@@ -190,11 +195,12 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.camera_extrs);
     
     createGpu2CpuCopy(splat_buffers.dL_dextr_params);
-    createGpu2CpuCopy(splat_buffers.dL_dshs_array);
+
     
 }
 
-int cumsum_cpu(const vkgs::Buffer& buffer){
+int cumsum_cpu(const vkgs::Buffer& buffer)
+{
     const vkgs::CpuBuffer &cpu_buffer = buffer.cpu_buffer;
     if (cpu_buffer.isInit == false) return -1;
     int size = cpu_buffer.size() / sizeof(int32_t);  // 根据元素大小计算数量
@@ -212,7 +218,9 @@ void VulkanComputeExample::printGpuBuffers()
     
     printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
     printGpuBuffer<float>("dL_dextr_params", splat_buffers.dL_dextr_params, 1, 7);
-
+    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
+    printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 4, 3);
+    printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 4, 1);
 }
 
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
@@ -273,7 +281,7 @@ void VulkanComputeExample::imageToBufferCmd()
     
     current_img_idx = random_generator.generate();
 
-//     current_img_idx = 0;
+    current_img_idx = 323;
     
     if (training_step >= low_resolution_steps)
     {
@@ -436,7 +444,7 @@ void VulkanComputeExample::forwardCmdTime()
     );
     TransComputeBarrierBlock();
     queryCmdTimeEnd("08. forward fill tile_range");
-        
+    
     queryCmdTimeStart("09. forward compute key");
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_compute_key, FORWARD_PIPE, X, 1, 1);
@@ -444,31 +452,19 @@ void VulkanComputeExample::forwardCmdTime()
     queryCmdTimeEnd("09. forward compute key");
     
     queryCmdTimeStart("10. forward copy index");
-    VkBufferCopy copyRegionBB = {};
-    copyRegionBB.srcOffset = 0; // Start at the beginning of the source buffer
-    copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
-    copyRegionBB.size = splat_count * sizeof(uint32_t) * SORT_SIZE; // Size of data to copy
-    vkCmdCopyBuffer(
-        compute.commandBuffer,
-        sort_buffers.unsort_index,
-        sort_buffers.sortVBufferEven,
-        1,            // Number of regions to copy
-        &copyRegionBB   // Pointer to the copy region
-    );
-    TransComputeBarrierBlock();
-    queryCmdTimeEnd("10. forward copy index");
-    
-//     vrdxCmdSortKeyValueIndirect(
-//         compute.commandBuffer, 
-//         sort_buffers.sorter, 
-//         splat_count * SORT_SIZE, 
-//         // required buffers
-//         sort_buffers.splat_visible_point_count, 0,
-//         sort_buffers.key, 0, 
-//         sort_buffers.index, 0, 
-//         sort_buffers.sort_storage, 0,
-//         NULL, 0
+//     VkBufferCopy copyRegionBB = {};
+//     copyRegionBB.srcOffset = 0; // Start at the beginning of the source buffer
+//     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
+//     copyRegionBB.size = splat_count * sizeof(uint32_t) * SORT_SIZE; // Size of data to copy
+//     vkCmdCopyBuffer(
+//         compute.commandBuffer,
+//         sort_buffers.unsort_index,
+//         sort_buffers.sortVBufferEven,
+//         1,            // Number of regions to copy
+//         &copyRegionBB   // Pointer to the copy region
 //     );
+//     TransComputeBarrierBlock();
+    queryCmdTimeEnd("10. forward copy index");
     
     queryCmdTimeStart("11. forward sort");
     radixSortCmd(0);
@@ -494,7 +490,6 @@ void VulkanComputeExample::forwardCmdTime()
     bindPipeline2CommandBuffer(pipe_copy_buffer2img, 0, X, Y, 1);
     queryCmdTimeEnd("14. forward copy buffer2img");
 }
-
 
 void VulkanComputeExample::bufferToImageCmd()
 {
@@ -824,7 +819,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 //     ComputeTransBarrierBlock();
 //     bufferToImageCmd();
     
-//     createGpu2CpuCopys();
+    createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
@@ -1991,7 +1986,7 @@ void VulkanComputeExample::setOptimizationPipeline()
     std::string shaderCode = getPath("shader/computeshader/adam.comp.spv");
 #ifdef VULKAN_PC
     shaderCode = "../../shaders/glsl/computeshader/adam.comp.spv";
-    std::cout << "[setComputeKeyPipeline] shaderCode: " << shaderCode << std::endl;
+    std::cout << "[setOptimizationPipeline] shaderCode: " << shaderCode << std::endl;
 #endif
 
     VkComputePipelineCreateInfo pipelineInfo = {};
@@ -2034,7 +2029,7 @@ void VulkanComputeExample::setExtrOptimizationPipeline()
     std::string shaderCode = getPath("shader/computeshader/adam_extr.comp.spv");
 #ifdef VULKAN_PC
     shaderCode = "../../shaders/glsl/computeshader/adam_extr.comp.spv";
-    std::cout << "[setComputeKeyPipeline] shaderCode: " << shaderCode << std::endl;
+    std::cout << "[setExtrOptimizationPipeline] shaderCode: " << shaderCode << std::endl;
 #endif
 
     VkComputePipelineCreateInfo pipelineInfo = {};
@@ -2077,7 +2072,7 @@ void VulkanComputeExample::setLossPipeline()
     std::string shaderCode = getPath("shader/computeshader/loss.comp.spv");
 #ifdef VULKAN_PC
     shaderCode = "../../shaders/glsl/computeshader/loss.comp.spv";
-    std::cout << "[setComputeKeyPipeline] shaderCode: " << shaderCode << std::endl;
+    std::cout << "[setLossPipeline] shaderCode: " << shaderCode << std::endl;
 #endif
 
     VkComputePipelineCreateInfo pipelineInfo = {};
@@ -2110,7 +2105,9 @@ void VulkanComputeExample::setComputeKeyPipeline()
         &splat_buffers.tiles_rect,                  //2
         &splat_buffers.visible,                //3
         &sort_buffers.sortKBufferEven,                           //4
-        &sort_buffers.unsort_index,                  //5
+//         &sort_buffers.unsort_index,                  //5
+        &sort_buffers.sortVBufferEven,                  //5
+        
         &sort_buffers.splat_visible_point_count,     //6
         &splat_buffers.curPointsNum, //7
         &splat_buffers.conic,
@@ -3842,7 +3839,7 @@ void VulkanComputeExample::printLog()
     }
     queryEventTime();
     if (training_step >= 0){
-//         printGpuBuffers();
+        printGpuBuffers();
     }
 }
 

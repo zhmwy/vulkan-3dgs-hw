@@ -1260,7 +1260,7 @@ DataLoader::InputInitStruct DataLoader::loadInputTo(const std::string _scenepath
     data.basepath = basePath;
     std::string scenepath = basePath + "/" + _scenepath;
     
-    const std::string pointsDenseFilePath = scenepath + "/downsample.ply";
+    const std::string pointsDenseFilePath = scenepath + "/downsample2.ply";
     const std::string pointsFilePath = scenepath + "/slam/points3D.txt";
     const std::string imagesFilePath = scenepath + "/slam/images.txt";
     const std::string cameraFilePath = scenepath + "/slam/cameras.txt";

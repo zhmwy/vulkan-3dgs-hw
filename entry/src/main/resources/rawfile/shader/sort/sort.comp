@@ -129,6 +129,9 @@ void main() {
     const uint flags_bit = 1U << (lID % BITS);
 
     for (uint index = 0; index < g_num_blocks_per_workgroup; index++) {
+        if (wID * g_num_blocks_per_workgroup * WORKGROUP_SIZE + index * WORKGROUP_SIZE > ture_elements_count)
+           break;
+
         uint elementId = wID * g_num_blocks_per_workgroup * WORKGROUP_SIZE + index * WORKGROUP_SIZE + lID;
 
         // initialize bin flags
