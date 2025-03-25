@@ -20,7 +20,7 @@ struct Index {
 
   aboutToAppear() {
     // 调用自定义的getSyncPixelMap接口，获取pixelMap
-    this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/human_bie/images_orig/frame_0000.jpg")
+    this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/12_data/AVATAR/images_orig/frame_0000.jpg")
     // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/case1/images/15506175713000.jpg")
     // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/AREngine/2024_09_27_11_20_29/images/1711495263510260.jpg")
   }
@@ -41,7 +41,7 @@ struct Index {
 
   async switchImage(){
     // this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/temp/" + this.currentImage.toString() + ".jpg")
-    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/assets/human_bie/images/85865365407156.jpg")
+    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/assets/12_data/AVATAR/images/160640165805156.jpg")
     this.currentImage = (this.currentImage + 1) % 1000
   }
 
@@ -56,7 +56,7 @@ struct Index {
         Button(this.isTraining ? 'Training...' : 'Start Training')
           .onClick(() => {
             if (!this.isTraining) {
-              this.train3DGS("/assets/human_bie");
+              this.train3DGS("/assets/12_data/AVATAR");
             }
           })
           .margin(10)

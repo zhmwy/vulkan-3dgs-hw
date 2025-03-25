@@ -1817,29 +1817,11 @@ bool processVideoWithFFmpeg(
         if (!frame || !rgbFrame) {
             throw std::runtime_error("Failed to allocate frames");
         }
-        
-        // Determine if we need to swap width and height for rotation
-        int outWidth = width;
-        int outHeight = height;
-        if (rotation == 90 || rotation == 270) {
-            // For 90 or 270 degree rotation, swap width and height
-            outWidth = height;
-            outHeight = width;
-        }
+
         LOGI("Original height: %{public}d, Original width %{public}d", codecContext->height, codecContext->width);
 
-        // Determine the scaling destination dimensions based on rotation
-        int swsDstWidth, swsDstHeight;
-        if (rotation == 90 || rotation == 270) {
-            swsDstWidth = codecContext->width / 3;  // Original video's height
-            swsDstHeight = codecContext->height / 3;  // Original video's width
-        } else {
-            swsDstWidth = outWidth;
-            swsDstHeight = outHeight;
-        }
-        
         // Allocate RGB frame buffer with scaling dimensions
-        int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, swsDstWidth, swsDstHeight, 1);
+        int numBytes = av_image_get_buffer_size(AV_PIX_FMT_BGR24, codecContext->width, codecContext->height, 1);
         buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
         if (!buffer) {
             throw std::runtime_error("Failed to allocate buffer");
@@ -1847,46 +1829,19 @@ bool processVideoWithFFmpeg(
         
         // Setup RGB frame with the buffer
         if (av_image_fill_arrays(rgbFrame->data, rgbFrame->linesize, buffer,
-                                AV_PIX_FMT_RGB24, swsDstWidth, swsDstHeight, 1) < 0) {
+                                AV_PIX_FMT_RGB24, codecContext->width, codecContext->height, 1) < 0) {
             throw std::runtime_error("Failed to setup RGB frame");
         }
-        
-        rgbFrame->width = swsDstWidth;
-        rgbFrame->height = swsDstHeight;
-        rgbFrame->format = AV_PIX_FMT_RGB24;
-        
+
         // Initialize scaling context with rotation handling
         int swsFlags = SWS_BILINEAR;
         swsContext = nullptr;
         
         // Apply correct rotation during scaling
-        switch (rotation) {
-            case 90:
-                swsContext = sws_getContext(
-                    codecContext->width, codecContext->height, codecContext->pix_fmt,
-                    swsDstWidth, swsDstHeight, AV_PIX_FMT_RGB24,
-                    swsFlags | SWS_FULL_CHR_H_INT, nullptr, nullptr, nullptr);
-                break;
-            case 180:
-                // Rotate 180 degrees
-                swsContext = sws_getContext(
-                    codecContext->width, codecContext->height, codecContext->pix_fmt,
-                    outWidth, outHeight, AV_PIX_FMT_RGB24,
-                    swsFlags, nullptr, nullptr, nullptr);
-                break;
-           case 270:
-                swsContext = sws_getContext(
-                    codecContext->width, codecContext->height, codecContext->pix_fmt,
-                    swsDstWidth, swsDstHeight, AV_PIX_FMT_RGB24,
-                    swsFlags | SWS_FULL_CHR_H_INT, nullptr, nullptr, nullptr);
-                break;
-            default:
-                // No rotation or unknown rotation - use standard conversion
-                swsContext = sws_getContext(
-                    codecContext->width, codecContext->height, codecContext->pix_fmt,
-                    outWidth, outHeight, AV_PIX_FMT_RGB24,
-                    swsFlags, nullptr, nullptr, nullptr);
-        }
+        swsContext = sws_getContext(
+            codecContext->width, codecContext->height, codecContext->pix_fmt,
+            codecContext->width, codecContext->height, AV_PIX_FMT_BGR24,
+            swsFlags | SWS_FULL_CHR_H_INT, nullptr, nullptr, nullptr);
         
         if (!swsContext) {
             throw std::runtime_error("Failed to initialize scaling context");
@@ -1923,107 +1878,24 @@ bool processVideoWithFFmpeg(
                     if (frameCount < timestamps.size()) {
                         std::string timestamp = timestamps[frameCount];
                         if (uniqueImages.find(timestamp + ext) != uniqueImages.end()) {
-                            // Create a temporary AVFrame for rotation if needed
-                            AVFrame* rotatedFrame = rgbFrame;
-                            AVFrame* tempFrame = nullptr;
+
+                            sws_scale(swsContext, frame->data, frame->linesize, 0, codecContext->height, rgbFrame->data, rgbFrame->linesize);
+                            cv::Mat img(codecContext->height, codecContext->width, CV_8UC3, rgbFrame->data[0]);
+                            cv::Mat rotated;
                             
-                            // For manual rotation if needed
-                            if (rotation == 90 || rotation == 270) {
-                                tempFrame = av_frame_alloc();
-                                tempFrame->width = outWidth;
-                                tempFrame->height = outHeight;
-                                tempFrame->format = AV_PIX_FMT_RGB24;
-                                if (av_frame_get_buffer(tempFrame, 0) < 0) {
-                                    throw std::runtime_error("Failed to allocate temp frame buffer");
-                                }
-                            }
-                            
-                            // Convert frame to RGB format with proper rotation
-                            if (rotation == 90) {
-                                // For 90 degrees, first scale regularly
-                                sws_scale(swsContext, frame->data, frame->linesize, 0, 
-                                        codecContext->height, rgbFrame->data, rgbFrame->linesize);
-                                
-                                // Then manually rotate the image by rearranging pixels
-                                for (int y = 0; y < outHeight; y++) {
-                                    for (int x = 0; x < outWidth; x++) {
-                                        // Get the RGB values from the source frame
-                                        uint8_t* src = rgbFrame->data[0] + (y * rgbFrame->linesize[0]) + (x * 3);
-                                        // Place them in the destination frame
-                                        uint8_t* dst = tempFrame->data[0] + 
-                                                    ((outWidth - 1 - x) * tempFrame->linesize[0]) + (y * 3);
-                                        dst[0] = src[0]; // R
-                                        dst[1] = src[1]; // G
-                                        dst[2] = src[2]; // B
-                                    }
-                                }
-                                rotatedFrame = tempFrame;
-                            } 
-                            else if (rotation == 270) {
-                                // For 270 degrees, first scale
-                                sws_scale(swsContext, frame->data, frame->linesize, 0, 
-                                        codecContext->height, rgbFrame->data, rgbFrame->linesize);
-                                
-                                // Then manually rotate
-                                for (int y = 0; y < outHeight; y++) {
-                                    for (int x = 0; x < outWidth; x++) {
-                                        uint8_t* src = rgbFrame->data[0] + (y * rgbFrame->linesize[0]) + (x * 3);
-                                        uint8_t* dst = tempFrame->data[0] + 
-                                                    (x * tempFrame->linesize[0]) + ((outHeight - 1 - y) * 3);
-                                        dst[0] = src[0];
-                                        dst[1] = src[1];
-                                        dst[2] = src[2];
-                                    }
-                                }
-                                rotatedFrame = tempFrame;
-                            }
-                            else if (rotation == 180) {
-                                // For 180 degrees, we can just manually flip after scaling
-                                sws_scale(swsContext, frame->data, frame->linesize, 0, 
-                                        codecContext->height, rgbFrame->data, rgbFrame->linesize);
-                                
-                                // Manually flip the image horizontally and vertically
-                                for (int y = 0; y < outHeight / 2; y++) {
-                                    for (int x = 0; x < outWidth; x++) {
-                                        // Swap top and bottom pixels
-                                        uint8_t* top = rgbFrame->data[0] + (y * rgbFrame->linesize[0]) + (x * 3);
-                                        uint8_t* bottom = rgbFrame->data[0] + 
-                                                      ((outHeight - 1 - y) * rgbFrame->linesize[0]) + 
-                                                      ((outWidth - 1 - x) * 3);
-                                        
-                                        // Swap RGB values
-                                        std::swap(top[0], bottom[0]);
-                                        std::swap(top[1], bottom[1]);
-                                        std::swap(top[2], bottom[2]);
-                                    }
-                                }
-                            }
-                            else {
-                                // No rotation, just scale normally
-                                sws_scale(swsContext, frame->data, frame->linesize, 0, 
-                                        codecContext->height, rgbFrame->data, rgbFrame->linesize);
-                            }
-                            
-                            // Save frame as an image
+                            if (rotation == 270) 
+                                cv::rotate(img, rotated, cv::ROTATE_90_CLOCKWISE);
+                            else if (rotation == 90) 
+                                cv::rotate(img, rotated, cv::ROTATE_90_COUNTERCLOCKWISE);
+                            else if (rotation == 180) 
+                                cv::rotate(img, rotated, cv::ROTATE_180);
+                            else
+                                rotated = img;
+
+                            cv::resize(rotated, rotated, cv::Size(width, height));
                             std::string imagePath = scenepath + "/images/" + timestamp + ext;
-                           if (rotation == 90 || rotation == 270) {
-                                if (saveFrameAsImage(rotatedFrame, imagePath, outHeight, outWidth)) {
-                                        img_list.push_back(scenepath + "/images/" + timestamp + ext);
-                                    } else {
-                                        LOGE("Failed to save image: %s", imagePath.c_str());
-                                    }
-                                } else {
-                                    if (saveFrameAsImage(rotatedFrame, imagePath, outWidth, outHeight)) {
-                                        img_list.push_back(scenepath + "/images/" + timestamp + ext);
-                                    } else {
-                                        LOGE("Failed to save image: %s", imagePath.c_str());
-                                    }
-                                }
-                            
-                            // Free temp frame if used
-                            if (tempFrame) {
-                                av_frame_free(&tempFrame);
-                            }
+                            img_list.push_back(imagePath);
+                            cv::imwrite(imagePath, rotated);
                         }
                         frameCount++;
                     }
@@ -2031,7 +1903,7 @@ bool processVideoWithFFmpeg(
             }
             av_packet_unref(packet);
         }
-        
+        std::cout << frameCount << std::endl;
     } catch (const std::exception& e) {
         LOGE("Error processing video: %s", e.what());
         
@@ -2048,6 +1920,7 @@ bool processVideoWithFFmpeg(
     }
     
     // Cleanup FFmpeg resources
+
     if (buffer) av_free(buffer);
     if (swsContext) sws_freeContext(swsContext);
     if (frame) av_frame_free(&frame);
