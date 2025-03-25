@@ -10,6 +10,7 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <numeric>
+#include "common/common.h"
 
 struct  OutputPose {
     cv::Rect_<float> box;

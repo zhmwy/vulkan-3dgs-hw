@@ -4,10 +4,15 @@
 #include <string>
 #include <regex>
 #include <dirent.h>
-
+extern "C" {
+    #include <libavcodec/avcodec.h>
+    #include <libavformat/avformat.h>
+    #include <libavutil/imgutils.h>
+    #include <libswscale/swscale.h>
+    #include <libavutil/display.h>
+}
 #include <unordered_set>
 #include "human/human.h"
-
 
 int extractNumberKtx(const std::string& str) {
     std::regex re("r_(\\d+)\\.ktx");
@@ -1253,229 +1258,827 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
 }
 
 
-DataLoader::InputInitStruct DataLoader::loadInputTo(const std::string _scenepath)
-{
-    auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
-    DataLoader::InputInitStruct data;
-    data.basepath = basePath;
-    std::string scenepath = basePath + "/" + _scenepath;
-    
-    const std::string pointsDenseFilePath = scenepath + "/downsample.ply";
-    const std::string pointsFilePath = scenepath + "/slam/points3D.txt";
-    const std::string imagesFilePath = scenepath + "/slam/images.txt";
-    const std::string cameraFilePath = scenepath + "/slam/cameras.txt";
-    
-    // 1. Load points and color data from points3D.txt
-    std::ifstream pointsFile(pointsDenseFilePath, std::ios::binary);
+void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
+    std::ifstream pointsFile(pointsFilePath);
+    if (!pointsFile.is_open()) {
+        LOGE("Failed to open %{public}s file.", pointsFilePath.c_str());
+    }
     std::string line;
     std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
-    if(!pointsFile.is_open()){
-        pointsFile.close();
-        pointsFile.open(pointsFilePath);
-        if (!pointsFile.is_open()) {
-            throw std::runtime_error("Failed to open points3D.txt file.");
-        }
-        float C0 = 0.28209479177387814;
-        while (std::getline(pointsFile, line)) {
-            if (line.empty() || line[0] == '#')
-                continue;
-            std::istringstream iss(line);
-            int pointId;
-            float x, y, z;
-            int r, g, b;
-            float alpha; // Although alpha is provided, we will not use it.
-            if (!(iss >> pointId >> x >> y >> z >> r >> g >> b >> alpha)) {
-                continue; // Skip invalid lines.
-            }
-    
-            glm::vec3 pos(x, y, z);
-            // Check for duplicate points
-            if (uniquePoints.find(pos) != uniquePoints.end()) {
-                continue;
-            }
-            uniquePoints.insert(pos);
-    
-            // Store the point position.
-            data.positions.push_back(pos);
-    
-            // Default attributes (scales, rotations, opacities) to zeros.
-            data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-            data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
-            data.opacities.push_back(-2.197224617004395);
-    
-            // Process the color data.
-            // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
-            DataLoader::InputInitStruct::Data colorData = {};
-            // Save r in index 0, g in index 16, and b in index 32.
-            colorData.values[0] = static_cast<float>((r / 255.0 - 0.5) / C0);
-            colorData.values[16] = static_cast<float>((g / 255.0 - 0.5) / C0);
-            colorData.values[32] = static_cast<float>((b / 255.0 - 0.5) / C0);
-            data.colors.push_back(colorData);
-        }
-    }
-    else {
-        PlyFile plyFile;
-        plyFile.parse_header(pointsFile);
-        std::shared_ptr<PlyData> x, y, z;
-        std::shared_ptr<PlyData> r, g, b;
-        
-        try {
-            x = plyFile.request_properties_from_element("vertex", { "x" });
-            y = plyFile.request_properties_from_element("vertex", { "y" });
-            z = plyFile.request_properties_from_element("vertex", { "z" });
-            r = plyFile.request_properties_from_element("vertex", { "red" });
-            g = plyFile.request_properties_from_element("vertex", { "green" });
-            b = plyFile.request_properties_from_element("vertex", { "blue" });
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error reading properties: " << e.what() << std::endl;
-        }
-
-        size_t numVertices = x->count;
-        plyFile.read(pointsFile);
-        
-        float C0 = 0.28209479177387814;
-        for (size_t i = 0; i < numVertices; ++i) {
-            glm::vec3 pos(
-                reinterpret_cast<float*>(x->buffer.get())[i],
-                reinterpret_cast<float*>(y->buffer.get())[i],
-                reinterpret_cast<float*>(z->buffer.get())[i]
-            );
-            
-            if (uniquePoints.find(pos) != uniquePoints.end()) {
-                continue;
-            }
-            
-            uniquePoints.insert(pos);
-            
-            data.positions.push_back(pos);
-    
-            data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-            data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
-            data.opacities.push_back(-2.197224617004395);
-            
-            DataLoader::InputInitStruct::Data colorData = {};
-    
-            float _r = (reinterpret_cast<uint8_t*>(r->buffer.get())[i] / 255.0 - 0.5) / C0;
-            float _g = (reinterpret_cast<uint8_t*>(g->buffer.get())[i] / 255.0 - 0.5) / C0;
-            float _b = (reinterpret_cast<uint8_t*>(b->buffer.get())[i] / 255.0 - 0.5) / C0;
-    
-            colorData.values[0] = _r;
-            colorData.values[16] = _g;
-            colorData.values[32] = _b;
-            data.colors.push_back(colorData);
-        }
-
-    }
-    
-    // 2. Load image file names and extrinsics from images.txt
-    std::ifstream imagesFile(imagesFilePath);
-    if (!imagesFile.is_open()) {
-        throw std::runtime_error("Failed to open images.txt file.");
-    }
-    std::unordered_set<std::string> uniqueImages;
-    while (std::getline(imagesFile, line)) {
-        if (line.empty() || line[0] == '#')
-            continue;
+    float C0 = 0.28209479177387814;
+    while (std::getline(pointsFile, line)) {
+        if (line.empty()) continue;
         std::istringstream iss(line);
-        int frameId;
-        float qw, qx, qy, qz;
-        float tx, ty, tz;
-        int camera_id;
-        std::string imageName;
-
-        // Read the first 10 tokens:
-        // frame_id, qx, qy, qz, qw, tx, ty, tz, camera_id, image_name
-        if (!(iss >> frameId >> qw >> qx >> qy >> qz >> tx >> ty >> tz >> camera_id >> imageName)) {
+        int pointId;
+        float x, y, z;
+        int r, g, b;
+        float alpha; // Although alpha is provided, we will not use it.
+        if (!(iss >> pointId >> x >> y >> z >> r >> g >> b >> alpha)) {
             continue; // Skip invalid lines.
         }
 
-        //if (frameId % 3 != 0) continue;
-
-        if (uniqueImages.find(imageName) != uniqueImages.end()) {
+        glm::vec3 pos(x, y, z);
+        // Check for duplicate points
+        if (uniquePoints.find(pos) != uniquePoints.end()) {
             continue;
         }
-        uniqueImages.insert(imageName);
-
-        float norm = sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
-        DataLoader::InputInitStruct::DataExtr extr = { qw / norm,qx / norm,qy / norm,qz / norm, tx, ty, tz };
-        data.extr_tmp.push_back(extr);
+        uniquePoints.insert(pos);
         
-        // Store the image name.
-        data.img_list.push_back(scenepath + "/images/" + imageName);
+        // Store the point position.
+        data.positions.push_back(pos);
+        
+        // Default attributes (scales, rotations, opacities) to zeros.
+        data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
+        data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+
+        data.opacities.push_back(-2.197225f);
+        
+        // Process the color data.
+        // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
+        DataLoader::InputInitStruct::Data colorData = {};
+
+        // Save r in index 0, g in index 16, and b in index 32.
+        colorData.values[0]  = static_cast<float>((r/255.0-0.5)/C0);
+        colorData.values[16] = static_cast<float>((g/255.0-0.5)/C0);
+        colorData.values[32] = static_cast<float>((b/255.0-0.5)/C0);
+        data.colors.push_back(colorData);
     }
-    data.extr_tmp_test = data.extr_tmp;
-
-    // 3. Load intrinsics from cameras.txt
-    std::ifstream camerasFile(cameraFilePath);
-    if (!camerasFile.is_open()) {
-        throw std::runtime_error("Failed to open cameras.txt file.");
-    }
-    while (std::getline(camerasFile, line)) {
-        if (line.empty() || line[0] == '#')
-            continue;
-        std::istringstream iss(line);
-        int cameraId;
-        std::string camera_type;
-        float fx, fy, cx, cy;
-        int height, width;
-        int camera_id;
-        std::string imageName;
-
-        // Read the first 6 tokens:
-        if (!(iss >> cameraId >> camera_type >> width >> height >> fx >> fy >> cx >> cy)) {
-            continue; // Skip invalid lines.
-        }
-
-        assert(camera_type == "PINHOLE" || camera_type == "pinhole");
-
-        std::vector<float> intr = { fx,fy,cx,cy };
-        data.intr_tmp.push_back(intr);
-    }
-
-    assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
-    
+    LOGI("Unique points loaded: %{public}zu", data.positions.size());
     pointsFile.close();
-    imagesFile.close();
-    camerasFile.close();
-    
-    return data;
 }
 
+#if 0
+// Function to save a frame as an image
+bool saveFrameAsImage(AVFrame* frame, const std::string& filename, int width, int height) {
+    // Check file extension
+    std::string ext = filename.substr(filename.find_last_of("."));
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+    
+    // Use MJPEG encoding for image output
+    const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
+    if (!codec) {
+        LOGE("MJPEG codec not found");
+        return false;
+    }
+    
+    AVCodecContext* codecContext = avcodec_alloc_context3(codec);
+    if (!codecContext) {
+        LOGE("Could not allocate codec context");
+        return false;
+    }
+    
+    codecContext->width = width;
+    codecContext->height = height;
+    codecContext->time_base = {1, 25};
+    codecContext->pix_fmt = AV_PIX_FMT_YUVJ420P;  // JPEG format
+    codecContext->qmin = 1;  // High quality
+    codecContext->qmax = 1;
+    
+    if (avcodec_open2(codecContext, codec, nullptr) < 0) {
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    // Convert RGB to YUV for JPEG
+    AVFrame* yuvFrame = av_frame_alloc();
+    if (!yuvFrame) {
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    yuvFrame->width = width;
+    yuvFrame->height = height;
+    yuvFrame->format = AV_PIX_FMT_YUVJ420P;
+    
+    if (av_frame_get_buffer(yuvFrame, 0) < 0) {
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    SwsContext* swsContext = sws_getContext(
+        width, height, AV_PIX_FMT_RGB24,
+        width, height, AV_PIX_FMT_YUVJ420P,
+        SWS_BILINEAR, nullptr, nullptr, nullptr);
+    
+    if (!swsContext) {
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    if (sws_scale(swsContext, frame->data, frame->linesize, 0, height,
+                 yuvFrame->data, yuvFrame->linesize) <= 0) {
+        sws_freeContext(swsContext);
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    sws_freeContext(swsContext);
+    
+    // Encode frame to JPEG
+    AVPacket* packet = av_packet_alloc();
+    if (!packet) {
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    if (avcodec_send_frame(codecContext, yuvFrame) < 0) {
+        av_packet_free(&packet);
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    int ret = avcodec_receive_packet(codecContext, packet);
+    if (ret < 0) {
+        av_packet_free(&packet);
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    // Write JPEG data to file
+    FILE* f = fopen(filename.c_str(), "wb");
+    if (!f) {
+        av_packet_free(&packet);
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    fwrite(packet->data, 1, packet->size, f);
+    fclose(f);
+    
+    // Clean up
+    av_packet_free(&packet);
+    av_frame_free(&yuvFrame);
+    avcodec_free_context(&codecContext);
+    
+    return true;
+}
 
-DataLoader::InputInitStruct DataLoader::loadInput12(const std::string _scenepath)
+// Process video with FFmpeg
+bool processVideoWithFFmpeg(
+    const std::string& videoPath, 
+    const std::vector<std::string>& timestamps,
+    const std::unordered_set<std::string>& uniqueImages,
+    const std::string& scenepath,
+    const std::string& ext,
+    int width, int height,
+    std::vector<std::string>& img_list) 
+{
+    // Initialize FFmpeg resources
+    AVFormatContext* formatContext = nullptr;
+    AVCodecContext* codecContext = nullptr;
+    const AVCodec* codec = nullptr;
+    AVFrame* frame = nullptr;
+    AVFrame* rgbFrame = nullptr;
+    AVPacket* packet = nullptr;
+    SwsContext* swsContext = nullptr;
+    uint8_t* buffer = nullptr;
+    
+    try {
+        // Open input file
+        if (avformat_open_input(&formatContext, videoPath.c_str(), nullptr, nullptr) != 0) {
+            throw std::runtime_error("Could not open video file");
+        }
+        
+        // Retrieve stream information
+        if (avformat_find_stream_info(formatContext, nullptr) < 0) {
+            throw std::runtime_error("Could not find stream information");
+        }
+        
+        // Find the video stream
+        int videoStreamIndex = -1;
+        for (unsigned int i = 0; i < formatContext->nb_streams; i++) {
+            if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+                videoStreamIndex = i;
+                break;
+            }
+        }
+        
+        if (videoStreamIndex == -1) {
+            throw std::runtime_error("Could not find video stream");
+        }
+        
+        // Get codec parameters
+        AVCodecParameters* codecParameters = formatContext->streams[videoStreamIndex]->codecpar;
+        
+        // Find decoder
+        codec = avcodec_find_decoder(codecParameters->codec_id);
+        if (!codec) {
+            throw std::runtime_error("Unsupported codec");
+        }
+        
+        // Create codec context
+        codecContext = avcodec_alloc_context3(codec);
+        if (!codecContext) {
+            throw std::runtime_error("Failed to allocate codec context");
+        }
+        
+        // Copy codec parameters to codec context
+        if (avcodec_parameters_to_context(codecContext, codecParameters) < 0) {
+            throw std::runtime_error("Failed to copy codec parameters to codec context");
+        }
+        
+        // Open codec
+        if (avcodec_open2(codecContext, codec, nullptr) < 0) {
+            throw std::runtime_error("Failed to open codec");
+        }
+
+        
+        // Allocate frames
+        frame = av_frame_alloc();
+        rgbFrame = av_frame_alloc();
+        if (!frame || !rgbFrame) {
+            throw std::runtime_error("Failed to allocate frames");
+        }
+        
+        // Allocate RGB frame buffer
+        int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, width, height, 1);
+        buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+        if (!buffer) {
+            throw std::runtime_error("Failed to allocate buffer");
+        }
+        
+        // Setup RGB frame with the buffer
+        if (av_image_fill_arrays(rgbFrame->data, rgbFrame->linesize, buffer,
+                                AV_PIX_FMT_RGB24, width, height, 1) < 0) {
+            throw std::runtime_error("Failed to setup RGB frame");
+        }
+        
+        rgbFrame->width = width;
+        rgbFrame->height = height;
+        rgbFrame->format = AV_PIX_FMT_RGB24;
+        
+        // Initialize scaling context
+        swsContext = sws_getContext(
+            codecContext->width, codecContext->height, codecContext->pix_fmt,
+            width, height, AV_PIX_FMT_RGB24,
+            SWS_BILINEAR, nullptr, nullptr, nullptr);
+        
+        if (!swsContext) {
+            throw std::runtime_error("Failed to initialize scaling context");
+        }
+        
+        // Allocate packet
+        packet = av_packet_alloc();
+        if (!packet) {
+            throw std::runtime_error("Failed to allocate packet");
+        }
+        
+        // Create output directory
+        std::filesystem::create_directories(scenepath + "/images/");
+        
+        // Read frames from the video
+        int frameCount = 0;
+        while (av_read_frame(formatContext, packet) >= 0) {
+            if (packet->stream_index == videoStreamIndex) {
+                // Send packet to decoder
+                int response = avcodec_send_packet(codecContext, packet);
+                if (response < 0) {
+                    throw std::runtime_error("Error sending packet to decoder");
+                }
+                
+                while (response >= 0) {
+                    response = avcodec_receive_frame(codecContext, frame);
+                    if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
+                        break;
+                    } else if (response < 0) {
+                        throw std::runtime_error("Error during decoding");
+                    }
+                    
+                    // If we have a valid frame and it matches our timestamps
+                    if (frameCount < timestamps.size()) {
+                        std::string timestamp = timestamps[frameCount];
+                        if (uniqueImages.find(timestamp + ext) != uniqueImages.end()) {
+                            // Convert frame to RGB format
+                            sws_scale(swsContext, frame->data, frame->linesize, 0, 
+                                    codecContext->height, rgbFrame->data, rgbFrame->linesize);
+                            
+                            // Save frame as an image
+                            std::string imagePath = scenepath + "/images/" + timestamp + ext;
+                            if (saveFrameAsImage(rgbFrame, imagePath, width, height)) {
+                                std::string savePath = scenepath + "/" + timestamp + ext;
+                                img_list.push_back(savePath);
+                                LOGI("Saving %{public}s", savePath.c_str());
+                            } else {
+                                LOGE("Failed to save image: %s", imagePath.c_str());
+                            }
+                        }
+                        frameCount++;
+                    }
+                }
+            }
+            av_packet_unref(packet);
+        }
+        
+    } catch (const std::exception& e) {
+        LOGE("Error processing video: %s", e.what());
+        
+        // Cleanup FFmpeg resources
+        if (buffer) av_free(buffer);
+        if (swsContext) sws_freeContext(swsContext);
+        if (frame) av_frame_free(&frame);
+        if (rgbFrame) av_frame_free(&rgbFrame);
+        if (packet) av_packet_free(&packet);
+        if (codecContext) avcodec_free_context(&codecContext);
+        if (formatContext) avformat_close_input(&formatContext);
+        
+        return false;
+    }
+    
+    // Cleanup FFmpeg resources
+    if (buffer) av_free(buffer);
+    if (swsContext) sws_freeContext(swsContext);
+    if (frame) av_frame_free(&frame);
+    if (rgbFrame) av_frame_free(&rgbFrame);
+    if (packet) av_packet_free(&packet);
+    if (codecContext) avcodec_free_context(&codecContext);
+    if (formatContext) avformat_close_input(&formatContext);
+    
+    return true;
+}
+#endif
+
+// Function to save a frame as an image
+bool saveFrameAsImage(AVFrame* frame, const std::string& filename, int width, int height) {
+    // Check file extension
+    std::string ext = filename.substr(filename.find_last_of("."));
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+    
+    // Use MJPEG encoding for image output
+    const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
+    if (!codec) {
+        LOGE("MJPEG codec not found");
+        return false;
+    }
+    
+    AVCodecContext* codecContext = avcodec_alloc_context3(codec);
+    if (!codecContext) {
+        LOGE("Could not allocate codec context");
+        return false;
+    }
+    
+    codecContext->width = width;
+    codecContext->height = height;
+    codecContext->time_base = {1, 25};
+    codecContext->pix_fmt = AV_PIX_FMT_YUVJ420P;  // JPEG format
+    codecContext->qmin = 1;  // High quality
+    codecContext->qmax = 1;
+    
+    if (avcodec_open2(codecContext, codec, nullptr) < 0) {
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    // Convert RGB to YUV for JPEG
+    AVFrame* yuvFrame = av_frame_alloc();
+    if (!yuvFrame) {
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    yuvFrame->width = width;
+    yuvFrame->height = height;
+    yuvFrame->format = AV_PIX_FMT_YUVJ420P;
+    
+    if (av_frame_get_buffer(yuvFrame, 0) < 0) {
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    SwsContext* swsContext = sws_getContext(
+        width, height, AV_PIX_FMT_RGB24,
+        width, height, AV_PIX_FMT_YUVJ420P,
+        SWS_BILINEAR, nullptr, nullptr, nullptr);
+    
+    if (!swsContext) {
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    if (sws_scale(swsContext, frame->data, frame->linesize, 0, height,
+                 yuvFrame->data, yuvFrame->linesize) <= 0) {
+        sws_freeContext(swsContext);
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    sws_freeContext(swsContext);
+    
+    // Encode frame to JPEG
+    AVPacket* packet = av_packet_alloc();
+    if (!packet) {
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    if (avcodec_send_frame(codecContext, yuvFrame) < 0) {
+        av_packet_free(&packet);
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    int ret = avcodec_receive_packet(codecContext, packet);
+    if (ret < 0) {
+        av_packet_free(&packet);
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    // Write JPEG data to file
+    FILE* f = fopen(filename.c_str(), "wb");
+    if (!f) {
+        av_packet_free(&packet);
+        av_frame_free(&yuvFrame);
+        avcodec_free_context(&codecContext);
+        return false;
+    }
+    
+    fwrite(packet->data, 1, packet->size, f);
+    fclose(f);
+    
+    // Clean up
+    av_packet_free(&packet);
+    av_frame_free(&yuvFrame);
+    avcodec_free_context(&codecContext);
+    
+    return true;
+}
+
+// Get the rotation angle from video metadata
+int getVideoRotation(AVStream* stream) {
+    AVDictionaryEntry* rotateTag = av_dict_get(stream->metadata, "rotate", nullptr, 0);
+    if (rotateTag) {
+        // Rotation specified in the metadata
+        int angle = std::stoi(rotateTag->value);
+        return angle;
+    }
+    
+    // Check for display matrix
+    uint8_t* displayMatrix = av_stream_get_side_data(stream, AV_PKT_DATA_DISPLAYMATRIX, nullptr);
+    if (displayMatrix) {
+        double rotation = av_display_rotation_get((int32_t*)displayMatrix);
+        if(rotation < 0){
+            return 360 + (int)rotation;
+        }
+        return (int)(rotation);
+    }
+    
+    return 0; // No rotation
+}
+
+// Process video with FFmpeg
+bool processVideoWithFFmpeg(
+    const std::string& videoPath, 
+    const std::vector<std::string>& timestamps,
+    const std::unordered_set<std::string>& uniqueImages,
+    const std::string& scenepath,
+    const std::string& ext,
+    int width, int height,
+    std::vector<std::string>& img_list) 
+{
+    // Initialize FFmpeg resources
+    AVFormatContext* formatContext = nullptr;
+    AVCodecContext* codecContext = nullptr;
+    const AVCodec* codec = nullptr;
+    AVFrame* frame = nullptr;
+    AVFrame* rgbFrame = nullptr;
+    AVPacket* packet = nullptr;
+    SwsContext* swsContext = nullptr;
+    uint8_t* buffer = nullptr;
+    
+    try {
+        // Open input file
+        if (avformat_open_input(&formatContext, videoPath.c_str(), nullptr, nullptr) != 0) {
+            throw std::runtime_error("Could not open video file");
+        }
+        
+        // Retrieve stream information
+        if (avformat_find_stream_info(formatContext, nullptr) < 0) {
+            throw std::runtime_error("Could not find stream information");
+        }
+        
+        // Find the video stream
+        int videoStreamIndex = -1;
+        for (unsigned int i = 0; i < formatContext->nb_streams; i++) {
+            if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+                videoStreamIndex = i;
+                break;
+            }
+        }
+        
+        if (videoStreamIndex == -1) {
+            throw std::runtime_error("Could not find video stream");
+        }
+        
+        // Get video rotation
+        int rotation = getVideoRotation(formatContext->streams[videoStreamIndex]);
+        LOGI("Video rotation angle: %{public}d degrees", rotation);
+        
+        // Get codec parameters
+        AVCodecParameters* codecParameters = formatContext->streams[videoStreamIndex]->codecpar;
+        
+        // Find decoder
+        codec = avcodec_find_decoder(codecParameters->codec_id);
+        if (!codec) {
+            throw std::runtime_error("Unsupported codec");
+        }
+        
+        // Create codec context
+        codecContext = avcodec_alloc_context3(codec);
+        if (!codecContext) {
+            throw std::runtime_error("Failed to allocate codec context");
+        }
+        
+        // Copy codec parameters to codec context
+        if (avcodec_parameters_to_context(codecContext, codecParameters) < 0) {
+            throw std::runtime_error("Failed to copy codec parameters to codec context");
+        }
+        
+        // Open codec
+        if (avcodec_open2(codecContext, codec, nullptr) < 0) {
+            throw std::runtime_error("Failed to open codec");
+        }
+        
+        // Allocate frames
+        frame = av_frame_alloc();
+        rgbFrame = av_frame_alloc();
+        if (!frame || !rgbFrame) {
+            throw std::runtime_error("Failed to allocate frames");
+        }
+        
+        // Determine if we need to swap width and height for rotation
+        int outWidth = width;
+        int outHeight = height;
+        if (rotation == 90 || rotation == 270) {
+            // For 90 or 270 degree rotation, swap width and height
+            outWidth = height;
+            outHeight = width;
+        }
+        LOGI("Original height: %{public}d, Original width %{public}d", codecContext->height, codecContext->width);
+
+        // Determine the scaling destination dimensions based on rotation
+        int swsDstWidth, swsDstHeight;
+        if (rotation == 90 || rotation == 270) {
+            swsDstWidth = codecContext->height;  // Original video's height
+            swsDstHeight = codecContext->width;  // Original video's width
+        } else {
+            swsDstWidth = outWidth;
+            swsDstHeight = outHeight;
+        }
+        
+        // Allocate RGB frame buffer with scaling dimensions
+        int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, swsDstWidth, swsDstHeight, 1);
+        buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+        if (!buffer) {
+            throw std::runtime_error("Failed to allocate buffer");
+        }
+        
+        // Setup RGB frame with the buffer
+        if (av_image_fill_arrays(rgbFrame->data, rgbFrame->linesize, buffer,
+                                AV_PIX_FMT_RGB24, swsDstWidth, swsDstHeight, 1) < 0) {
+            throw std::runtime_error("Failed to setup RGB frame");
+        }
+        
+        rgbFrame->width = swsDstWidth;
+        rgbFrame->height = swsDstHeight;
+        rgbFrame->format = AV_PIX_FMT_RGB24;
+        
+        // Initialize scaling context with rotation handling
+        int swsFlags = SWS_BILINEAR;
+        swsContext = nullptr;
+        
+        // Apply correct rotation during scaling
+        switch (rotation) {
+            case 90:
+                swsContext = sws_getContext(
+                    codecContext->width, codecContext->height, codecContext->pix_fmt,
+                    swsDstWidth, swsDstHeight, AV_PIX_FMT_RGB24,
+                    swsFlags | SWS_FULL_CHR_H_INT, nullptr, nullptr, nullptr);
+                break;
+            case 180:
+                // Rotate 180 degrees
+                swsContext = sws_getContext(
+                    codecContext->height, codecContext->width, codecContext->pix_fmt,
+                    outWidth, outHeight, AV_PIX_FMT_RGB24,
+                    swsFlags, nullptr, nullptr, nullptr);
+                break;
+           case 270:
+                swsContext = sws_getContext(
+                    codecContext->height, codecContext->width, codecContext->pix_fmt,
+                    swsDstWidth, swsDstHeight, AV_PIX_FMT_RGB24,
+                    swsFlags | SWS_FULL_CHR_H_INT, nullptr, nullptr, nullptr);
+                break;
+            default:
+                // No rotation or unknown rotation - use standard conversion
+                swsContext = sws_getContext(
+                    codecContext->width, codecContext->height, codecContext->pix_fmt,
+                    outWidth, outHeight, AV_PIX_FMT_RGB24,
+                    swsFlags, nullptr, nullptr, nullptr);
+        }
+        
+        if (!swsContext) {
+            throw std::runtime_error("Failed to initialize scaling context");
+        }
+        
+        // Allocate packet
+        packet = av_packet_alloc();
+        if (!packet) {
+            throw std::runtime_error("Failed to allocate packet");
+        }
+        
+        // Create output directory
+        std::filesystem::create_directories(scenepath + "/images/");
+        
+        // Read frames from the video
+        int frameCount = 0;
+        while (av_read_frame(formatContext, packet) >= 0) {
+            if (packet->stream_index == videoStreamIndex) {
+                // Send packet to decoder
+                int response = avcodec_send_packet(codecContext, packet);
+                if (response < 0) {
+                    throw std::runtime_error("Error sending packet to decoder");
+                }
+                
+                while (response >= 0) {
+                    response = avcodec_receive_frame(codecContext, frame);
+                    if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
+                        break;
+                    } else if (response < 0) {
+                        throw std::runtime_error("Error during decoding");
+                    }
+                    
+                    // If we have a valid frame and it matches our timestamps
+                    if (frameCount < timestamps.size()) {
+                        std::string timestamp = timestamps[frameCount];
+                        if (uniqueImages.find(timestamp + ext) != uniqueImages.end()) {
+                            // Create a temporary AVFrame for rotation if needed
+                            AVFrame* rotatedFrame = rgbFrame;
+                            AVFrame* tempFrame = nullptr;
+                            
+                            // For manual rotation if needed
+                            if (rotation == 90 || rotation == 270) {
+                                tempFrame = av_frame_alloc();
+                                tempFrame->width = outWidth;
+                                tempFrame->height = outHeight;
+                                tempFrame->format = AV_PIX_FMT_RGB24;
+                                if (av_frame_get_buffer(tempFrame, 0) < 0) {
+                                    throw std::runtime_error("Failed to allocate temp frame buffer");
+                                }
+                            }
+                            
+                            // Convert frame to RGB format with proper rotation
+                            if (rotation == 90) {
+                                // For 90 degrees, first scale regularly
+                                sws_scale(swsContext, frame->data, frame->linesize, 0, 
+                                        codecContext->height, rgbFrame->data, rgbFrame->linesize);
+                                
+                                // Then manually rotate the image by rearranging pixels
+                                for (int y = 0; y < outHeight; y++) {
+                                    for (int x = 0; x < outWidth; x++) {
+                                        // Get the RGB values from the source frame
+                                        uint8_t* src = rgbFrame->data[0] + (y * rgbFrame->linesize[0]) + (x * 3);
+                                        // Place them in the destination frame
+                                        uint8_t* dst = tempFrame->data[0] + 
+                                                    ((outWidth - 1 - x) * tempFrame->linesize[0]) + (y * 3);
+                                        dst[0] = src[0]; // R
+                                        dst[1] = src[1]; // G
+                                        dst[2] = src[2]; // B
+                                    }
+                                }
+                                rotatedFrame = tempFrame;
+                            } 
+                            else if (rotation == 270) {
+                                // For 270 degrees, first scale
+                                sws_scale(swsContext, frame->data, frame->linesize, 0, 
+                                        codecContext->height, rgbFrame->data, rgbFrame->linesize);
+                                
+                                // Then manually rotate
+                                for (int y = 0; y < outHeight; y++) {
+                                    for (int x = 0; x < outWidth; x++) {
+                                        uint8_t* src = rgbFrame->data[0] + (y * rgbFrame->linesize[0]) + (x * 3);
+                                        uint8_t* dst = tempFrame->data[0] + 
+                                                    (x * tempFrame->linesize[0]) + ((outHeight - 1 - y) * 3);
+                                        dst[0] = src[0];
+                                        dst[1] = src[1];
+                                        dst[2] = src[2];
+                                    }
+                                }
+                                rotatedFrame = tempFrame;
+                            }
+                            else if (rotation == 180) {
+                                // For 180 degrees, we can just manually flip after scaling
+                                sws_scale(swsContext, frame->data, frame->linesize, 0, 
+                                        codecContext->height, rgbFrame->data, rgbFrame->linesize);
+                                
+                                // Manually flip the image horizontally and vertically
+                                for (int y = 0; y < outHeight / 2; y++) {
+                                    for (int x = 0; x < outWidth; x++) {
+                                        // Swap top and bottom pixels
+                                        uint8_t* top = rgbFrame->data[0] + (y * rgbFrame->linesize[0]) + (x * 3);
+                                        uint8_t* bottom = rgbFrame->data[0] + 
+                                                      ((outHeight - 1 - y) * rgbFrame->linesize[0]) + 
+                                                      ((outWidth - 1 - x) * 3);
+                                        
+                                        // Swap RGB values
+                                        std::swap(top[0], bottom[0]);
+                                        std::swap(top[1], bottom[1]);
+                                        std::swap(top[2], bottom[2]);
+                                    }
+                                }
+                            }
+                            else {
+                                // No rotation, just scale normally
+                                sws_scale(swsContext, frame->data, frame->linesize, 0, 
+                                        codecContext->height, rgbFrame->data, rgbFrame->linesize);
+                            }
+                            
+                            // Save frame as an image
+                            std::string imagePath = scenepath + "/images/" + timestamp + ext;
+                           if (rotation == 90 || rotation == 270) {
+                                if (saveFrameAsImage(rotatedFrame, imagePath, outHeight, outWidth)) {
+                                        img_list.push_back(scenepath + "/" + timestamp + ext);
+                                    } else {
+                                        LOGE("Failed to save image: %s", imagePath.c_str());
+                                    }
+                                } else {
+                                    if (saveFrameAsImage(rotatedFrame, imagePath, outWidth, outHeight)) {
+                                        img_list.push_back(scenepath + "/" + timestamp + ext);
+                                    } else {
+                                        LOGE("Failed to save image: %s", imagePath.c_str());
+                                    }
+                                }
+                            
+                            // Free temp frame if used
+                            if (tempFrame) {
+                                av_frame_free(&tempFrame);
+                            }
+                        }
+                        frameCount++;
+                    }
+                }
+            }
+            av_packet_unref(packet);
+        }
+        
+    } catch (const std::exception& e) {
+        LOGE("Error processing video: %s", e.what());
+        
+        // Cleanup FFmpeg resources
+        if (buffer) av_free(buffer);
+        if (swsContext) sws_freeContext(swsContext);
+        if (frame) av_frame_free(&frame);
+        if (rgbFrame) av_frame_free(&rgbFrame);
+        if (packet) av_packet_free(&packet);
+        if (codecContext) avcodec_free_context(&codecContext);
+        if (formatContext) avformat_close_input(&formatContext);
+        
+        return false;
+    }
+    
+    // Cleanup FFmpeg resources
+    if (buffer) av_free(buffer);
+    if (swsContext) sws_freeContext(swsContext);
+    if (frame) av_frame_free(&frame);
+    if (rgbFrame) av_frame_free(&rgbFrame);
+    if (packet) av_packet_free(&packet);
+    if (codecContext) avcodec_free_context(&codecContext);
+    if (formatContext) avformat_close_input(&formatContext);
+    
+    return true;
+}
+
+void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed)
 {
     auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
-    DataLoader::InputInitStruct data;
     data.basepath = basePath;
     
-    std::string scenepath = basePath + "/" + _scenepath;
-    std::string slampath = scenepath + "/slam/";
-    std::string mediapath = scenepath + "/media/";
+    std::string scenepath = basePath + _scenepath;
+    std::string slampath = scenepath + "/slam";
+    std::string mediapath = scenepath + "/media";
     
-    std::string pointsFilePath = slampath + "points3D.txt";
-    std::string imagesFilePath = slampath + "images.txt";
-    std::string cameraFilePath = mediapath + "cameras.txt";             // TODO: slampath?
-    std::string videoInfoFilePath = mediapath + "videoInfo.txt";
-
-    // 1. Load video data
-    std::vector<std::string> allVideoFile;
-    getFilesInDirectory(scenepath, "mp4", allVideoFile);
-    if (allVideoFile.size() == 0) {
-        throw std::runtime_error("No video file!");
-    }
-    cv::VideoCapture video;
-    video.open(allVideoFile[0], cv::CAP_FFMPEG);
-    if (!video.isOpened()) {
-        throw std::runtime_error("Error in loading " + allVideoFile[0] + "!");
-    }
+    std::string pointsFilePath = slampath + "/points3D.txt";
+    std::string imagesFilePath = slampath + "/images.txt";
+    std::string cameraFilePath = mediapath + "/cameras.txt";             // TODO: slampath?
+    std::string videoInfoFilePath = mediapath + "/videoInfo.txt";
     
     // 2. Load intrinsics from cameras.txt
     int height, width;
     std::string line;
     std::ifstream camerasFile(cameraFilePath);
     if (!camerasFile.is_open()){
-        throw std::runtime_error("Cannot open cameras.txt!");
+        LOGE("Cannot open cameras.txt!");
     }
     while (std::getline(camerasFile, line)) {
         if (line.empty() || line[0] == '#')
@@ -1529,7 +2132,7 @@ DataLoader::InputInitStruct DataLoader::loadInput12(const std::string _scenepath
         data.extr_tmp.push_back(extr);
         
         if(std::filesystem::exists(scenepath + "/images/" + imageName)){
-            data.img_list.push_back(scenepath + "/" + imageName);
+            data.img_list.push_back(scenepath + "/images/" + imageName);
         }
         if (ext.size() == 0){
             size_t dotPos = imageName.rfind('.');
@@ -1538,8 +2141,23 @@ DataLoader::InputInitStruct DataLoader::loadInput12(const std::string _scenepath
             }
         }
     }
+
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
+#if 0
+    // 1. Load video data
+    std::vector<std::string> allVideoFile;
+    getFilesInDirectory(scenepath, "mp4", allVideoFile);
+    if (allVideoFile.size() == 0) {
+        LOGE("No video file!");
+    }
+    
+    cv::VideoCapture video(allVideoFile[0]);
+//     video.open(allVideoFile[0], cv::CAP_FFMPEG);
+    if (!video.isOpened()) {
+        LOGE("Error in loading %{public}s!", allVideoFile[0].c_str());
+    }
+
     
     // 4. Load timestamp from videoInfo.txt
     std::vector<std::string> timestamps;
@@ -1562,8 +2180,7 @@ DataLoader::InputInitStruct DataLoader::loadInput12(const std::string _scenepath
         }
         timestamps.push_back(timestamp);
     }
-    
-    
+
     if (data.img_list.size() != data.extr_tmp.size()){
         std::vector<std::string>().swap(data.img_list);
         cv::Mat frame;
@@ -1580,58 +2197,73 @@ DataLoader::InputInitStruct DataLoader::loadInput12(const std::string _scenepath
             k++;
         }
     }
+#endif
     
-    // 2. Load points and color data from points3D.txt
-    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
-    float C0 = 0.28209479177387814;
-    std::ifstream pointsFile(pointsFilePath);
-    if (!pointsFile.is_open()){
-        throw std::runtime_error("Cannot open points3D.txt!");
+    // 1. Load video data
+    // Main code replacing the OpenCV section
+    std::vector<std::string> allVideoFile;
+    getFilesInDirectory(scenepath, "mp4", allVideoFile);
+    if (allVideoFile.size() == 0) {
+        LOGE("No video file!");
     }
-    while(std::getline(pointsFile, line)){
+    
+    std::vector<std::string> timestamps;
+    std::ifstream videoInfoFile(videoInfoFilePath);
+    if (!videoInfoFile.is_open()){
+        LOGE("Cannot open videoInfo.txt!");
+    }
+    while (std::getline(videoInfoFile, line)) {
         if (line.empty() || line[0] == '#')
             continue;
+    
+        if (line.substr(0, 8) == "Rotation" || line.substr(0, 8) == "rotation")
+            continue;
+    
         std::istringstream iss(line);
-        int pointId;
-        float x, y, z;
-        int r, g, b;
-        float alpha; // Although alpha is provided, we will not use it.
-
-        if (!(iss >> pointId >> x >> y >> z >> r >> g >> b >> alpha)) {
+        int frameId, zero;
+        std::string timestamp;
+        if (!(iss >> frameId >> timestamp >> zero)) {
             continue; // Skip invalid lines.
         }
-
-        glm::vec3 pos(x, y, z);
-        // Check for duplicate points
-        if (uniquePoints.find(pos) != uniquePoints.end()) {
-            continue;
-        }
-        uniquePoints.insert(pos);
-
-        // Store the point position.
-        data.positions.push_back(pos);
-
-        // Default attributes (scales, rotations, opacities) to zeros.
-        data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-        data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
-        data.opacities.push_back(-2.197224617004395);
-
-        // Process the color data.
-        // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
-        DataLoader::InputInitStruct::Data colorData = {};
-        // Save r in index 0, g in index 16, and b in index 32.
-        colorData.values[0] = static_cast<float>((r / 255.0 - 0.5) / C0);
-        colorData.values[16] = static_cast<float>((g / 255.0 - 0.5) / C0);
-        colorData.values[32] = static_cast<float>((b / 255.0 - 0.5) / C0);
-        data.colors.push_back(colorData);
+        timestamps.push_back(timestamp);
     }
     
-    pointsFile.close();
-    imagesFile.close();
-    camerasFile.close();
+    if (data.img_list.size() != data.extr_tmp.size()){
+        std::vector<std::string>().swap(data.img_list);
+        
+        // Use FFmpeg instead of OpenCV to process the video
+        if (!processVideoWithFFmpeg(allVideoFile[0], timestamps, uniqueImages, 
+                                 scenepath, ext, width, height, data.img_list)) {
+            LOGE("Failed to process video with FFmpeg!");
+        }
+    }
+    
+    std::string resume_gaussian_path = basePath + _scenepath + "/point_cloud.ply";
+    loadInputGaussianData(resume_gaussian_path, data);
+    if (data.positions.size() == 0){
+        LOGW("Resuming from ply failed, starting from points3D.txt");
+        std::vector<float> head_bbox;
+        bool is_human = HumanPreprocess(scenepath, head_bbox);
+        
+        std::string pointsFilePath = scenepath + "/slam/points3D.txt";
+        load3DPoints(pointsFilePath, data);
+        
+        if(is_human){
+            std::string smplPath = scenepath + "/slam/smpl.txt";
+            load3DPoints(smplPath, data);
+            for(int i=0; i<head_bbox.size(); ++i){
+                LOGI("head bbox: %{public}f", head_bbox[i]);
+            }
+            data.head_bbox = head_bbox;
+        }
+    }
+    else{
+        resumed = true;
+    }
+    
     videoInfoFile.close();
     
-    return data;
-    
+    imagesFile.close();
+    camerasFile.close();
 }
 

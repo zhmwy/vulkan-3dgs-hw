@@ -33,7 +33,7 @@
 #include "dirent.h"
 
 #include "file/file_operator.h"
-
+#include "common/common.h"
 #undef LOG_DOMAIN
 #undef LOG_TAG
 #define LOG_DOMAIN 0x3200  // 全局domain宏，标识业务领域

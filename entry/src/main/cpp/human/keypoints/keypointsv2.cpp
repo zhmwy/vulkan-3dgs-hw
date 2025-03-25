@@ -42,6 +42,8 @@ OH_NN_ReturnCode RunModel() {
 // Modified LoadImage to use direct OpenCV loading
 OH_NN_ReturnCode LoadImage(const std::string& imagePath, vector<Vec4d>& params) {
     cv::Mat frame = cv::imread(imagePath);
+    LOGI("Image content: %{public}d, %{public}d", frame.at<int>(0, 0, 0), frame.at<int>(320, 240, 0));
+    
     if (frame.empty()) {
         OH_LOG_ERROR(LOG_APP, "Failed to read image: %s", imagePath.c_str());
         return OH_NN_FAILED;
