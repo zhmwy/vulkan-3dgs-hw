@@ -2140,3 +2140,193 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     camerasFile.close();
 }
 
+
+DataLoader::InputInitStruct DataLoader::loadInputTo(const std::string _scenepath)
+{
+    auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
+    DataLoader::InputInitStruct data;
+    data.basepath = basePath;
+    std::string scenepath = basePath + "/" + _scenepath;
+    
+    const std::string pointsDenseFilePath = scenepath + "/downsample2.ply";
+    const std::string pointsFilePath = scenepath + "/slam/points3D.txt";
+    const std::string imagesFilePath = scenepath + "/slam/images.txt";
+    const std::string cameraFilePath = scenepath + "/slam/cameras.txt";
+    
+    // 1. Load points and color data from points3D.txt
+    std::ifstream pointsFile(pointsDenseFilePath, std::ios::binary);
+    std::string line;
+    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
+    if(!pointsFile.is_open()){
+        pointsFile.close();
+        pointsFile.open(pointsFilePath);
+        if (!pointsFile.is_open()) {
+            throw std::runtime_error("Failed to open points3D.txt file.");
+        }
+        float C0 = 0.28209479177387814;
+        while (std::getline(pointsFile, line)) {
+            if (line.empty() || line[0] == '#')
+                continue;
+            std::istringstream iss(line);
+            int pointId;
+            float x, y, z;
+            int r, g, b;
+            float alpha; // Although alpha is provided, we will not use it.
+            if (!(iss >> pointId >> x >> y >> z >> r >> g >> b >> alpha)) {
+                continue; // Skip invalid lines.
+            }
+    
+            glm::vec3 pos(x, y, z);
+            // Check for duplicate points
+            if (uniquePoints.find(pos) != uniquePoints.end()) {
+                continue;
+            }
+            uniquePoints.insert(pos);
+    
+            // Store the point position.
+            data.positions.push_back(pos);
+    
+            // Default attributes (scales, rotations, opacities) to zeros.
+            data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
+            data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            data.opacities.push_back(-2.197224617004395);
+    
+            // Process the color data.
+            // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
+            DataLoader::InputInitStruct::Data colorData = {};
+            // Save r in index 0, g in index 16, and b in index 32.
+            colorData.values[0] = static_cast<float>((r / 255.0 - 0.5) / C0);
+            colorData.values[16] = static_cast<float>((g / 255.0 - 0.5) / C0);
+            colorData.values[32] = static_cast<float>((b / 255.0 - 0.5) / C0);
+            data.colors.push_back(colorData);
+        }
+    }
+    else {
+        PlyFile plyFile;
+        plyFile.parse_header(pointsFile);
+        std::shared_ptr<PlyData> x, y, z;
+        std::shared_ptr<PlyData> r, g, b;
+        
+        try {
+            x = plyFile.request_properties_from_element("vertex", { "x" });
+            y = plyFile.request_properties_from_element("vertex", { "y" });
+            z = plyFile.request_properties_from_element("vertex", { "z" });
+            r = plyFile.request_properties_from_element("vertex", { "red" });
+            g = plyFile.request_properties_from_element("vertex", { "green" });
+            b = plyFile.request_properties_from_element("vertex", { "blue" });
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error reading properties: " << e.what() << std::endl;
+        }
+
+        size_t numVertices = x->count;
+        plyFile.read(pointsFile);
+        
+        float C0 = 0.28209479177387814;
+        for (size_t i = 0; i < numVertices; ++i) {
+            glm::vec3 pos(
+                reinterpret_cast<float*>(x->buffer.get())[i],
+                reinterpret_cast<float*>(y->buffer.get())[i],
+                reinterpret_cast<float*>(z->buffer.get())[i]
+            );
+            
+            if (uniquePoints.find(pos) != uniquePoints.end()) {
+                continue;
+            }
+            
+            uniquePoints.insert(pos);
+            
+            data.positions.push_back(pos);
+    
+            data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
+            data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            data.opacities.push_back(-2.197224617004395);
+            
+            DataLoader::InputInitStruct::Data colorData = {};
+    
+            float _r = (reinterpret_cast<uint8_t*>(r->buffer.get())[i] / 255.0 - 0.5) / C0;
+            float _g = (reinterpret_cast<uint8_t*>(g->buffer.get())[i] / 255.0 - 0.5) / C0;
+            float _b = (reinterpret_cast<uint8_t*>(b->buffer.get())[i] / 255.0 - 0.5) / C0;
+    
+            colorData.values[0] = _r;
+            colorData.values[16] = _g;
+            colorData.values[32] = _b;
+            data.colors.push_back(colorData);
+        }
+
+    }
+    
+    // 2. Load image file names and extrinsics from images.txt
+    std::ifstream imagesFile(imagesFilePath);
+    if (!imagesFile.is_open()) {
+        throw std::runtime_error("Failed to open images.txt file.");
+    }
+    std::unordered_set<std::string> uniqueImages;
+    while (std::getline(imagesFile, line)) {
+        if (line.empty() || line[0] == '#')
+            continue;
+        std::istringstream iss(line);
+        int frameId;
+        float qw, qx, qy, qz;
+        float tx, ty, tz;
+        int camera_id;
+        std::string imageName;
+
+        // Read the first 10 tokens:
+        // frame_id, qx, qy, qz, qw, tx, ty, tz, camera_id, image_name
+        if (!(iss >> frameId >> qw >> qx >> qy >> qz >> tx >> ty >> tz >> camera_id >> imageName)) {
+            continue; // Skip invalid lines.
+        }
+
+        //if (frameId % 3 != 0) continue;
+
+        if (uniqueImages.find(imageName) != uniqueImages.end()) {
+            continue;
+        }
+        uniqueImages.insert(imageName);
+
+        float norm = sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
+        DataLoader::InputInitStruct::DataExtr extr = { qw / norm,qx / norm,qy / norm,qz / norm, tx, ty, tz };
+        data.extr_tmp.push_back(extr);
+        
+        // Store the image name.
+        data.img_list.push_back(scenepath + "/images/" + imageName);
+    }
+    data.extr_tmp_test = data.extr_tmp;
+
+    // 3. Load intrinsics from cameras.txt
+    std::ifstream camerasFile(cameraFilePath);
+    if (!camerasFile.is_open()) {
+        throw std::runtime_error("Failed to open cameras.txt file.");
+    }
+    while (std::getline(camerasFile, line)) {
+        if (line.empty() || line[0] == '#')
+            continue;
+        std::istringstream iss(line);
+        int cameraId;
+        std::string camera_type;
+        float fx, fy, cx, cy;
+        int height, width;
+        int camera_id;
+        std::string imageName;
+
+        // Read the first 6 tokens:
+        if (!(iss >> cameraId >> camera_type >> width >> height >> fx >> fy >> cx >> cy)) {
+            continue; // Skip invalid lines.
+        }
+
+        assert(camera_type == "PINHOLE" || camera_type == "pinhole");
+
+        std::vector<float> intr = { fx,fy,cx,cy };
+        data.intr_tmp.push_back(intr);
+    }
+
+    assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
+    
+    pointsFile.close();
+    imagesFile.close();
+    camerasFile.close();
+    
+    return data;
+}
+

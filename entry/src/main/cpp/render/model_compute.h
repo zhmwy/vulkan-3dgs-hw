@@ -317,6 +317,8 @@ public:
     Compute3DGS pipe_split;
     Compute3DGS pipe_reset_opacity;
     Compute3DGS pipe_extr_process;
+    Compute3DGS pipe_extr_process_render;
+    
     
     Compute3DGS pipe_knn;
     Compute3DGS pipe_prune;
@@ -434,6 +436,8 @@ public:
     void setSortOddPipeline();
     
     void setExtrProcessPipeline();
+    void setExtrProcessRenderPipeline();
+    
     
     // 3dgs command buffer
     void forwardCmd();
@@ -536,7 +540,7 @@ public:
             });
 
         executeComputeCommand();
-//         draw();
+        printLog();
     }
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);

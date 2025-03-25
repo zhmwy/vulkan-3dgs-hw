@@ -38,10 +38,10 @@ struct TrainingConfig {
     NativeResourceManager* resourceMgr;
     std::string dataFolder;
 
-    std::vector<int> max_steps={200, 500, 500};
+    std::vector<int> max_steps={2000, 500, 500};
 
     int result=0;
-    bool focus_on_face = true;
+    bool focus_on_face = false;
 };
 
 
@@ -72,7 +72,6 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
     InitlTrainer->initVulkan();
     InitlTrainer->prepare();
     InitlTrainer->initBuffersValues();
-//     InitlTrainer->current_scale = 0.25;
     auto begin = clk::now();
     
     for (int step = 0; step < config->max_steps[0]; ++step) {
@@ -80,10 +79,6 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
 
         int progress = (step * 100) / config->max_steps[0];
         ReportProgressTrain(progress);
-        
-//         InitlTrainer->renderImage(step % InitlTrainer->inputGaussian.img_list.size());
-//         InitlTrainer->renderRGB2Cpu(step % InitlTrainer->inputGaussian.img_list.size());
-        
     }
 
     LOGW("Step 1 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
