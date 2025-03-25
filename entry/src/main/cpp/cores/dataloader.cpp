@@ -1831,8 +1831,8 @@ bool processVideoWithFFmpeg(
         // Determine the scaling destination dimensions based on rotation
         int swsDstWidth, swsDstHeight;
         if (rotation == 90 || rotation == 270) {
-            swsDstWidth = codecContext->height;  // Original video's height
-            swsDstHeight = codecContext->width;  // Original video's width
+            swsDstWidth = codecContext->width / 3;  // Original video's height
+            swsDstHeight = codecContext->height / 3;  // Original video's width
         } else {
             swsDstWidth = outWidth;
             swsDstHeight = outHeight;
@@ -1870,13 +1870,13 @@ bool processVideoWithFFmpeg(
             case 180:
                 // Rotate 180 degrees
                 swsContext = sws_getContext(
-                    codecContext->height, codecContext->width, codecContext->pix_fmt,
+                    codecContext->width, codecContext->height, codecContext->pix_fmt,
                     outWidth, outHeight, AV_PIX_FMT_RGB24,
                     swsFlags, nullptr, nullptr, nullptr);
                 break;
            case 270:
                 swsContext = sws_getContext(
-                    codecContext->height, codecContext->width, codecContext->pix_fmt,
+                    codecContext->width, codecContext->height, codecContext->pix_fmt,
                     swsDstWidth, swsDstHeight, AV_PIX_FMT_RGB24,
                     swsFlags | SWS_FULL_CHR_H_INT, nullptr, nullptr, nullptr);
                 break;
@@ -2008,13 +2008,13 @@ bool processVideoWithFFmpeg(
                             std::string imagePath = scenepath + "/images/" + timestamp + ext;
                            if (rotation == 90 || rotation == 270) {
                                 if (saveFrameAsImage(rotatedFrame, imagePath, outHeight, outWidth)) {
-                                        img_list.push_back(scenepath + "/" + timestamp + ext);
+                                        img_list.push_back(scenepath + "/images/" + timestamp + ext);
                                     } else {
                                         LOGE("Failed to save image: %s", imagePath.c_str());
                                     }
                                 } else {
                                     if (saveFrameAsImage(rotatedFrame, imagePath, outWidth, outHeight)) {
-                                        img_list.push_back(scenepath + "/" + timestamp + ext);
+                                        img_list.push_back(scenepath + "/images/" + timestamp + ext);
                                     } else {
                                         LOGE("Failed to save image: %s", imagePath.c_str());
                                     }
