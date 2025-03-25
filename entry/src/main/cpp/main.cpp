@@ -37,7 +37,9 @@ struct TrainingConfig {
     napi_deferred deferred;
     NativeResourceManager* resourceMgr;
     std::string dataFolder;
+
     std::vector<int> max_steps={200, 500, 500};
+
     int result=0;
     bool focus_on_face = true;
 };
@@ -79,8 +81,10 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         int progress = (step * 100) / config->max_steps[0];
         ReportProgressTrain(progress);
     }
+
     LOGW("Step 1 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-    for (int i = 0; i < 114; i++){
+    for (int i = 0; i < InitlTrainer->inputGaussian.img_list.size(); i++){
+
         InitlTrainer->renderImage(i);
         InitlTrainer->renderRGB2Cpu(i, config->dataFolder);
     }
@@ -90,7 +94,7 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         InitlTrainer->training_step = 0;
     
         InitlTrainer->loadTestData(config->dataFolder, LOAD_HEAD);
-        InitlTrainer->encodeCpu2Gpu(true);
+        InitlTrainer->encodeCpu2Gpu();
         InitlTrainer->ComputeMemoryBarrierBlock();
         InitlTrainer->executeComputeCommand();
         LOGW("Saving and loading takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
@@ -118,7 +122,6 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         HeadTrainer->initVulkan();
         HeadTrainer->prepare();
         HeadTrainer->initBuffersValues();
-
         begin = clk::now();
         
         for (int step = 0; step < config->max_steps[1]; ++step) {

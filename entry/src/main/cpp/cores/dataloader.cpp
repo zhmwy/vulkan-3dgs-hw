@@ -519,64 +519,29 @@ struct Vec3Equal {
 };
 
 
-void DataLoader::InputInitStruct::computeNormalization() {
-    cam_centers.clear();  // 清空之前存的相机中心
+glm::mat4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
+    glm::mat4 W2C(1.0f);
+    double w = extr.values[0], x = extr.values[1], y = extr.values[2], z = extr.values[3];
+    double tx = extr.values[4], ty = extr.values[5], tz = extr.values[6];
+    
+    W2C[0][0] = 1 - 2 * (y * y + z * z);
+    W2C[0][1] = 2 * (x * y - w * z);
+    W2C[0][2] = 2 * (x * z + w * y);
+    W2C[0][3] = tx;
 
-    // 遍历所有相机的外参矩阵
-    for (const auto& extrinsic : extr_tmp) {
-        if (extrinsic.size() != 12) {
-            std::cerr << "Error: Each extrinsic matrix must have 12 elements (3x4)!" << std::endl;
-            continue;
-        }
+    W2C[1][0] = 2 * (x * y + w * z);
+    W2C[1][1] = 1 - 2 * (x * x + z * z);
+    W2C[1][2] = 2 * (y * z - w * x);
+    W2C[1][3] = ty;
 
-        glm::mat4 W2C(1.0f);  // 4x4 齐次矩阵
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                W2C[i][j] = static_cast<float>(extrinsic[i * 4 + j]);
-            }
-        }
+    W2C[2][0] = 2 * (x * z - w * y);
+    W2C[2][1] = 2 * (y * z + w * x);
+    W2C[2][2] = 1 - 2 * (x * x + y * y);
+    W2C[2][3] = tz;
 
-        // 计算 W2C 的逆矩阵，得到 C2W
-        glm::mat4 C2W = glm::inverse(W2C);
-
-        // 提取 C2W 的位移分量（最后一列的前三个元素）
-        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
-        cam_centers.push_back(cam_center);
-    }
-
-    if (cam_centers.empty()) {
-        std::cerr << "Error: No valid camera centers computed!" << std::endl;
-        return;
-    }
-
-    // **计算相机中心的均值**
-    glm::vec3 center(0.0f);
-    for (const auto& c : cam_centers) {
-        center += c;
-    }
-    center /= static_cast<float>(cam_centers.size());
-
-    // **计算最大欧几里得距离（对角线）**
-    float max_dist = 0.0f;
-    for (const auto& c : cam_centers) {
-        float dist = glm::length(c - center);
-        if (dist > max_dist) {
-            max_dist = dist;
-        }
-    }
-
-    // **计算 radius（加 10% buffer）**
-    radius = max_dist * 1.1f;
-
-    // **计算 translate（相机中心对齐到原点）**
-    translate = -center;
-
-
-    std::cout << "Translate: (" << translate.x << ", " << translate.y << ", " << translate.z << ")" << std::endl;
-    std::cout << "Radius: " << radius << std::endl;
-
-    return;
+    return W2C;
 }
+
 
 void DataLoader::InputInitStruct::normalizeData() {
     if (positions.empty()) {
@@ -594,47 +559,27 @@ void DataLoader::InputInitStruct::normalizeData() {
         scale = scale - glm::log(stddev);
     }
     
-    // **标准化 extr_tmp（w2c 矩阵）**
     for (auto& extr : extr_tmp) {
-        if (extr.size() < 12) continue;
 
-        glm::mat4 W2C(1.0f);
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                W2C[i][j] = extr[i * 4 + j];
-            }
-        }
-
+        glm::mat4 W2C = quat2matrix(extr);
         glm::mat4 C2W = glm::inverse(W2C);
         glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
-
-        // **标准化 cam_center**
+        
         glm::vec3 normalized_center = (cam_center - mean) / stddev;
-
         C2W[0][3] = normalized_center.x;
         C2W[1][3] = normalized_center.y;
         C2W[2][3] = normalized_center.z;
 
         W2C = glm::inverse(C2W);
 
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                extr[i * 4 + j] = W2C[i][j];
-            }
-        }
+        extr.values[4] = W2C[0][3];
+        extr.values[5] = W2C[1][3];
+        extr.values[6] = W2C[2][3];
     }
-
-    // **标准化 extr_tmp_test（同样方式）**
+    
     for (auto& extr : extr_tmp_test) {
-        if (extr.size() < 12) continue;
 
-        glm::mat4 W2C(1.0f);
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                W2C[i][j] = extr[i * 4 + j];
-            }
-        }
-
+        glm::mat4 W2C = quat2matrix(extr);
         glm::mat4 C2W = glm::inverse(W2C);
         glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
 
@@ -645,14 +590,10 @@ void DataLoader::InputInitStruct::normalizeData() {
 
         W2C = glm::inverse(C2W);
 
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                extr[i * 4 + j] = W2C[i][j];
-            }
-        }
+        extr.values[4] = W2C[0][3];
+        extr.values[5] = W2C[1][3];
+        extr.values[6] = W2C[2][3];
     }
-
-    std::cout << "Positions, extr_tmp, extr_tmp_test normalized correctly." << std::endl;
 }
 
 
@@ -661,27 +602,23 @@ void DataLoader::InputInitStruct::computePositionStats() {
         std::cerr << "Error: No position data available!" << std::endl;
         return;
     }
-
-    // **计算均值**
+    
     mean = glm::vec3(0.0, 0.0, 0.0);
     for (const auto& pos : positions) {
         mean += pos;
     }
     mean /= static_cast<float>(positions.size());
-
-    // **计算方差**
+    
     double sum = 0;
     for (const auto& pos : positions) {
         float dist = glm::length(pos - mean);  // **计算欧几里得距离**
         sum += dist * dist;  // **累加平方距离**
     }
     variance = sum / static_cast<double>(positions.size());  // **求均值**
-
-    // **存储到结构体**
+    
     this->mean = mean;
     this->variance = variance;
-
-    // **输出均值和方差**
+    
     std::cout << "Position Mean: (" << mean.x << ", " << mean.y << ", " << mean.z << ")" << std::endl;
     std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
 }
@@ -736,8 +673,7 @@ void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::In
     
     plyFile.read(file);
     size_t numVertices = x->count;
-
-    // 预分配空间
+    
     data.positions.clear();
     data.positions.reserve(numVertices);
     data.scales.clear();
@@ -893,205 +829,7 @@ void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::In
     LOGI("Resume from gaussians OK! Read %{public}zu points.", data.positions.size());
 }
 
-#if 1
-DataLoader::InputInitStruct DataLoader::loadInputLegoInitData() {
-    auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
-    std::string filepath = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/input_AREngine.ply";
-    DataLoader::InputInitStruct data;
-    data.basepath = basePath;
-#if 1
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-
-    // Declare shared pointers to request each property from the PLY file
-    std::shared_ptr<PlyData> x, y, z;
-    std::shared_ptr<PlyData> scale_x, scale_y, scale_z;
-    std::shared_ptr<PlyData> rotate_0, rotate_1, rotate_2, rotate_3;
-    std::shared_ptr<PlyData> opacity;
-    std::shared_ptr<PlyData> r, g, b;
-    std::vector<std::shared_ptr<PlyData>> colorProps;
-
-    try {
-        x = plyFile.request_properties_from_element("vertex", { "x" });
-        y = plyFile.request_properties_from_element("vertex", { "y" });
-        z = plyFile.request_properties_from_element("vertex", { "z" });
-        scale_x = plyFile.request_properties_from_element("vertex", { "scale_0" });
-        scale_y = plyFile.request_properties_from_element("vertex", { "scale_1" });
-        scale_z = plyFile.request_properties_from_element("vertex", { "scale_2" });
-        rotate_0 = plyFile.request_properties_from_element("vertex", { "rot_0" });
-        rotate_1 = plyFile.request_properties_from_element("vertex", { "rot_1" });
-        rotate_2 = plyFile.request_properties_from_element("vertex", { "rot_2" });
-        rotate_3 = plyFile.request_properties_from_element("vertex", { "rot_3" });
-        opacity = plyFile.request_properties_from_element("vertex", { "opacity" });
-
-        for (int i = 0; i < 3; ++i) {
-            std::string propName = "f_dc_" + std::to_string(i);
-            colorProps.push_back(plyFile.request_properties_from_element("vertex", { propName }));
-        }
-
-        for (int i = 0; i < 45; ++i) {
-            std::string propName = "f_rest_" + std::to_string(i);
-            colorProps.push_back(plyFile.request_properties_from_element("vertex", { propName }));
-        }
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error reading properties: " << e.what() << std::endl;
-    }
-
-    plyFile.read(file);
-    size_t numVertices = x->count;
-
-    // 记录唯一的点
-    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
-
-    // 预分配空间
-    data.positions.reserve(numVertices);
-    data.scales.reserve(numVertices);
-    data.rotations.reserve(numVertices);
-    data.opacities.reserve(numVertices);
-    data.colors.reserve(numVertices);
-
-    for (size_t i = 0; i < numVertices; ++i) {
-        glm::vec3 pos(
-            reinterpret_cast<float*>(x->buffer.get())[i],
-            reinterpret_cast<float*>(y->buffer.get())[i],
-            reinterpret_cast<float*>(z->buffer.get())[i]
-        );
-
-        // 检查点是否已经存在
-        if (uniquePoints.find(pos) != uniquePoints.end()) {
-            continue;  // 如果已经存在，则跳过
-        }
-
-        // 添加到哈希表中
-        uniquePoints.insert(pos);
-
-        // 继续存储其他属性
-        data.positions.push_back(pos);
-
-        data.scales.emplace_back(
-            reinterpret_cast<float*>(scale_x->buffer.get())[i],
-            reinterpret_cast<float*>(scale_y->buffer.get())[i],
-            reinterpret_cast<float*>(scale_z->buffer.get())[i]
-        );
-
-        data.rotations.emplace_back(
-            reinterpret_cast<float*>(rotate_0->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_1->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_2->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_3->buffer.get())[i]
-        );
-
-        data.opacities.push_back(reinterpret_cast<float*>(opacity->buffer.get())[i]);
-
-        // 处理颜色数据
-        DataLoader::InputInitStruct::Data colorData = {};
-        for (size_t j = 0; j < colorProps.size(); ++j) {
-            float value = reinterpret_cast<float*>(colorProps[j]->buffer.get())[i];
-            if(j < 3){
-                colorData.values[j / 3 + (j % 3) * 16] = value;
-            }
-            else if(j < 18){
-                colorData.values[j-2] = value;
-            }
-            else if(j < 33){
-                colorData.values[j-1] = value;
-            }
-            else{
-                colorData.values[j] = value;
-            }
-        }
-        data.colors.push_back(colorData);
-    }
-#endif
-
-
-    // Get the list of PNG and JPG files in the directory
-    std::string path = basePath + "/assets/AREngine/2024_09_27_11_20_29/images";
-    std::vector<std::string> imgListPng;
-    std::vector<std::string> imgListJpg;
-
-    // Get PNG and JPG files
-    getFilesInDirectory(path, ".png", imgListPng);
-    getFilesInDirectory(path, ".jpg", imgListJpg);
-
-    // Combine the two lists
-    imgListPng.insert(imgListPng.end(), imgListJpg.begin(), imgListJpg.end());
-
-    // Sort the combined image list
-    std::sort(
-        imgListPng.begin(),
-        imgListPng.end(),
-        [](const std::string& a, const std::string& b) {
-            return extractNumber(a) < extractNumber(b);
-        }
-    );
-    std::vector<std::string> filteredList;
-    for (size_t i = 0; i < imgListPng.size(); i += 3) {
-        filteredList.push_back(imgListPng[i]);
-    }
-
-    //data.img_list = filteredList;
-    // Assign the combined and sorted list to data.img_list
-    data.img_list = filteredList;
-
-    std::cout << "data.img_list.size() = " << data.img_list.size() << std::endl;
-
-    // Process the extrinsic files for training
-    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/sparse/";
-    std::vector<std::string> matchingFiles;
-    getFilesInDirectory(path, ".txt", matchingFiles);
-
-    // Sort txt list
-    std::sort(
-        matchingFiles.begin(),
-        matchingFiles.end(),
-        [](const std::string& a, const std::string& b) {
-            return extractNumber(a) < extractNumber(b);
-        }
-    );
-
-    extractExtrinsics(matchingFiles, data.extr_tmp);
-    std::vector<std::vector<float>> filteredExtrList;
-    for (size_t i = 0; i < data.extr_tmp.size(); i += 3) {
-        filteredExtrList.push_back(data.extr_tmp[i]);
-    }
-    data.extr_tmp = filteredExtrList;
-
-    // Process the extrinsic files for testing
-    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/sparse_test/";
-    std::vector<std::string> matchingFiles_test;
-    getFilesInDirectory(path, ".txt", matchingFiles_test);
-
-    // Sort txt list
-    std::sort(
-        matchingFiles_test.begin(),
-        matchingFiles_test.end(),
-        [](const std::string& a, const std::string& b) {
-            return extractNumber(a) < extractNumber(b);
-        }
-    );
-
-    extractExtrinsics(matchingFiles_test, data.extr_tmp_test);
-    
-    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/intrinsics/";
-    std::vector<std::string> matchingFiles_intr;
-    getFilesInDirectory(path, ".txt", matchingFiles_intr);
-
-    std::sort(matchingFiles_intr.begin(), matchingFiles_intr.end(),
-        [](const std::string& a, const std::string& b) {
-            return extractNumber(a) < extractNumber(b);
-        });
-
-    extractIntrinsics(matchingFiles_intr, data.intr_tmp);
-    
-    return data;
-}
-#endif
-
+/*
 void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
     std::ifstream pointsFile(pointsFilePath);
     if (!pointsFile.is_open()) {
@@ -1139,170 +877,6 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
     }
     LOGI("Unique points loaded: %{public}zu", data.positions.size());
 }
-
-
-DataLoader::InputInitStruct DataLoader::loadInputInitDataPM() {
-    auto basePath = FileOperator::GetInstance()->GetHapFilesDir();
-    const std::string filepath = basePath + "/" + "assets/AREngine/2024_09_27_11_20_29/downsample.ply";
-
-    DataLoader::InputInitStruct data;
-    data.basepath = basePath;
-
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-
-    // Declare shared pointers to request each property from the PLY file
-    std::shared_ptr<PlyData> x, y, z;
-    std::shared_ptr<PlyData> r, g, b;
-
-    try {
-        x = plyFile.request_properties_from_element("vertex", { "x" });
-        y = plyFile.request_properties_from_element("vertex", { "y" });
-        z = plyFile.request_properties_from_element("vertex", { "z" });
-        r = plyFile.request_properties_from_element("vertex", { "red" });
-        g = plyFile.request_properties_from_element("vertex", { "green" });
-        b = plyFile.request_properties_from_element("vertex", { "blue" });
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error reading properties: " << e.what() << std::endl;
-    }
-
-    plyFile.read(file);
-    size_t numVertices = x->count;
-
-    // 记录唯一的点
-    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
-
-    // 预分配空间
-    data.positions.reserve(numVertices);
-    data.scales.reserve(numVertices);
-    data.rotations.reserve(numVertices);
-    data.opacities.reserve(numVertices);
-    data.colors.reserve(numVertices);
-    
-    float C0 = 0.28209479177387814;
-    for (size_t i = 0; i < numVertices; ++i) {
-        glm::vec3 pos(
-            reinterpret_cast<float*>(x->buffer.get())[i],
-            reinterpret_cast<float*>(y->buffer.get())[i],
-            reinterpret_cast<float*>(z->buffer.get())[i]
-        );
-
-        // 检查点是否已经存在
-        if (uniquePoints.find(pos) != uniquePoints.end()) {
-            continue;  // 如果已经存在，则跳过
-        }
-
-        // 添加到哈希表中
-        uniquePoints.insert(pos);
-
-        // 继续存储其他属性
-        data.positions.push_back(pos);
-
-        data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-        data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
-        data.opacities.push_back(-2.197224617004395);
-        
-        // 处理颜色数据
-        DataLoader::InputInitStruct::Data colorData = {};
-        
-        float _r = (reinterpret_cast<uint8_t*>(r->buffer.get())[i] / 255.0 - 0.5) / C0;
-        float _g = (reinterpret_cast<uint8_t*>(g->buffer.get())[i] / 255.0 - 0.5) / C0;
-        float _b = (reinterpret_cast<uint8_t*>(b->buffer.get())[i] / 255.0 - 0.5) / C0;
-        
-        colorData.values[0] = _r;
-        colorData.values[16] = _g;
-        colorData.values[32] = _b;
-        data.colors.push_back(colorData);
-    }
-
-    std::cout << "Unique points: " << data.positions.size() << " / " << numVertices << std::endl;
-
-    // Get the list of PNG and JPG files in the directory
-    std::string path = basePath + "/assets/AREngine/2024_09_27_11_20_29/images";
-    std::vector<std::string> imgListPng;
-    std::vector<std::string> imgListJpg;
-
-    // Get PNG and JPG files
-    getFilesInDirectory(path, ".png", imgListPng);
-    getFilesInDirectory(path, ".jpg", imgListJpg);
-
-    // Combine the two lists
-    imgListPng.insert(imgListPng.end(), imgListJpg.begin(), imgListJpg.end());
-
-    // Sort the combined image list
-    std::sort(
-        imgListPng.begin(),
-        imgListPng.end(),
-        [](const std::string& a, const std::string& b) {
-            return extractNumber(a) < extractNumber(b);
-        }
-    );
-    std::vector<std::string> filteredList;
-    for (size_t i = 0; i < imgListPng.size(); i += 3) {
-        filteredList.push_back(imgListPng[i]);
-    }
-
-    //data.img_list = filteredList;
-    // Assign the combined and sorted list to data.img_list
-    data.img_list = filteredList;
-
-    std::cout << "data.img_list.size() = " << data.img_list.size() << std::endl;
-
-    // Process the extrinsic files for training
-    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/sparse/";
-    std::vector<std::string> matchingFiles;
-    getFilesInDirectory(path, ".txt", matchingFiles);
-
-    // Sort txt list
-    std::sort(
-        matchingFiles.begin(),
-        matchingFiles.end(),
-        [](const std::string& a, const std::string& b) {
-            return extractNumber(a) < extractNumber(b);
-        }
-    );
-
-    extractExtrinsics(matchingFiles, data.extr_tmp);
-    std::vector<std::vector<float>> filteredExtrList;
-    for (size_t i = 0; i < data.extr_tmp.size(); i += 3) {
-        filteredExtrList.push_back(data.extr_tmp[i]);
-    }
-    data.extr_tmp = filteredExtrList;
-
-    // Process the extrinsic files for testing
-    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/sparse_test/";
-    std::vector<std::string> matchingFiles_test;
-    getFilesInDirectory(path, ".txt", matchingFiles_test);
-
-    // Sort txt list
-    std::sort(
-        matchingFiles_test.begin(),
-        matchingFiles_test.end(),
-        [](const std::string& a, const std::string& b) {
-            return extractNumber(a) < extractNumber(b);
-        }
-    );
-
-    extractExtrinsics(matchingFiles_test, data.extr_tmp_test);
-    
-    path = basePath + "/assets/AREngine/2024_09_27_11_20_29/intrinsics/";
-    std::vector<std::string> matchingFiles_intr;
-    getFilesInDirectory(path, ".txt", matchingFiles_intr);
-
-    std::sort(matchingFiles_intr.begin(), matchingFiles_intr.end(),
-        [](const std::string& a, const std::string& b) {
-            return extractNumber(a) < extractNumber(b);
-        });
-
-    extractIntrinsics(matchingFiles_intr, data.intr_tmp);
-    
-    return data;
-}
-
 
 void DataLoader::loadExtrinsics(std::string dataPath, DataLoader::InputInitStruct& data){
     std::string imagesFilePath = dataPath + "/slam/images.txt";
@@ -1440,7 +1014,6 @@ void DataLoader::loadInputLegoInitDatav2(std::string dataFolder, DataLoader::Inp
         LOGW("Resuming from ply failed, starting from points3D.txt");
         std::vector<float> head_bbox;
         bool is_human = HumanPreprocess(dataPath, head_bbox);
-//         bool is_human = false;
         
         std::string pointsFilePath = dataPath + "/slam/points3D.txt";
         load3DPoints(pointsFilePath, data);
@@ -1462,9 +1035,9 @@ void DataLoader::loadInputLegoInitDatav2(std::string dataFolder, DataLoader::Inp
     loadIntrinsics(dataPath, data);
     
 }
+*/
 
-
-DataLoader::InputInitStruct DataLoader::loadHeadGaussians(std::string dataPath, DataLoader::InputInitStruct& data) {
+DataLoader::InputInitStruct  DataLoader::loadHeadGaussians(std::string dataPath, DataLoader::InputInitStruct& data) {
     std::string resume_gaussian_path = data.basepath + dataPath + "/head/point_cloud.ply";
     loadInputGaussianData(resume_gaussian_path, data );
     return data;
@@ -1678,3 +1251,195 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         std::cout << "Saved " << numPoints << " points to " << filename << " using tinyply." << std::endl;
     }
 }
+
+
+DataLoader::InputInitStruct DataLoader::loadInputTo(const std::string _scenepath)
+{
+    auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
+    DataLoader::InputInitStruct data;
+    data.basepath = basePath;
+    std::string scenepath = basePath + "/" + _scenepath;
+    
+    const std::string pointsDenseFilePath = scenepath + "/downsample.ply";
+    const std::string pointsFilePath = scenepath + "/slam/points3D.txt";
+    const std::string imagesFilePath = scenepath + "/slam/images.txt";
+    const std::string cameraFilePath = scenepath + "/slam/cameras.txt";
+    
+    // 1. Load points and color data from points3D.txt
+    std::ifstream pointsFile(pointsDenseFilePath, std::ios::binary);
+    std::string line;
+    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
+    if(!pointsFile.is_open()){
+        pointsFile.close();
+        pointsFile.open(pointsFilePath);
+        if (!pointsFile.is_open()) {
+            throw std::runtime_error("Failed to open points3D.txt file.");
+        }
+        float C0 = 0.28209479177387814;
+        while (std::getline(pointsFile, line)) {
+            if (line.empty() || line[0] == '#')
+                continue;
+            std::istringstream iss(line);
+            int pointId;
+            float x, y, z;
+            int r, g, b;
+            float alpha; // Although alpha is provided, we will not use it.
+            if (!(iss >> pointId >> x >> y >> z >> r >> g >> b >> alpha)) {
+                continue; // Skip invalid lines.
+            }
+    
+            glm::vec3 pos(x, y, z);
+            // Check for duplicate points
+            if (uniquePoints.find(pos) != uniquePoints.end()) {
+                continue;
+            }
+            uniquePoints.insert(pos);
+    
+            // Store the point position.
+            data.positions.push_back(pos);
+    
+            // Default attributes (scales, rotations, opacities) to zeros.
+            data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
+            data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            data.opacities.push_back(-2.197224617004395);
+    
+            // Process the color data.
+            // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
+            DataLoader::InputInitStruct::Data colorData = {};
+            // Save r in index 0, g in index 16, and b in index 32.
+            colorData.values[0] = static_cast<float>((r / 255.0 - 0.5) / C0);
+            colorData.values[16] = static_cast<float>((g / 255.0 - 0.5) / C0);
+            colorData.values[32] = static_cast<float>((b / 255.0 - 0.5) / C0);
+            data.colors.push_back(colorData);
+        }
+    }
+    else {
+        PlyFile plyFile;
+        plyFile.parse_header(pointsFile);
+        std::shared_ptr<PlyData> x, y, z;
+        std::shared_ptr<PlyData> r, g, b;
+        
+        try {
+            x = plyFile.request_properties_from_element("vertex", { "x" });
+            y = plyFile.request_properties_from_element("vertex", { "y" });
+            z = plyFile.request_properties_from_element("vertex", { "z" });
+            r = plyFile.request_properties_from_element("vertex", { "red" });
+            g = plyFile.request_properties_from_element("vertex", { "green" });
+            b = plyFile.request_properties_from_element("vertex", { "blue" });
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error reading properties: " << e.what() << std::endl;
+        }
+
+        size_t numVertices = x->count;
+        plyFile.read(pointsFile);
+        
+        float C0 = 0.28209479177387814;
+        for (size_t i = 0; i < numVertices; ++i) {
+            glm::vec3 pos(
+                reinterpret_cast<float*>(x->buffer.get())[i],
+                reinterpret_cast<float*>(y->buffer.get())[i],
+                reinterpret_cast<float*>(z->buffer.get())[i]
+            );
+            
+            if (uniquePoints.find(pos) != uniquePoints.end()) {
+                continue;
+            }
+            
+            uniquePoints.insert(pos);
+            
+            data.positions.push_back(pos);
+    
+            data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
+            data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            data.opacities.push_back(-2.197224617004395);
+            
+            DataLoader::InputInitStruct::Data colorData = {};
+    
+            float _r = (reinterpret_cast<uint8_t*>(r->buffer.get())[i] / 255.0 - 0.5) / C0;
+            float _g = (reinterpret_cast<uint8_t*>(g->buffer.get())[i] / 255.0 - 0.5) / C0;
+            float _b = (reinterpret_cast<uint8_t*>(b->buffer.get())[i] / 255.0 - 0.5) / C0;
+    
+            colorData.values[0] = _r;
+            colorData.values[16] = _g;
+            colorData.values[32] = _b;
+            data.colors.push_back(colorData);
+        }
+
+    }
+    
+    // 2. Load image file names and extrinsics from images.txt
+    std::ifstream imagesFile(imagesFilePath);
+    if (!imagesFile.is_open()) {
+        throw std::runtime_error("Failed to open images.txt file.");
+    }
+    std::unordered_set<std::string> uniqueImages;
+    while (std::getline(imagesFile, line)) {
+        if (line.empty() || line[0] == '#')
+            continue;
+        std::istringstream iss(line);
+        int frameId;
+        float qw, qx, qy, qz;
+        float tx, ty, tz;
+        int camera_id;
+        std::string imageName;
+
+        // Read the first 10 tokens:
+        // frame_id, qx, qy, qz, qw, tx, ty, tz, camera_id, image_name
+        if (!(iss >> frameId >> qw >> qx >> qy >> qz >> tx >> ty >> tz >> camera_id >> imageName)) {
+            continue; // Skip invalid lines.
+        }
+
+        //if (frameId % 3 != 0) continue;
+
+        if (uniqueImages.find(imageName) != uniqueImages.end()) {
+            continue;
+        }
+        uniqueImages.insert(imageName);
+
+        float norm = sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
+        DataLoader::InputInitStruct::DataExtr extr = { qw / norm,qx / norm,qy / norm,qz / norm, tx, ty, tz };
+        data.extr_tmp.push_back(extr);
+        
+        // Store the image name.
+        data.img_list.push_back(scenepath + "/images/" + imageName);
+    }
+    data.extr_tmp_test = data.extr_tmp;
+
+    // 3. Load intrinsics from cameras.txt
+    std::ifstream camerasFile(cameraFilePath);
+    if (!camerasFile.is_open()) {
+        throw std::runtime_error("Failed to open cameras.txt file.");
+    }
+    while (std::getline(camerasFile, line)) {
+        if (line.empty() || line[0] == '#')
+            continue;
+        std::istringstream iss(line);
+        int cameraId;
+        std::string camera_type;
+        float fx, fy, cx, cy;
+        int height, width;
+        int camera_id;
+        std::string imageName;
+
+        // Read the first 6 tokens:
+        if (!(iss >> cameraId >> camera_type >> width >> height >> fx >> fy >> cx >> cy)) {
+            continue; // Skip invalid lines.
+        }
+
+        assert(camera_type == "PINHOLE" || camera_type == "pinhole");
+
+        std::vector<float> intr = { fx,fy,cx,cy };
+        data.intr_tmp.push_back(intr);
+    }
+
+    assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
+    
+    pointsFile.close();
+    imagesFile.close();
+    camerasFile.close();
+    
+    return data;
+}
+
+

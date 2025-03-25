@@ -76,3 +76,10 @@
 3. HarmonyOS系统：HarmonyOS NEXT Developer Beta1及以上。
 4. DevEco Studio版本：DevEco Studio NEXT Developer Beta1及以上。
 5. HarmonyOS SDK版本：HarmonyOS NEXT Developer Beta1 SDK及以上。
+
+
+## 注意事项！！！！
+1. human/smpL/src/smpl/smpl_male.cpp 这个文件过大无法上传, 找朱嘉禾或者曾畅
+
+
+

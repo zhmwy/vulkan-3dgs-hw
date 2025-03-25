@@ -224,13 +224,17 @@ public:
         struct Data {
             float values[48];  // 48维浮点数组
         };
+        struct DataExtr{
+            float values[7];  
+        };
+        
         std::vector<Data> colors;         // RGB colors (r, g, b)
         std::vector<vks::Texture2D> images;   // Images
         std::vector<vks::Texture2D> images_low_res;
 
         std::vector<std::string> img_list;
-        std::vector<std::vector<float>> extr_tmp;  
-        std::vector<std::vector<float>> extr_tmp_test; 
+        std::vector<DataExtr> extr_tmp;  
+        std::vector<DataExtr> extr_tmp_test; 
         std::vector<std::vector<float>> intr_tmp;
 
         std::vector<float> head_bbox;
@@ -242,41 +246,7 @@ public:
         float variance = 0;
 
         std::string basepath = "";
-
-        // Print the first vertex's data for verification
-        void print() const {
-            std::cout << "Loaded " << positions.size() << " vertices." << std::endl;
-            if (!positions.empty()) {
-                std::cout << "\nFirst vertex data:" << std::endl;
-
-                // Print position (x, y, z)
-                std::cout << "Position (x, y, z): (" << positions[0].x << ", " << positions[0].y << ", " << positions[0].z << ")" << std::endl;
-
-                // Print scale (scale_x, scale_y, scale_z)
-                std::cout << "Scale (x, y, z): (" << scales[0].x << ", " << scales[0].y << ", " << scales[0].z << ")" << std::endl;
-
-
-                // // Print rotation (as quaternion)
-                // std::cout << "Rotation (quaternion): (" << rotations[0].x << ", " << rotations[0].y << ", " << rotations[0].z << ", " << rotations[0].w << ")" << std::endl;
-
-                // // Print opacity
-                // std::cout << "Opacity: " << opacities[0] << std::endl;
-
-                // Print color (r, g, b)
-                std::cout << "Color (r, g, b): (" << colors[0].values[0] << ", " << colors[0].values[1] << ", " << colors[0].values[2] << ")" << std::endl;
-
-                // Print image list
-                std::cout << "Image list: " << img_list[0] << std::endl;
-
-                // Print extrinsic parameters
-                std::cout << "Extrinsic parameters: ";
-                for (int i = 0; i < 12; ++i) {
-                    std::cout << extr_tmp[0][i] << " ";
-                }
-            }
-        }
-    
-        void computeNormalization();
+        
         void normalizeData();
         void computePositionStats();
     };
@@ -288,20 +258,18 @@ public:
     static EvalSHForwardStruct loadEvalSHForwardData();
     static EvalSHBackwardStruct loadEvalSHBackwardData();
 
-    static InputInitStruct loadInputLegoInitData();
+//     static InputInitStruct loadInputLegoInitData();
     static void loadInputLegoInitDatav2(std::string dataFolder, DataLoader::InputInitStruct& data, bool& resumed);
     static InputInitStruct loadHeadGaussians(std::string dataFolder, DataLoader::InputInitStruct& gaussian);
     static void loadInputGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data);
     static void loadExtraGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data);
-
+    
     static void loadExtrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
     static void loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
     
+    static InputInitStruct loadInputTo(const std::string _scenepath);
     
     static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head);
-    static InputInitStruct loadInputInitDataPM();
-
-    
     static void printPlyHeader(const std::string& filepath);
     
 };
