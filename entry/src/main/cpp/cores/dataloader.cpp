@@ -91,298 +91,6 @@ DataLoader::PlyDataStruct DataLoader::load_input_data(const std::string& filepat
     return data;
 }
 
-DataLoader::ProjectEWAForwardStruct DataLoader::loadEWAForwardData() {
-    const std::string filepath = FileOperator::GetInstance()->GetFileAbsolutePath("assets/test_ply/ProjectEWA/forward_data.ply");
-
-    DataLoader::ProjectEWAForwardStruct data;
-
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-
-    std::shared_ptr<PlyData> x, y, z, scale_x, scale_y, scale_z, rotate_0, rotate_1, rotate_2, rotate_3,
-        vis_input, u, v, d, cov2d_0, cov2d_1, cov2d_2, cov3d_0, cov3d_1, cov3d_2,
-        cov3d_3, cov3d_4, cov3d_5, radius, tiles_torched, rect_0, rect_1, rect_2,
-        rect_3, vis_output;
-
-    try {
-        x = plyFile.request_properties_from_element("vertex", { "x" });
-        y = plyFile.request_properties_from_element("vertex", { "y" });
-        z = plyFile.request_properties_from_element("vertex", { "z" });
-        scale_x = plyFile.request_properties_from_element("vertex", { "scale_x" });
-        scale_y = plyFile.request_properties_from_element("vertex", { "scale_y" });
-        scale_z = plyFile.request_properties_from_element("vertex", { "scale_z" });
-        rotate_0 = plyFile.request_properties_from_element("vertex", { "rotate_0" });
-        rotate_1 = plyFile.request_properties_from_element("vertex", { "rotate_1" });
-        rotate_2 = plyFile.request_properties_from_element("vertex", { "rotate_2" });
-        rotate_3 = plyFile.request_properties_from_element("vertex", { "rotate_3" });
-
-        vis_input = plyFile.request_properties_from_element("vertex", { "vis_input" });
-        u = plyFile.request_properties_from_element("vertex", { "u" });
-        v = plyFile.request_properties_from_element("vertex", { "v" });
-        d = plyFile.request_properties_from_element("vertex", { "d" });
-        cov2d_0 = plyFile.request_properties_from_element("vertex", { "cov2d_0" });
-        cov2d_1 = plyFile.request_properties_from_element("vertex", { "cov2d_1" });
-        cov2d_2 = plyFile.request_properties_from_element("vertex", { "cov2d_2" });
-        cov3d_0 = plyFile.request_properties_from_element("vertex", { "cov3d_0" });
-        cov3d_1 = plyFile.request_properties_from_element("vertex", { "cov3d_1" });
-        cov3d_2 = plyFile.request_properties_from_element("vertex", { "cov3d_2" });
-        cov3d_3 = plyFile.request_properties_from_element("vertex", { "cov3d_3" });
-        cov3d_4 = plyFile.request_properties_from_element("vertex", { "cov3d_4" });
-        cov3d_5 = plyFile.request_properties_from_element("vertex", { "cov3d_5" });
-        radius = plyFile.request_properties_from_element("vertex", { "radius" });
-        tiles_torched = plyFile.request_properties_from_element("vertex", { "tiles_torch" });
-        rect_0 = plyFile.request_properties_from_element("vertex", { "rect_0" });
-        rect_1 = plyFile.request_properties_from_element("vertex", { "rect_1" });
-        rect_2 = plyFile.request_properties_from_element("vertex", { "rect_2" });
-        rect_3 = plyFile.request_properties_from_element("vertex", { "rect_3" });
-        vis_output = plyFile.request_properties_from_element("vertex", { "vis_output" });
-    }
-    catch (const std::exception& e) {
-        std::cout << "Error reading properties: " << e.what() << std::endl;
-    }
-
-    plyFile.read(file);
-    size_t numVertices = x->count;
-
-    for (size_t i = 0; i < numVertices; ++i) {
-        data.xyz.emplace_back(reinterpret_cast<float*>(x->buffer.get())[i], reinterpret_cast<float*>(y->buffer.get())[i], reinterpret_cast<float*>(z->buffer.get())[i]);
-        data.scale.emplace_back(reinterpret_cast<float*>(scale_x->buffer.get())[i], reinterpret_cast<float*>(scale_y->buffer.get())[i], reinterpret_cast<float*>(scale_z->buffer.get())[i]);
-        data.rotate.emplace_back(reinterpret_cast<float*>(rotate_0->buffer.get())[i], reinterpret_cast<float*>(rotate_1->buffer.get())[i], reinterpret_cast<float*>(rotate_2->buffer.get())[i], reinterpret_cast<float*>(rotate_3->buffer.get())[i]);
-        data.vis_input.push_back(reinterpret_cast<float*>(vis_input->buffer.get())[i]);
-        data.uvd.emplace_back(reinterpret_cast<float*>(u->buffer.get())[i], reinterpret_cast<float*>(v->buffer.get())[i], reinterpret_cast<float*>(d->buffer.get())[i]);
-        data.cov2d.emplace_back(reinterpret_cast<float*>(cov2d_0->buffer.get())[i], reinterpret_cast<float*>(cov2d_1->buffer.get())[i], reinterpret_cast<float*>(cov2d_2->buffer.get())[i]);
-        data.cov3d.emplace_back(reinterpret_cast<float*>(cov3d_0->buffer.get())[i], reinterpret_cast<float*>(cov3d_1->buffer.get())[i], reinterpret_cast<float*>(cov3d_2->buffer.get())[i]);
-        data.cov3d.emplace_back(reinterpret_cast<float*>(cov3d_3->buffer.get())[i], reinterpret_cast<float*>(cov3d_4->buffer.get())[i], reinterpret_cast<float*>(cov3d_5->buffer.get())[i]);
-        data.radius.push_back(reinterpret_cast<int*>(radius->buffer.get())[i]);
-        data.tiles_torched.push_back(reinterpret_cast<int*>(tiles_torched->buffer.get())[i]);
-        data.tiles_rect.emplace_back(reinterpret_cast<int*>(rect_0->buffer.get())[i], reinterpret_cast<int*>(rect_1->buffer.get())[i], reinterpret_cast<int*>(rect_2->buffer.get())[i], reinterpret_cast<int*>(rect_3->buffer.get())[i]);
-        data.vis_output.push_back(reinterpret_cast<float*>(vis_output->buffer.get())[i]);
-    }
-
-    return data;
-}
-
-DataLoader::ProjectEWABackwardStruct DataLoader::loadEWABackwardData() {
-    const std::string filepath = FileOperator::GetInstance()->GetFileAbsolutePath("assets/test_ply/ProjectEWA/backward_data.ply");
-
-    DataLoader::ProjectEWABackwardStruct data;
-
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-
-    std::shared_ptr<PlyData> x, y, z, scale_x, scale_y, scale_z, rotate_0, rotate_1, rotate_2, rotate_3,
-        visible, cov3d_0, cov3d_1, cov3d_2, cov3d_3, cov3d_4, cov3d_5, dL_du, dL_dv, dL_dd,
-        dL_dcov2d_0, dL_dcov2d_1, dL_dcov2d_2, dL_dx, dL_dy, dL_dz, dL_dscale_x, dL_dscale_y, dL_dscale_z,
-        dL_drotate_0, dL_drotate_1, dL_drotate_2, dL_drotate_3;
-
-    try {
-        // Requesting properties from elements in the PLY file
-        x = plyFile.request_properties_from_element("vertex", { "x" });
-        y = plyFile.request_properties_from_element("vertex", { "y" });
-        z = plyFile.request_properties_from_element("vertex", { "z" });
-        scale_x = plyFile.request_properties_from_element("vertex", { "scale_x" });
-        scale_y = plyFile.request_properties_from_element("vertex", { "scale_y" });
-        scale_z = plyFile.request_properties_from_element("vertex", { "scale_z" });
-        rotate_0 = plyFile.request_properties_from_element("vertex", { "rotate_0" });
-        rotate_1 = plyFile.request_properties_from_element("vertex", { "rotate_1" });
-        rotate_2 = plyFile.request_properties_from_element("vertex", { "rotate_2" });
-        rotate_3 = plyFile.request_properties_from_element("vertex", { "rotate_3" });
-
-        visible = plyFile.request_properties_from_element("vertex", { "visible" });
-
-        cov3d_0 = plyFile.request_properties_from_element("vertex", { "cov3d_0" });
-        cov3d_1 = plyFile.request_properties_from_element("vertex", { "cov3d_1" });
-        cov3d_2 = plyFile.request_properties_from_element("vertex", { "cov3d_2" });
-        cov3d_3 = plyFile.request_properties_from_element("vertex", { "cov3d_3" });
-        cov3d_4 = plyFile.request_properties_from_element("vertex", { "cov3d_4" });
-        cov3d_5 = plyFile.request_properties_from_element("vertex", { "cov3d_5" });
-
-        dL_du = plyFile.request_properties_from_element("vertex", { "dL_du" });
-        dL_dv = plyFile.request_properties_from_element("vertex", { "dL_dv" });
-        dL_dd = plyFile.request_properties_from_element("vertex", { "dL_dd" });
-
-        dL_dcov2d_0 = plyFile.request_properties_from_element("vertex", { "dL_dcov2d_0" });
-        dL_dcov2d_1 = plyFile.request_properties_from_element("vertex", { "dL_dcov2d_1" });
-        dL_dcov2d_2 = plyFile.request_properties_from_element("vertex", { "dL_dcov2d_2" });
-
-        dL_dx = plyFile.request_properties_from_element("vertex", { "dL_dx" });
-        dL_dy = plyFile.request_properties_from_element("vertex", { "dL_dy" });
-        dL_dz = plyFile.request_properties_from_element("vertex", { "dL_dz" });
-
-        dL_dscale_x = plyFile.request_properties_from_element("vertex", { "dL_dscale_x" });
-        dL_dscale_y = plyFile.request_properties_from_element("vertex", { "dL_dscale_y" });
-        dL_dscale_z = plyFile.request_properties_from_element("vertex", { "dL_dscale_z" });
-
-        dL_drotate_0 = plyFile.request_properties_from_element("vertex", { "dL_drotate_0" });
-        dL_drotate_1 = plyFile.request_properties_from_element("vertex", { "dL_drotate_1" });
-        dL_drotate_2 = plyFile.request_properties_from_element("vertex", { "dL_drotate_2" });
-        dL_drotate_3 = plyFile.request_properties_from_element("vertex", { "dL_drotate_3" });
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error reading properties: " << e.what() << std::endl;
-    }
-
-    plyFile.read(file);
-    size_t numVertices = x->count;
-
-    // Load data into structure
-    for (size_t i = 0; i < numVertices; ++i) {
-        data.xyz.emplace_back(reinterpret_cast<float*>(x->buffer.get())[i], reinterpret_cast<float*>(y->buffer.get())[i], reinterpret_cast<float*>(z->buffer.get())[i]);
-        data.scale.emplace_back(reinterpret_cast<float*>(scale_x->buffer.get())[i], reinterpret_cast<float*>(scale_y->buffer.get())[i], reinterpret_cast<float*>(scale_z->buffer.get())[i]);
-        data.rotate.emplace_back(reinterpret_cast<float*>(rotate_0->buffer.get())[i], reinterpret_cast<float*>(rotate_1->buffer.get())[i], reinterpret_cast<float*>(rotate_2->buffer.get())[i], reinterpret_cast<float*>(rotate_3->buffer.get())[i]);
-        data.visible.push_back(reinterpret_cast<int*>(visible->buffer.get())[i]);
-        data.cov3d.emplace_back(reinterpret_cast<float*>(cov3d_0->buffer.get())[i], reinterpret_cast<float*>(cov3d_1->buffer.get())[i], reinterpret_cast<float*>(cov3d_2->buffer.get())[i]);
-        data.cov3d.emplace_back(reinterpret_cast<float*>(cov3d_3->buffer.get())[i], reinterpret_cast<float*>(cov3d_4->buffer.get())[i], reinterpret_cast<float*>(cov3d_5->buffer.get())[i]);
-        data.dL_duv.emplace_back(reinterpret_cast<float*>(dL_du->buffer.get())[i], reinterpret_cast<float*>(dL_dv->buffer.get())[i], reinterpret_cast<float*>(dL_dd->buffer.get())[i]);
-        data.dL_dcov2d.emplace_back(reinterpret_cast<float*>(dL_dcov2d_0->buffer.get())[i], reinterpret_cast<float*>(dL_dcov2d_1->buffer.get())[i], reinterpret_cast<float*>(dL_dcov2d_2->buffer.get())[i]);
-        data.dL_dxyz.emplace_back(reinterpret_cast<float*>(dL_dx->buffer.get())[i], reinterpret_cast<float*>(dL_dy->buffer.get())[i], reinterpret_cast<float*>(dL_dz->buffer.get())[i]);
-        data.dL_dscale.emplace_back(reinterpret_cast<float*>(dL_dscale_x->buffer.get())[i], reinterpret_cast<float*>(dL_dscale_y->buffer.get())[i], reinterpret_cast<float*>(dL_dscale_z->buffer.get())[i]);
-        data.dL_drotate.emplace_back(reinterpret_cast<float*>(dL_drotate_0->buffer.get())[i], reinterpret_cast<float*>(dL_drotate_1->buffer.get())[i], reinterpret_cast<float*>(dL_drotate_2->buffer.get())[i], reinterpret_cast<float*>(dL_drotate_3->buffer.get())[i]);
-    }
-
-    return data;
-}
-
-DataLoader::EvalSHForwardStruct DataLoader::loadEvalSHForwardData() {
-    const std::string filepath = FileOperator::GetInstance()->GetFileAbsolutePath("assets/test_ply/EvalSH/forward_data_3.ply");
-
-    DataLoader::EvalSHForwardStruct data;
-    const int D = 16;  // 2^(n+1) where n=3
-    const int num_channels = 3;  // Assuming 3 channels for sh coefficients (e.g., RGB)
-
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-
-    std::vector<std::shared_ptr<PlyData>> sh_properties(48);  // SH properties (sh_0 to sh_47)
-    std::shared_ptr<PlyData> vx, vy, vz, visible, r, g, b;
-
-    try {
-        for (int i = 0; i < 48; ++i) {
-            sh_properties[i] = plyFile.request_properties_from_element("vertex", { "sh_" + std::to_string(i) });
-        }
-
-        vx = plyFile.request_properties_from_element("vertex", { "vx" });
-        vy = plyFile.request_properties_from_element("vertex", { "vy" });
-        vz = plyFile.request_properties_from_element("vertex", { "vz" });
-        visible = plyFile.request_properties_from_element("vertex", { "visible" });
-        r = plyFile.request_properties_from_element("vertex", { "r" });
-        g = plyFile.request_properties_from_element("vertex", { "g" });
-        b = plyFile.request_properties_from_element("vertex", { "b" });
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error reading properties: " << e.what() << std::endl;
-    }
-
-    plyFile.read(file);
-    size_t numVertices = vx->count;
-
-    data.sh_coefficients.resize(numVertices, std::vector<std::vector<float>>(num_channels, std::vector<float>(D)));
-
-    for (size_t i = 0; i < numVertices; ++i) {
-
-        for (int j = 0; j < 3; ++j) { 
-            for (int k = 0; k < D; ++k) { 
-                data.sh_coefficients[i][j][k] = reinterpret_cast<float*>(sh_properties[j * D + k]->buffer.get())[i];
-            }
-        }
-
-
-        data.v.emplace_back(reinterpret_cast<float*>(vx->buffer.get())[i],
-            reinterpret_cast<float*>(vy->buffer.get())[i],
-            reinterpret_cast<float*>(vz->buffer.get())[i]);
-
-        data.visible.push_back(reinterpret_cast<int*>(visible->buffer.get())[i]);
-
-        data.color.emplace_back(reinterpret_cast<float*>(r->buffer.get())[i],
-            reinterpret_cast<float*>(g->buffer.get())[i],
-            reinterpret_cast<float*>(b->buffer.get())[i]);
-    }
-
-    return data;
-}
-
-DataLoader::EvalSHBackwardStruct DataLoader::loadEvalSHBackwardData() {
-    const std::string filepath =
-        FileOperator::GetInstance()->GetFileAbsolutePath("assets/test_ply/EvalSH/backward_data_3.ply");
-
-    DataLoader::EvalSHBackwardStruct data;
-    const int D = 16;  // 2^(n+1) where n=3
-    const int num_channels = 3;  // Assuming 3 channels for sh coefficients (e.g., RGB)
-
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-
-
-    std::vector<std::shared_ptr<PlyData>> sh_properties(48);      // SH coefficients (sh_0 to sh_47)
-    std::vector<std::shared_ptr<PlyData>> dL_dsh_properties(48);  // Derivative SH coefficients (dL_dsh_0 to dL_dsh_47)
-    std::shared_ptr<PlyData> vx, vy, vz, visible, dL_dr, dL_dg, dL_db, dL_dvx, dL_dvy, dL_dvz;
-
-    try {
-        for (int i = 0; i < 48; ++i) {
-            sh_properties[i] = plyFile.request_properties_from_element("vertex", { "sh_" + std::to_string(i) });
-            dL_dsh_properties[i] = plyFile.request_properties_from_element("vertex", { "dL_dsh_" + std::to_string(i) });
-        }
-
-        vx = plyFile.request_properties_from_element("vertex", { "vx" });
-        vy = plyFile.request_properties_from_element("vertex", { "vy" });
-        vz = plyFile.request_properties_from_element("vertex", { "vz" });
-        visible = plyFile.request_properties_from_element("vertex", { "visible" });
-        dL_dr = plyFile.request_properties_from_element("vertex", { "dL_dr" });
-        dL_dg = plyFile.request_properties_from_element("vertex", { "dL_dg" });
-        dL_db = plyFile.request_properties_from_element("vertex", { "dL_db" });
-        dL_dvx = plyFile.request_properties_from_element("vertex", { "dL_dvx" });
-        dL_dvy = plyFile.request_properties_from_element("vertex", { "dL_dvy" });
-        dL_dvz = plyFile.request_properties_from_element("vertex", { "dL_dvz" });
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error reading properties: " << e.what() << std::endl;
-    }
-
-    plyFile.read(file);
-    size_t numVertices = vx->count;
-
-    data.sh_coefficients.resize(numVertices, std::vector<std::vector<float>>(num_channels, std::vector<float>(D)));
-    data.dL_dsh.resize(numVertices, std::vector<std::vector<float>>(num_channels, std::vector<float>(D)));
-
-    for (size_t i = 0; i < numVertices; ++i) {
-
-        for (int j = 0; j < 3; ++j) { 
-            for (int k = 0; k < D; ++k) {  
-                data.sh_coefficients[i][j][k] = reinterpret_cast<float*>(sh_properties[j * D + k]->buffer.get())[i];
-                data.dL_dsh[i][j][k] = reinterpret_cast<float*>(dL_dsh_properties[j * D + k]->buffer.get())[i];
-            }
-        }
-
-        data.v.emplace_back(reinterpret_cast<float*>(vx->buffer.get())[i],
-            reinterpret_cast<float*>(vy->buffer.get())[i],
-            reinterpret_cast<float*>(vz->buffer.get())[i]);
-
-        data.visible.push_back(reinterpret_cast<int*>(visible->buffer.get())[i]);
-
-        data.dL_dcolor.emplace_back(reinterpret_cast<float*>(dL_dr->buffer.get())[i],
-            reinterpret_cast<float*>(dL_dg->buffer.get())[i],
-            reinterpret_cast<float*>(dL_db->buffer.get())[i]);
-
-        data.dL_dv.emplace_back(reinterpret_cast<float*>(dL_dvx->buffer.get())[i],
-            reinterpret_cast<float*>(dL_dvy->buffer.get())[i],
-            reinterpret_cast<float*>(dL_dvz->buffer.get())[i]);
-    }
-
-    return data;
-}
-
 void DataLoader::printPlyHeader(const std::string& filepath)
 {
     DataLoader::PlyDataStruct data;
@@ -453,7 +161,6 @@ void extractExtrinsics(const std::vector<std::string>& files, std::vector<std::v
     }
 }
 
-
 long long extractNumber(const std::string& str) {
     std::string imgName = std::filesystem::path(str).stem().string();
     
@@ -481,7 +188,6 @@ long long extractNumber(const std::string& str) {
     return 0;
 }
 
-
 void getFilesInDirectory(std::string path, std::string ext, std::vector<std::string>& outFiles){
     DIR* dir = opendir(path.c_str());
     if (!dir) {
@@ -505,7 +211,6 @@ void getFilesInDirectory(std::string path, std::string ext, std::vector<std::str
     closedir(dir);
 }
 
-// 自定义 glm::vec3 的哈希函数
 struct Vec3Hash {
     size_t operator()(const glm::vec3& v) const {
         std::hash<float> floatHasher;
@@ -516,13 +221,11 @@ struct Vec3Hash {
     }
 };
 
-// 自定义 glm::vec3 的相等比较
 struct Vec3Equal {
     bool operator()(const glm::vec3& v1, const glm::vec3& v2) const {
         return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z;
     }
 };
-
 
 glm::mat4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
     glm::mat4 W2C(1.0f);
@@ -601,7 +304,6 @@ void DataLoader::InputInitStruct::normalizeData() {
     }
 }
 
-
 void DataLoader::InputInitStruct::computePositionStats() {
     if (positions.empty()) {
         std::cerr << "Error: No position data available!" << std::endl;
@@ -627,7 +329,6 @@ void DataLoader::InputInitStruct::computePositionStats() {
     std::cout << "Position Mean: (" << mean.x << ", " << mean.y << ", " << mean.z << ")" << std::endl;
     std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
 }
-
 
 void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data) {
     std::ifstream file(gaussianPath, std::ios::binary);
@@ -833,214 +534,6 @@ void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::In
     }
     LOGI("Resume from gaussians OK! Read %{public}zu points.", data.positions.size());
 }
-
-/*
-void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
-    std::ifstream pointsFile(pointsFilePath);
-    if (!pointsFile.is_open()) {
-        LOGE("Failed to open %{public}s file.", pointsFilePath.c_str());
-    }
-    std::string line;
-    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
-    float C0 = 0.28209479177387814;
-    while (std::getline(pointsFile, line)) {
-        if (line.empty()) continue;
-        std::istringstream iss(line);
-        int pointId;
-        float x, y, z;
-        int r, g, b;
-        float alpha; // Although alpha is provided, we will not use it.
-        if (!(iss >> pointId >> x >> y >> z >> r >> g >> b >> alpha)) {
-            continue; // Skip invalid lines.
-        }
-
-        glm::vec3 pos(x, y, z);
-        // Check for duplicate points
-        if (uniquePoints.find(pos) != uniquePoints.end()) {
-            continue;
-        }
-        uniquePoints.insert(pos);
-        
-        // Store the point position.
-        data.positions.push_back(pos);
-        
-        // Default attributes (scales, rotations, opacities) to zeros.
-        data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-        data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
-
-        data.opacities.push_back(-2.197225f);
-        
-        // Process the color data.
-        // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
-        DataLoader::InputInitStruct::Data colorData = {};
-
-        // Save r in index 0, g in index 16, and b in index 32.
-        colorData.values[0]  = static_cast<float>((r/255.0-0.5)/C0);
-        colorData.values[16] = static_cast<float>((g/255.0-0.5)/C0);
-        colorData.values[32] = static_cast<float>((b/255.0-0.5)/C0);
-        data.colors.push_back(colorData);
-    }
-    LOGI("Unique points loaded: %{public}zu", data.positions.size());
-}
-
-void DataLoader::loadExtrinsics(std::string dataPath, DataLoader::InputInitStruct& data){
-    std::string imagesFilePath = dataPath + "/slam/images.txt";
-    std::string imageFolder = "/images/";
-    std::ifstream imagesFile(imagesFilePath);
-    if (!imagesFile.is_open()) {
-        throw std::runtime_error("Failed to open images.txt file.");
-    }
-
-    std::string line;
-
-    while (std::getline(imagesFile, line)) {
-        if (line.empty()) continue;
-        std::istringstream iss(line);
-        int frameId;
-        float qx, qy, qz, qw;
-        float tx, ty, tz;
-        int camera_id;
-        std::string imageName;
-
-        // Read the first 10 tokens:
-        // frame_id, qx, qy, qz, qw, tx, ty, tz, camera_id, image_name
-        if (!(iss >> frameId >> qx >> qy >> qz >> qw >> tx >> ty >> tz >> camera_id >> imageName)) {
-            continue; // Skip invalid lines.
-        }
-        
-        // Get the rest of the line which contains the extrinsic matrix in the form "mat4x4((...))"
-        std::string extrinsicsToken;
-        std::getline(iss, extrinsicsToken);
-        size_t posExtr = extrinsicsToken.find("mat4x4(");
-        if (posExtr != std::string::npos) {
-            std::string mStr = extrinsicsToken.substr(posExtr);
-            const std::string prefix = "mat4x4(";
-            if (mStr.compare(0, prefix.size(), prefix) == 0) {
-                mStr = mStr.substr(prefix.size());
-            }
-            // Remove trailing ')' characters.
-            while (!mStr.empty() && mStr.back() == ')') {
-                mStr.pop_back();
-            }
-            // Replace any '(' , ')' or ',' with spaces.
-            std::string cleanedMatrix;
-            for (char c : mStr) {
-                if (c == '(' || c == ')' || c == ',') {
-                    cleanedMatrix.push_back(' ');
-                } else {
-                    cleanedMatrix.push_back(c);
-                }
-            }
-            // Now extract all floating-point values.
-            std::istringstream issMatrix(cleanedMatrix);
-            std::vector<float> mValues;
-            float mVal;
-            while (issMatrix >> mVal) {
-                mValues.push_back(mVal);
-            }
-            // Expect 16 values for a full 4x4 matrix stored in column-major order.
-            if (mValues.size() >= 16) {
-                std::vector<float> extr(12);
-                extr[0]  = mValues[0];
-                extr[1]  = mValues[4];
-                extr[2]  = mValues[8];
-                extr[3]  = mValues[12];
-                extr[4]  = -mValues[1];
-                extr[5]  = -mValues[5];
-                extr[6]  = -mValues[9];
-                extr[7]  = -mValues[13];
-                extr[8]  = -mValues[2];
-                extr[9]  = -mValues[6];
-                extr[10] = -mValues[10];
-                extr[11] = -mValues[14];
-                data.extr_tmp.push_back(extr);
-            }
-        }
-        // Store the image name.
-        data.img_list.push_back(dataPath + imageFolder + imageName);
-    }
-    data.extr_tmp_test = data.extr_tmp;
-    
-    std::vector<std::string> filteredList;
-    for (size_t i = 0; i < data.img_list.size(); i += 1) {
-        filteredList.push_back(data.img_list[i]);
-    }
-    data.img_list = filteredList;
-    
-    std::vector<std::vector<float>> filteredExtrList;
-    for (size_t i = 0; i < data.extr_tmp.size(); i += 1) {
-        filteredExtrList.push_back(data.extr_tmp[i]);
-    }
-    data.extr_tmp = filteredExtrList;
-}
-
-void DataLoader::loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct &data){
-    std::string cameraFilePath = dataPath + "/slam/cameras.txt";
-    std::ifstream camerasFile(cameraFilePath);
-    std::string line;
-    data.intr_tmp.clear();
-    while (std::getline(camerasFile, line)) {
-        if (line.empty() || line[0] == '#'){
-            LOGE("Line is empty");
-            continue;
-        }
-        std::istringstream iss(line);
-        int cameraId;
-        std::string camera_type;
-        float fx, fy, cx, cy;
-        int height, width;
-        int camera_id;
-        std::string imageName;
-
-        // Read the first 8 tokens:
-        if (!(iss >> cameraId >> camera_type >> width >> height >> fx >> fy >> cx >> cy)) {
-            LOGW("Invalid line encountered.");
-            continue; // Skip invalid lines.
-        }
-
-        assert(camera_type == "PINHOLE" || camera_type == "pinhole");
-
-        std::vector<float> intr = { fx,fy,cx,cy };
-        data.intr_tmp.push_back(intr);
-    }
-    LOGI("Intr size: %{public}zu; Extr size: %{public}zu", data.intr_tmp.size(), data.extr_tmp.size());
-    assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
-}
-
-void DataLoader::loadInputLegoInitDatav2(std::string dataFolder, DataLoader::InputInitStruct& data, bool& resumed) {
-    auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
-    std::string resume_gaussian_path = basePath + dataFolder + "/point_cloud.ply";
-
-    loadInputGaussianData(resume_gaussian_path, data);
-    data.basepath = basePath;
-    std::string dataPath = basePath + dataFolder;
-    
-    if (data.positions.size() == 0){
-        LOGW("Resuming from ply failed, starting from points3D.txt");
-        std::vector<float> head_bbox;
-        bool is_human = HumanPreprocess(dataPath, head_bbox);
-        
-        std::string pointsFilePath = dataPath + "/slam/points3D.txt";
-        load3DPoints(pointsFilePath, data);
-        
-        if(is_human){
-            std::string smplPath = dataPath + "/slam/smpl.txt";
-            load3DPoints(smplPath, data);
-            for(int i=0; i<head_bbox.size(); ++i){
-                LOGI("head bbox: %{public}f", head_bbox[i]);
-            }
-            data.head_bbox = head_bbox;
-        }
-    }
-    else{
-        resumed = true;
-    }
-    
-    loadExtrinsics(dataPath, data);
-    loadIntrinsics(dataPath, data);
-    
-}
-*/
 
 DataLoader::InputInitStruct  DataLoader::loadHeadGaussians(std::string dataPath, DataLoader::InputInitStruct& data) {
     std::string resume_gaussian_path = data.basepath + dataPath + "/head/point_cloud.ply";
@@ -1306,303 +799,6 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
     LOGI("Unique points loaded: %{public}zu", data.positions.size());
     pointsFile.close();
 }
-
-#if 0
-// Function to save a frame as an image
-bool saveFrameAsImage(AVFrame* frame, const std::string& filename, int width, int height) {
-    // Check file extension
-    std::string ext = filename.substr(filename.find_last_of("."));
-    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-    
-    // Use MJPEG encoding for image output
-    const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
-    if (!codec) {
-        LOGE("MJPEG codec not found");
-        return false;
-    }
-    
-    AVCodecContext* codecContext = avcodec_alloc_context3(codec);
-    if (!codecContext) {
-        LOGE("Could not allocate codec context");
-        return false;
-    }
-    
-    codecContext->width = width;
-    codecContext->height = height;
-    codecContext->time_base = {1, 25};
-    codecContext->pix_fmt = AV_PIX_FMT_YUVJ420P;  // JPEG format
-    codecContext->qmin = 1;  // High quality
-    codecContext->qmax = 1;
-    
-    if (avcodec_open2(codecContext, codec, nullptr) < 0) {
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    // Convert RGB to YUV for JPEG
-    AVFrame* yuvFrame = av_frame_alloc();
-    if (!yuvFrame) {
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    yuvFrame->width = width;
-    yuvFrame->height = height;
-    yuvFrame->format = AV_PIX_FMT_YUVJ420P;
-    
-    if (av_frame_get_buffer(yuvFrame, 0) < 0) {
-        av_frame_free(&yuvFrame);
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    SwsContext* swsContext = sws_getContext(
-        width, height, AV_PIX_FMT_RGB24,
-        width, height, AV_PIX_FMT_YUVJ420P,
-        SWS_BILINEAR, nullptr, nullptr, nullptr);
-    
-    if (!swsContext) {
-        av_frame_free(&yuvFrame);
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    if (sws_scale(swsContext, frame->data, frame->linesize, 0, height,
-                 yuvFrame->data, yuvFrame->linesize) <= 0) {
-        sws_freeContext(swsContext);
-        av_frame_free(&yuvFrame);
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    sws_freeContext(swsContext);
-    
-    // Encode frame to JPEG
-    AVPacket* packet = av_packet_alloc();
-    if (!packet) {
-        av_frame_free(&yuvFrame);
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    if (avcodec_send_frame(codecContext, yuvFrame) < 0) {
-        av_packet_free(&packet);
-        av_frame_free(&yuvFrame);
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    int ret = avcodec_receive_packet(codecContext, packet);
-    if (ret < 0) {
-        av_packet_free(&packet);
-        av_frame_free(&yuvFrame);
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    // Write JPEG data to file
-    FILE* f = fopen(filename.c_str(), "wb");
-    if (!f) {
-        av_packet_free(&packet);
-        av_frame_free(&yuvFrame);
-        avcodec_free_context(&codecContext);
-        return false;
-    }
-    
-    fwrite(packet->data, 1, packet->size, f);
-    fclose(f);
-    
-    // Clean up
-    av_packet_free(&packet);
-    av_frame_free(&yuvFrame);
-    avcodec_free_context(&codecContext);
-    
-    return true;
-}
-
-// Process video with FFmpeg
-bool processVideoWithFFmpeg(
-    const std::string& videoPath, 
-    const std::vector<std::string>& timestamps,
-    const std::unordered_set<std::string>& uniqueImages,
-    const std::string& scenepath,
-    const std::string& ext,
-    int width, int height,
-    std::vector<std::string>& img_list) 
-{
-    // Initialize FFmpeg resources
-    AVFormatContext* formatContext = nullptr;
-    AVCodecContext* codecContext = nullptr;
-    const AVCodec* codec = nullptr;
-    AVFrame* frame = nullptr;
-    AVFrame* rgbFrame = nullptr;
-    AVPacket* packet = nullptr;
-    SwsContext* swsContext = nullptr;
-    uint8_t* buffer = nullptr;
-    
-    try {
-        // Open input file
-        if (avformat_open_input(&formatContext, videoPath.c_str(), nullptr, nullptr) != 0) {
-            throw std::runtime_error("Could not open video file");
-        }
-        
-        // Retrieve stream information
-        if (avformat_find_stream_info(formatContext, nullptr) < 0) {
-            throw std::runtime_error("Could not find stream information");
-        }
-        
-        // Find the video stream
-        int videoStreamIndex = -1;
-        for (unsigned int i = 0; i < formatContext->nb_streams; i++) {
-            if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-                videoStreamIndex = i;
-                break;
-            }
-        }
-        
-        if (videoStreamIndex == -1) {
-            throw std::runtime_error("Could not find video stream");
-        }
-        
-        // Get codec parameters
-        AVCodecParameters* codecParameters = formatContext->streams[videoStreamIndex]->codecpar;
-        
-        // Find decoder
-        codec = avcodec_find_decoder(codecParameters->codec_id);
-        if (!codec) {
-            throw std::runtime_error("Unsupported codec");
-        }
-        
-        // Create codec context
-        codecContext = avcodec_alloc_context3(codec);
-        if (!codecContext) {
-            throw std::runtime_error("Failed to allocate codec context");
-        }
-        
-        // Copy codec parameters to codec context
-        if (avcodec_parameters_to_context(codecContext, codecParameters) < 0) {
-            throw std::runtime_error("Failed to copy codec parameters to codec context");
-        }
-        
-        // Open codec
-        if (avcodec_open2(codecContext, codec, nullptr) < 0) {
-            throw std::runtime_error("Failed to open codec");
-        }
-
-        
-        // Allocate frames
-        frame = av_frame_alloc();
-        rgbFrame = av_frame_alloc();
-        if (!frame || !rgbFrame) {
-            throw std::runtime_error("Failed to allocate frames");
-        }
-        
-        // Allocate RGB frame buffer
-        int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, width, height, 1);
-        buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
-        if (!buffer) {
-            throw std::runtime_error("Failed to allocate buffer");
-        }
-        
-        // Setup RGB frame with the buffer
-        if (av_image_fill_arrays(rgbFrame->data, rgbFrame->linesize, buffer,
-                                AV_PIX_FMT_RGB24, width, height, 1) < 0) {
-            throw std::runtime_error("Failed to setup RGB frame");
-        }
-        
-        rgbFrame->width = width;
-        rgbFrame->height = height;
-        rgbFrame->format = AV_PIX_FMT_RGB24;
-        
-        // Initialize scaling context
-        swsContext = sws_getContext(
-            codecContext->width, codecContext->height, codecContext->pix_fmt,
-            width, height, AV_PIX_FMT_RGB24,
-            SWS_BILINEAR, nullptr, nullptr, nullptr);
-        
-        if (!swsContext) {
-            throw std::runtime_error("Failed to initialize scaling context");
-        }
-        
-        // Allocate packet
-        packet = av_packet_alloc();
-        if (!packet) {
-            throw std::runtime_error("Failed to allocate packet");
-        }
-        
-        // Create output directory
-        std::filesystem::create_directories(scenepath + "/images/");
-        
-        // Read frames from the video
-        int frameCount = 0;
-        while (av_read_frame(formatContext, packet) >= 0) {
-            if (packet->stream_index == videoStreamIndex) {
-                // Send packet to decoder
-                int response = avcodec_send_packet(codecContext, packet);
-                if (response < 0) {
-                    throw std::runtime_error("Error sending packet to decoder");
-                }
-                
-                while (response >= 0) {
-                    response = avcodec_receive_frame(codecContext, frame);
-                    if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-                        break;
-                    } else if (response < 0) {
-                        throw std::runtime_error("Error during decoding");
-                    }
-                    
-                    // If we have a valid frame and it matches our timestamps
-                    if (frameCount < timestamps.size()) {
-                        std::string timestamp = timestamps[frameCount];
-                        if (uniqueImages.find(timestamp + ext) != uniqueImages.end()) {
-                            // Convert frame to RGB format
-                            sws_scale(swsContext, frame->data, frame->linesize, 0, 
-                                    codecContext->height, rgbFrame->data, rgbFrame->linesize);
-                            
-                            // Save frame as an image
-                            std::string imagePath = scenepath + "/images/" + timestamp + ext;
-                            if (saveFrameAsImage(rgbFrame, imagePath, width, height)) {
-                                std::string savePath = scenepath + "/" + timestamp + ext;
-                                img_list.push_back(savePath);
-                                LOGI("Saving %{public}s", savePath.c_str());
-                            } else {
-                                LOGE("Failed to save image: %s", imagePath.c_str());
-                            }
-                        }
-                        frameCount++;
-                    }
-                }
-            }
-            av_packet_unref(packet);
-        }
-        
-    } catch (const std::exception& e) {
-        LOGE("Error processing video: %s", e.what());
-        
-        // Cleanup FFmpeg resources
-        if (buffer) av_free(buffer);
-        if (swsContext) sws_freeContext(swsContext);
-        if (frame) av_frame_free(&frame);
-        if (rgbFrame) av_frame_free(&rgbFrame);
-        if (packet) av_packet_free(&packet);
-        if (codecContext) avcodec_free_context(&codecContext);
-        if (formatContext) avformat_close_input(&formatContext);
-        
-        return false;
-    }
-    
-    // Cleanup FFmpeg resources
-    if (buffer) av_free(buffer);
-    if (swsContext) sws_freeContext(swsContext);
-    if (frame) av_frame_free(&frame);
-    if (rgbFrame) av_frame_free(&rgbFrame);
-    if (packet) av_packet_free(&packet);
-    if (codecContext) avcodec_free_context(&codecContext);
-    if (formatContext) avformat_close_input(&formatContext);
-    
-    return true;
-}
-#endif
 
 // Function to save a frame as an image
 bool saveFrameAsImage(AVFrame* frame, const std::string& filename, int width, int height) {
@@ -1896,7 +1092,6 @@ bool processVideoWithFFmpeg(
                             std::string imagePath = scenepath + "/images/" + timestamp + ext;
                             img_list.push_back(imagePath);
                             cv::imwrite(imagePath, rotated);
-                            LOGI("Saving the %{public}zu -th image %{public}s", img_list.size(), imagePath.c_str());
                         }
                         frameCount++;
                     }
@@ -1941,8 +1136,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     std::string scenepath = basePath + _scenepath;
     std::string slampath = scenepath + "/slam";
     std::string mediapath = scenepath + "/media";
-    
-    std::string pointsFilePath = slampath + "/points3D.txt";
+
     std::string imagesFilePath = slampath + "/images.txt";
     std::string cameraFilePath = mediapath + "/cameras.txt";             // TODO: slampath?
     std::string videoInfoFilePath = mediapath + "/videoInfo.txt";
@@ -1965,8 +1159,25 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         // Read the first 6 tokens:
         // TODO: media: height >> width
         // TODO:  slam: width >> height
-        if (!(iss >> cameraId >> camera_type >> height >> width >> fx >> fy >> cy >> cx)) {
-            continue;
+        if (cameraFilePath == mediapath + "/cameras.txt") {
+            if (!(iss >> cameraId >> camera_type >> height >> width >> fx >> fy >> cy >> cx)) {
+                continue;
+            }
+        }
+        else if (cameraFilePath == slampath + "/cameras.txt") {
+            if (!(iss >> cameraId >> camera_type >> width >> height >> fx >> fy >> cx >> cy)) {
+                continue;
+            }
+
+            // width = 480, height = 640
+            float ratiox = 480.0 / width;
+            float ratioy = 640.0 / height;
+            fx *= ratiox;
+            fy *= ratioy;
+            cx *= ratiox;
+            cy *= ratioy;
+            width = 480;
+            height = 640;
         }
 
         assert(camera_type == "PINHOLE" || camera_type == "pinhole");
@@ -2018,7 +1229,6 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
 
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
-
 
     // 1. Load video data
     // Main code replacing the OpenCV section
