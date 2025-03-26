@@ -480,7 +480,7 @@ public:
     virtual bool prepare();
     void calculatePSNR(float mse, int width, int height);
     virtual void draw(){};
-    virtual void printLog();
+    virtual void printLog(bool train = true);
     void executeComputeCommand();
 
     // void drawUI(const VkCommandBuffer commandBuffer);
@@ -540,7 +540,7 @@ public:
             });
 
         executeComputeCommand();
-        printLog();
+        printLog(false);
     }
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
