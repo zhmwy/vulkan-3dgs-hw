@@ -38,7 +38,7 @@ struct TrainingConfig {
     NativeResourceManager* resourceMgr;
     std::string dataFolder;
 
-    std::vector<int> max_steps={20, 500, 500};
+    std::vector<int> max_steps={0, 500, 500};
 
     int result=0;
     bool focus_on_face = false;

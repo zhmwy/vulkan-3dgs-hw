@@ -28,8 +28,8 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
     }
     else {
         bool resumed = false;
-//         DataLoader::loadInput12(dataFolder, inputGaussian, resumed);
-        inputGaussian = DataLoader::loadInputTo(dataFolder);
+        DataLoader::loadInput12(dataFolder, inputGaussian, resumed);
+//         inputGaussian = DataLoader::loadInputTo(dataFolder);
         if(resumed) hasKNN = true;
         
         inputGaussian.computePositionStats();

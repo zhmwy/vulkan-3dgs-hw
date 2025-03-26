@@ -162,7 +162,7 @@ int ProcessKeypoints(const std::string& inputPath) {
         if (result.size() > 0) {
             // 按检测框的 x 坐标排序
             sort(result.begin(), result.end(), [](const OutputPose &a, const OutputPose &b) {
-                return a.box.x < b.box.x;
+                return a.box.width > b.box.width;
             });
     
             // 检查是否有检测结果在图片中心

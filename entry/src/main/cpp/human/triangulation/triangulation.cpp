@@ -48,8 +48,9 @@ bool readCameraIntrinsics(const std::string& filename, CameraIntrinsics& intrins
     std::stringstream ss(line);
     int camera_id;
     std::string model;
-    ss >> camera_id >> model >> intrinsics.width >> intrinsics.height;
-    ss >> intrinsics.fx >> intrinsics.fy >> intrinsics.cx >> intrinsics.cy;
+    // We require that width is the number of columns and height is the number of rows.
+    ss >> camera_id >> model >> intrinsics.height >> intrinsics.width;
+    ss >> intrinsics.fx >> intrinsics.fy >> intrinsics.cy >> intrinsics.cx;
 
     infile.close();
     return true;
@@ -62,10 +63,10 @@ void readCameraExtrinsics(const std::string& filename, std::map<std::string, Cam
         return;
     }
     std::string line;
-    while (std::getline(infile, line)) {
-        if (line.empty() || line[0] == '#') continue;
-        break;
-    }
+//     while (std::getline(infile, line)) {
+//         if (line.empty() || line[0] == '#') continue;
+//         break;
+//     }
     while (std::getline(infile, line)) {
         if (line.empty() || line[0] == '#') continue;
         std::stringstream ss(line);
@@ -87,8 +88,11 @@ void readCameraExtrinsics(const std::string& filename, std::map<std::string, Cam
         R.at<double>(2,2) = 1 - 2*(q1*q1 + q2*q2);
 
         cv::Mat t = (cv::Mat_<double>(3,1) << tx, ty, tz);
+//         LOGI("Extrinsics for %{public}s is: %{public}f %{public}f %{public}f %{public}f %{public}f %{public}f %{public}f",
+//                                                 image_name.c_str(), qw, qx, qy, qz, tx, ty, tz);
         extrinsics_map[image_name] = {R, t};
     }
+//     LOGI("Extrinsics size: %{public}zu", extrinsics_map.size());
     infile.close();
 }
 
@@ -167,7 +171,7 @@ void multiViewTriangulation(
                 confidences.push_back(kp.confidence);
             }
         }
-
+        LOGI("Using %{public}zu points for the triangulation of point %{public}d", As.size(), k);
         if (As.size() >= 2) {
             cv::Mat A_total(2 * As.size(), 4, CV_64F);
             for (size_t i = 0; i < As.size(); ++i) {
@@ -332,7 +336,7 @@ double ProcessTriangulation(std::string inputPath) {
     readKeypoints(keypointsFile, frames);
 
     // Read camera intrinsics
-    std::string camerasFile = inputPath + "/slam/cameras.txt";
+    std::string camerasFile = inputPath + "/media/cameras.txt";
     if (!readCameraIntrinsics(camerasFile, intrinsics)) {
         OH_LOG_ERROR(LOG_APP, "Failed to read camera intrinsics");
         return -1.0; // Indicate error

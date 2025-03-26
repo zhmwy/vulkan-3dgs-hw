@@ -1896,6 +1896,7 @@ bool processVideoWithFFmpeg(
                             std::string imagePath = scenepath + "/images/" + timestamp + ext;
                             img_list.push_back(imagePath);
                             cv::imwrite(imagePath, rotated);
+                            LOGI("Saving the %{public}zu -th image %{public}s", img_list.size(), imagePath.c_str());
                         }
                         frameCount++;
                     }
@@ -1964,7 +1965,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         // Read the first 6 tokens:
         // TODO: media: height >> width
         // TODO:  slam: width >> height
-        if (!(iss >> cameraId >> camera_type >> height >> width >> fx >> fy >> cx >> cy)) {
+        if (!(iss >> cameraId >> camera_type >> height >> width >> fx >> fy >> cy >> cx)) {
             continue;
         }
 
@@ -2017,61 +2018,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
 
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
-#if 0
-    // 1. Load video data
-    std::vector<std::string> allVideoFile;
-    getFilesInDirectory(scenepath, "mp4", allVideoFile);
-    if (allVideoFile.size() == 0) {
-        LOGE("No video file!");
-    }
-    
-    cv::VideoCapture video(allVideoFile[0]);
-//     video.open(allVideoFile[0], cv::CAP_FFMPEG);
-    if (!video.isOpened()) {
-        LOGE("Error in loading %{public}s!", allVideoFile[0].c_str());
-    }
 
-    
-    // 4. Load timestamp from videoInfo.txt
-    std::vector<std::string> timestamps;
-    std::ifstream videoInfoFile(videoInfoFilePath);
-    if (!videoInfoFile.is_open()){
-        throw std::runtime_error("Cannot open videoInfo.txt!");
-    }
-    while (std::getline(videoInfoFile, line)) {
-        if (line.empty() || line[0] == '#')
-            continue;
 
-        if (line.substr(0, 8) == "Rotation" || line.substr(0, 8) == "rotation")
-            continue;
-
-        std::istringstream iss(line);
-        int frameId, zero;
-        std::string timestamp;
-        if (!(iss >> frameId >> timestamp >> zero)) {
-            continue; // Skip invalid lines.
-        }
-        timestamps.push_back(timestamp);
-    }
-
-    if (data.img_list.size() != data.extr_tmp.size()){
-        std::vector<std::string>().swap(data.img_list);
-        cv::Mat frame;
-        int k = 0;
-        std::filesystem::create_directories(scenepath + "/images/");
-        while(video.read(frame)) {
-            std::string timestamp = timestamps[k];
-            if (uniqueImages.find(timestamp + ext) != uniqueImages.end()){
-                cv::Mat frame_resize;
-                cv::resize(frame, frame_resize, cv::Size(width, height), 0, 0, cv::INTER_LINEAR);
-                cv::imwrite(scenepath + "/images/" + timestamp + ext, frame_resize);
-                data.img_list.push_back(scenepath + "/" + timestamp + ext);
-            }
-            k++;
-        }
-    }
-#endif
-    
     // 1. Load video data
     // Main code replacing the OpenCV section
     std::vector<std::string> allVideoFile;
