@@ -57,6 +57,8 @@ public:
 
         std::string basepath = "";
         
+        int width, height;
+        
         void normalizeData();
         void computePositionStats();
     };
@@ -74,7 +76,9 @@ public:
     static InputInitStruct loadInputTo(const std::string _scenepath);
     static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed);
     
-    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head);
+    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head = false);
     static void printPlyHeader(const std::string& filepath);
+    
+    static void saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data);
     
 };
