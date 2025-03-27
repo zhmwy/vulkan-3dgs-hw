@@ -38,7 +38,7 @@ struct TrainingConfig {
     NativeResourceManager* resourceMgr;
     std::string dataFolder;
 
-    std::vector<int> max_steps={0, 500, 500};
+    std::vector<int> max_steps={2000, 500, 500};
 
     int result=0;
     bool focus_on_face = false;
@@ -99,7 +99,7 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         LOGW("Saving and loading takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
         
         begin = clk::now();
-        for (int i = 0; i < 114; i++){
+        for (int i = 0; i < InitlTrainer->inputGaussian.img_list.size(); i++){
             InitlTrainer->renderImage(i);
             InitlTrainer->renderRGB2Cpu(i, config->dataFolder);
         }
@@ -132,7 +132,7 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         }
         LOGW("Step 2 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
         
-        for (int i = 0; i < 114; i++){
+        for (int i = 0; i < InitlTrainer->inputGaussian.img_list.size(); i++){
             HeadTrainer->renderImage(i);
             HeadTrainer->renderRGB2Cpu(i, config->dataFolder,width, height);
         }

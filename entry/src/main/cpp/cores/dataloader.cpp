@@ -835,54 +835,6 @@ void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::In
 }
 
 /*
-void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
-    std::ifstream pointsFile(pointsFilePath);
-    if (!pointsFile.is_open()) {
-        LOGE("Failed to open %{public}s file.", pointsFilePath.c_str());
-    }
-    std::string line;
-    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
-    float C0 = 0.28209479177387814;
-    while (std::getline(pointsFile, line)) {
-        if (line.empty()) continue;
-        std::istringstream iss(line);
-        int pointId;
-        float x, y, z;
-        int r, g, b;
-        float alpha; // Although alpha is provided, we will not use it.
-        if (!(iss >> pointId >> x >> y >> z >> r >> g >> b >> alpha)) {
-            continue; // Skip invalid lines.
-        }
-
-        glm::vec3 pos(x, y, z);
-        // Check for duplicate points
-        if (uniquePoints.find(pos) != uniquePoints.end()) {
-            continue;
-        }
-        uniquePoints.insert(pos);
-        
-        // Store the point position.
-        data.positions.push_back(pos);
-        
-        // Default attributes (scales, rotations, opacities) to zeros.
-        data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-        data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
-
-        data.opacities.push_back(-2.197225f);
-        
-        // Process the color data.
-        // We interpret r, g, b (from points3D.txt) as f_dc_0, f_dc_1, and f_dc_2.
-        DataLoader::InputInitStruct::Data colorData = {};
-
-        // Save r in index 0, g in index 16, and b in index 32.
-        colorData.values[0]  = static_cast<float>((r/255.0-0.5)/C0);
-        colorData.values[16] = static_cast<float>((g/255.0-0.5)/C0);
-        colorData.values[32] = static_cast<float>((b/255.0-0.5)/C0);
-        data.colors.push_back(colorData);
-    }
-    LOGI("Unique points loaded: %{public}zu", data.positions.size());
-}
-
 void DataLoader::loadExtrinsics(std::string dataPath, DataLoader::InputInitStruct& data){
     std::string imagesFilePath = dataPath + "/slam/images.txt";
     std::string imageFolder = "/images/";
@@ -1944,7 +1896,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     
     std::string pointsFilePath = slampath + "/points3D.txt";
     std::string imagesFilePath = slampath + "/images.txt";
-    std::string cameraFilePath = mediapath + "/cameras.txt";             // TODO: slampath?
+    std::string cameraFilePath = slampath + "/cameras.txt";             // TODO: slampath?
     std::string videoInfoFilePath = mediapath + "/videoInfo.txt";
     
     // 2. Load intrinsics from cameras.txt
@@ -1965,8 +1917,16 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         // Read the first 6 tokens:
         // TODO: media: height >> width
         // TODO:  slam: width >> height
-        if (!(iss >> cameraId >> camera_type >> height >> width >> fx >> fy >> cy >> cx)) {
+        if (!(iss >> cameraId >> camera_type >> width >> height >> fx >> fy >> cx >> cy)) {
             continue;
+        }
+        if(height < width){
+            int temp = height;
+            height = width;
+            width = temp;
+            float temp2 = cy;
+            cy = cx;
+            cx = temp2;
         }
 
         assert(camera_type == "PINHOLE" || camera_type == "pinhole");

@@ -49,9 +49,16 @@ bool readCameraIntrinsics(const std::string& filename, CameraIntrinsics& intrins
     int camera_id;
     std::string model;
     // We require that width is the number of columns and height is the number of rows.
-    ss >> camera_id >> model >> intrinsics.height >> intrinsics.width;
-    ss >> intrinsics.fx >> intrinsics.fy >> intrinsics.cy >> intrinsics.cx;
-
+    ss >> camera_id >> model >> intrinsics.width >> intrinsics.height;
+    ss >> intrinsics.fx >> intrinsics.fy >> intrinsics.cx >> intrinsics.cy;
+    if(intrinsics.height < intrinsics.width){
+        int temp = intrinsics.height;
+        intrinsics.height = intrinsics.width;
+        intrinsics.width = temp;
+        float temp2 = intrinsics.cy;
+        intrinsics.cy = intrinsics.cx;
+        intrinsics.cx = temp2;
+    }
     infile.close();
     return true;
 }
@@ -336,7 +343,7 @@ double ProcessTriangulation(std::string inputPath) {
     readKeypoints(keypointsFile, frames);
 
     // Read camera intrinsics
-    std::string camerasFile = inputPath + "/media/cameras.txt";
+    std::string camerasFile = inputPath + "/slam/cameras.txt";
     if (!readCameraIntrinsics(camerasFile, intrinsics)) {
         OH_LOG_ERROR(LOG_APP, "Failed to read camera intrinsics");
         return -1.0; // Indicate error
