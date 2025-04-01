@@ -45,13 +45,13 @@ public:
         // Reset progress
         updateProgress(0.0f);
             // 这块本该放在init里，但是一放就APP_FREEZE
-//         _renderer = new VulkanRender();
-//         _renderer->loadTestData(_dataPath);
-//         std::string sandbox_basepath = _renderer->basepath;
-//                
-//         _renderer->initVulkan();
-//         _renderer->prepare();
-//         _renderer->initBuffersValues();
+        _renderer = new VulkanRender();
+        _renderer->loadTestData(_dataPath);
+        std::string sandbox_basepath = _renderer->basepath;
+
+        _renderer->initVulkan();
+        _renderer->prepare();
+        _renderer->initBuffersValues();
         _isInitialized = true;
 
     }
@@ -60,13 +60,13 @@ public:
         if (!_isInitialized || _isTraining) return;
 
         // 这块本该放在init里，但是一放就APP_FREEZE啊
-        _renderer = new VulkanRender();
-        _renderer->loadTestData(_dataPath);
-        std::string sandbox_basepath = _renderer->basepath;
-                
-        _renderer->initVulkan();
-        _renderer->prepare();
-        _renderer->initBuffersValues();
+//         _renderer = new VulkanRender();
+//         _renderer->loadTestData(_dataPath);
+//         std::string sandbox_basepath = _renderer->basepath;
+//
+//         _renderer->initVulkan();
+//         _renderer->prepare();
+//         _renderer->initBuffersValues();
         
         _isTraining = true;
         GetProcess();
@@ -84,7 +84,7 @@ public:
 
             if (_isTraining) {
                 // Post-training operations
-                _renderer->saveCameras("/123/");
+//                 _renderer->saveCameras("/123/");
                 for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
                     _renderer->renderImage(i);
                     _renderer->renderRGB2Cpu(i, _outputPath);
@@ -133,10 +133,13 @@ struct AsyncContext {
     napi_deferred deferred;
     NativeResourceManager* resourceMgr;
     InterfaceImpl* impl;
+    std::string datapath;
+    std::string outputpath;
 };
 
 void ExecuteTraining(napi_env env, void* data) {
     AsyncContext* context = static_cast<AsyncContext*>(data);
+    context->impl->Init(context->datapath, context->outputpath);
     context->impl->Train();
 }
 
@@ -174,12 +177,14 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
 
     // Create interface instance
     InterfaceImpl* impl = static_cast<InterfaceImpl*>(createInstance());
-    impl->Init(dataFolder, dataFolder);
+//     impl->Init(dataFolder, dataFolder);
 
     // Create async context
     AsyncContext* context = new AsyncContext();
     context->resourceMgr = resourceMgr;
     context->impl = impl;
+    context->datapath = dataFolder;
+    context->outputpath = dataFolder;
 
     // Setup promise
     napi_value promise;

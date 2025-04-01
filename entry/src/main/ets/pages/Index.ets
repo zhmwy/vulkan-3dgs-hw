@@ -56,8 +56,8 @@ struct Index {
         Button(this.isTraining ? 'Training...' : 'Start Training')
           .onClick(() => {
             if (!this.isTraining) {
-              this.train3DGS("/assets/12_data/AVATR");
-              // this.train3DGS("/assets/12_data/AVATAR");
+              // this.train3DGS("/assets/12_data/AVATR");
+              this.train3DGS("/assets/12_data/AVATAR");
             }
           })
           .margin(10)
