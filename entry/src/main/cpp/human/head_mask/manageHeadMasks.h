@@ -19,4 +19,11 @@
 #include "common/common.h"
 
 void manageHeadMasks(std::string dataPath, int& width, int& height, std::vector<float>& intr);
+cv::Mat cropImage(const cv::Mat& image, const cv::Point& center, const cv::Size& size, cv::Point& actualTopLeft);
+std::vector<float> calculateNewIntrinsics(
+    float fx, float fy, 
+    float cx, float cy,
+    const cv::Point& crop_origin, 
+    const cv::Size& highres_crop_size,
+    float scale_factor);
 #endif //VULKAN_3DGS_HW_MANAGEHEADMASKS_H

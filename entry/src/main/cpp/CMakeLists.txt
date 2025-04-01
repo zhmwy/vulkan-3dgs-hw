@@ -44,6 +44,7 @@ add_library(3dgs SHARED
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
     cores/tinyply.cpp
+    cores/video2images.cpp
                              human/head_mask/manageHeadMasks.cpp human/human.cpp
                              human/keypoints/keypointsv2.cpp human/keypoints/HIAIModelManager.cpp human/keypoints/utils.cpp
                              human/triangulation/triangulation.cpp

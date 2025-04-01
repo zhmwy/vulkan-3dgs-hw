@@ -87,6 +87,7 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
         InitlTrainer->renderImage(i);
         InitlTrainer->renderRGB2Cpu(i, config->dataFolder);
     }
+#if 0 
     if(config->focus_on_face){
         begin = clk::now();
         InitlTrainer->saveGaussians(config->dataFolder, true);
@@ -162,7 +163,7 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
             FullTrainer->renderRGB2Cpu(i, config->dataFolder);
         }
     }
-
+#endif
     config->result = 0;
 }
 

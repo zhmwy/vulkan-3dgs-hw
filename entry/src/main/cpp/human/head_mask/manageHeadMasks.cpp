@@ -67,42 +67,44 @@ cv::Mat cropImage(const cv::Mat& image, const cv::Point& center, const cv::Size&
     
     // Create the ROI
     cv::Rect roi(x, y, size.width, size.height);
-    
     // Return the cropped image
     return image(roi).clone();
 }
 
 // Function to calculate new camera intrinsics
-std::string calculateNewIntrinsics(
-    const std::string& camera_name,
-    double fx, double fy, 
-    double cx, double cy,
+std::vector<float> calculateNewIntrinsics(
+    float fx, float fy, 
+    float cx, float cy,
     const cv::Point& crop_origin, 
     const cv::Size& highres_crop_size,
-    double scale_factor) {
+    float scale_factor) {
     
     // Calculate new principal point after cropping
     // Adjust for the crop offset and scale to high-res
-    double new_cx = (cx - crop_origin.x) * scale_factor;
-    double new_cy = (cy - crop_origin.y) * scale_factor;
-    std::cout << crop_origin.x << " " << crop_origin.y << std::endl;
+//     double new_cx = (cx - crop_origin.x) * scale_factor;
+//     double new_cy = (cy - crop_origin.y) * scale_factor;
+    float new_cx = cx * scale_factor - crop_origin.x;
+    float new_cy = cy * scale_factor - crop_origin.y;
+    
     // Scale focal lengths
-    double new_fx = fx * scale_factor;
-    double new_fy = fy * scale_factor;
+    float new_fx = fx * scale_factor;
+    float new_fy = fy * scale_factor;
     
     // Format the new intrinsics
-    std::stringstream ss;
-    ss << 0 << " PINHOLE " 
-       << highres_crop_size.width << " " 
-       << highres_crop_size.height << " "
-       << new_fx << " "
-       << new_fy << " "
-       << new_cx << " "
-       << new_cy;
+//     std::stringstream ss;
+//     ss << 0 << " PINHOLE " 
+//        << highres_crop_size.width << " " 
+//        << highres_crop_size.height << " "
+//        << new_fx << " "
+//        << new_fy << " "
+//        << new_cx << " "
+//        << new_cy;
     
-    return ss.str();
+    std::vector<float> new_intr = {new_fx, new_fy, new_cx, new_cy};
+    
+    return new_intr;
 }
-
+#if 0
 // Process all images
 cv::Size processImages(
     const std::string& mask_folder, 
@@ -173,9 +175,6 @@ cv::Size processImages(
     for (size_t i = 0; i < mask_files.size(); ++i) {
         std::string mask_filename = mask_files[i].filename().string();
         
-        // Extract camera name from filename (without extension)
-        std::string camera_name = mask_filename.substr(0, mask_filename.find_last_of('.'));
-        
         // Construct high-res filename (assuming same name)
         std::string highres_path = (fs::path(highres_folder) / mask_filename).string();
         
@@ -227,7 +226,6 @@ cv::Size processImages(
         
         // Calculate new intrinsics
         std::string new_intrinsics = calculateNewIntrinsics(
-            camera_name,
             fx, fy, cx, cy,
             mask_crop_origin, 
             highres_bbox_size,
@@ -269,3 +267,4 @@ void manageHeadMasks(std::string dataPath, int& width, int& height, std::vector<
     width = head_size.width;
     height = head_size.height;
 }
+#endif
