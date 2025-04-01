@@ -22,7 +22,7 @@
 #include <rawfile/raw_dir.h>
 #include <rawfile/raw_file_manager.h>
 #include "render/render_to_cv_mat.h"
-#include "main.h"
+#include "interface.h"
 
 int init_called = 0;
 

@@ -37,31 +37,13 @@ struct TrainingConfig {
     napi_deferred deferred;
     NativeResourceManager* resourceMgr;
     std::string dataFolder;
-
-    std::vector<int> max_steps={2000, 500, 500};
+    
+    std::vector<int> max_steps={1200, 500, 500};
 
     int result=0;
     bool focus_on_face = false;
 };
 
-
-void Render(napi_env env, void* cfg){
-    TrainingConfig* config = static_cast<TrainingConfig*>(cfg);
-    
-    VulkanRender* vulkanExample = new VulkanRender();
-//     std::string ply_path = config->dataFolder + "/point_cloud.ply";
-    vulkanExample->loadTestData(config->dataFolder);
-    vulkanExample->hasKNN = true;
-    vulkanExample->initVulkan();
-    vulkanExample->prepare();
-    vulkanExample->initBuffersValues();
-//     vulkanExample->render();
-    
-    for (int i = 0; i < 100; i++){
-        vulkanExample->renderImage(i);
-        vulkanExample->renderRGB2Cpu(i, config->dataFolder);
-    }
-}
 
 void ExecuteTrainWork(napi_env env, void* cfg) {
     TrainingConfig* config = static_cast<TrainingConfig*>(cfg);
@@ -76,94 +58,23 @@ void ExecuteTrainWork(napi_env env, void* cfg) {
     
     for (int step = 0; step < config->max_steps[0]; ++step) {
         InitlTrainer->render();
-
+//         InitlTrainer->renderImage(step);
+//         InitlTrainer->renderRGB2Cpu(step, config->dataFolder);
         int progress = (step * 100) / config->max_steps[0];
         ReportProgressTrain(progress);
     }
 
+//     InitlTrainer->saveGaussians("/123/");
+    InitlTrainer->saveCameras("/123/");
+    
+    
     LOGW("Step 1 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
     for (int i = 0; i < InitlTrainer->inputGaussian.img_list.size(); i++){
 
         InitlTrainer->renderImage(i);
         InitlTrainer->renderRGB2Cpu(i, config->dataFolder);
     }
-#if 0 
-    if(config->focus_on_face){
-        begin = clk::now();
-        InitlTrainer->saveGaussians(config->dataFolder, true);
-        InitlTrainer->training_step = 0;
-    
-        InitlTrainer->loadTestData(config->dataFolder, LOAD_HEAD);
-        InitlTrainer->encodeCpu2Gpu();
-        InitlTrainer->ComputeMemoryBarrierBlock();
-        InitlTrainer->executeComputeCommand();
-        LOGW("Saving and loading takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-        
-        begin = clk::now();
-        for (int i = 0; i < InitlTrainer->inputGaussian.img_list.size(); i++){
-            InitlTrainer->renderImage(i);
-            InitlTrainer->renderRGB2Cpu(i, config->dataFolder);
-        }
-        LOGW("Rendering takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-        
-        begin = clk::now();
-        int width, height;
-        manageHeadMasks(sandbox_basepath + config->dataFolder, width, height, InitlTrainer->inputGaussian.intr_tmp[0]);
-        LOGW("Processing head masks takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-        
-        std::string head_folder = config->dataFolder + "/head";
-        LOGI("Loading new intrinsics from head folder: %{public}s", head_folder.c_str());
-//         delete vulkanExample;
-        
-        // Step 2: Train head gaussians on higher resolution.
-        VulkanRender* HeadTrainer = new VulkanRender();
-        HeadTrainer->low_resolution_steps = 0;
-        HeadTrainer->loadTestData(head_folder);
-        HeadTrainer->initVulkan();
-        HeadTrainer->prepare();
-        HeadTrainer->initBuffersValues();
-        begin = clk::now();
-        
-        for (int step = 0; step < config->max_steps[1]; ++step) {
-            HeadTrainer->render();
-//             HeadTrainer->renderImage(step);
-//             HeadTrainer->renderRGB2Cpu(step, config->dataFolder, width, height);
-            int progress = (step * 100) / config->max_steps[1];
-            ReportProgressTrain(progress);
-        }
-        LOGW("Step 2 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-        
-        for (int i = 0; i < InitlTrainer->inputGaussian.img_list.size(); i++){
-            HeadTrainer->renderImage(i);
-            HeadTrainer->renderRGB2Cpu(i, config->dataFolder,width, height);
-        }
-        HeadTrainer->saveGaussians(config->dataFolder, false);
-        
-        // Step 3: Put head gaussians back and train the full scene again.
-        VulkanRender* FullTrainer = new VulkanRender();
-        FullTrainer->low_resolution_steps = 0;
-        FullTrainer->loadTestData(config->dataFolder, LOAD_EXTRA);
-        FullTrainer->initVulkan();
-        FullTrainer->prepare();
-        FullTrainer->initBuffersValues();
-        
-        begin = clk::now();
-        
-        for (int step = 0; step < config->max_steps[2]; ++step) {
-            FullTrainer->render();
-//             FullTrainer->renderImage(step);
-//             FullTrainer->renderRGB2Cpu(step);
-            int progress = (step * 100) / config->max_steps[2];
-            ReportProgressTrain(progress);
-        }
-        LOGW("Step 3 takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-        
-        for (int i = 0; i < 100; i++){
-            FullTrainer->renderImage(i);
-            FullTrainer->renderRGB2Cpu(i, config->dataFolder);
-        }
-    }
-#endif
+
     config->result = 0;
 }
 

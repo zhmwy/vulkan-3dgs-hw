@@ -744,6 +744,47 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
 }
 
 
+
+void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data){
+    std::string extrName = fullDataPath + "/images.txt";
+    std::string intrName = fullDataPath + "/cameras.txt";
+
+    std::ofstream extrFile(extrName);
+    std::ofstream intrFile(intrName);
+
+    if (!extrFile.is_open() && !intrFile.is_open()) {
+        LOGE("Error: Unable to open file %{public}s and %{public}s", extrName.c_str(), intrName.c_str());
+        return;
+    }
+    assert(data.img_list.size() == data.extr_tmp.size());
+    assert(data.intr_tmp.size() == data.extr_tmp.size() || data.intr_tmp.size() == 1);
+    
+    // 1. cameras.txt
+    intrFile << "# CMAERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[fx, fy, cx, cy]\n";
+    for (int i = 0; i < data.intr_tmp.size(); i++) {
+        intrFile << "0 PINHOLE " << data.width << " " << data.height << " ";
+        intrFile << data.intr_tmp[i][0] << " " << data.intr_tmp[i][1] << " " << data.intr_tmp[i][2] << " " << data.intr_tmp[i][3] << "\n";
+    }
+    intrFile.close();
+
+    // 2. images.txt
+    extrFile << "# IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n";
+    for(int i = 0; i < data.extr_tmp.size(); i++) {
+        std::string filename = std::filesystem::path(data.img_list[i]).filename().string();
+        extrFile << i << " " << data.extr_tmp[i].values[0] << " ";
+        extrFile << data.extr_tmp[i].values[1] << " ";
+        extrFile << data.extr_tmp[i].values[2] << " ";
+        extrFile << data.extr_tmp[i].values[3] << " ";
+        extrFile << data.extr_tmp[i].values[4] << " ";
+        extrFile << data.extr_tmp[i].values[5] << " ";
+        extrFile << data.extr_tmp[i].values[6] << " ";
+        extrFile << "0 " << filename << "\n";
+    }
+    extrFile.close();
+}
+
+
+
 void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
     std::ifstream pointsFile(pointsFilePath);
     if (!pointsFile.is_open()) {
@@ -874,6 +915,17 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
         LOGE("Failed to open intrinsics output file");
     }
     
+    // Copy intr_tmp multiple times to support adding face regions. 
+    if (data.intr_tmp.size() == 1 && data.extr_tmp.size() > 1) {
+        // Get the number of extrinsics
+        size_t N = data.extr_tmp.size();
+        
+        // Use the resize function with a copy of the first element
+        std::vector<float> first_intrinsic = data.intr_tmp[0];
+        data.intr_tmp.resize(N, first_intrinsic);
+    }
+    
+    // Double extr_tmp to support adding face regions.
     data.extr_tmp.insert(data.extr_tmp.end(), data.extr_tmp.begin(), data.extr_tmp.end());
     
     for(int i=0; i<faceCenters.size(); ++i){
@@ -920,7 +972,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     std::filesystem::create_directories(basePath + "/temp");
     
     // 2. Load intrinsics from cameras.txt
-    int height, width;
+//     int height, width;
     std::string line;
     std::ifstream camerasFile(cameraFilePath);
     if (!camerasFile.is_open()){
@@ -939,29 +991,29 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         // TODO:  slam: width >> height
 
         if (cameraFilePath == mediapath + "/cameras.txt") {
-            if (!(iss >> cameraId >> camera_type >> height >> width >> fy >> fx >> cy >> cx)) {
+            if (!(iss >> cameraId >> camera_type >> data.height >> data.width >> fx >> fy >> cy >> cx)) {
                 continue;
             }
         }
         else if (cameraFilePath == slampath + "/cameras.txt") {
-            if (!(iss >> cameraId >> camera_type >> width >> height >> fx >> fy >> cx >> cy)) {
+            if (!(iss >> cameraId >> camera_type >> data.width >> data.height >> fx >> fy >> cx >> cy)) {
                 continue;
             }
 
             // width = 480, height = 640
-            float ratiox = 480.0 / width;
-            float ratioy = 640.0 / height;
+            float ratiox = 480.0 / data.width;
+            float ratioy = 640.0 / data.height;
             fx *= ratiox;
             fy *= ratioy;
             cx *= ratiox;
             cy *= ratioy;
-            width = 480;
-            height = 640;
+            data.width = 480;
+            data.height = 640;
         }
-        if(height < width){
-            int temp = height;
-            height = width;
-            width = temp;
+        if(data.height < data.width){
+            int temp = data.height;
+            data.height = data.width;
+            data.width = temp;
             float temp2 = cy;
             cy = cx;
             cx = temp2;
@@ -1050,7 +1102,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         
         // Use FFmpeg instead of OpenCV to process the video
         if (!processVideoWithFFmpeg(allVideoFile[0], timestamps, uniqueImages, 
-                                 scenepath, ext, width, height, data.img_list)) {
+                                 scenepath, ext, data.width, data.height, data.img_list)) {
             LOGE("Failed to process video with FFmpeg!");
         }
     }
@@ -1060,7 +1112,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
         bool is_human = HumanPreprocess(scenepath, data.head_bbox);
-        
+//         bool is_human = false;
         std::string pointsFilePath = scenepath + "/slam/points3D.txt";
         load3DPoints(pointsFilePath, data);
         
@@ -1250,12 +1302,12 @@ DataLoader::InputInitStruct DataLoader::loadInputTo(const std::string _scenepath
         int cameraId;
         std::string camera_type;
         float fx, fy, cx, cy;
-        int height, width;
+//         int height, width;
         int camera_id;
         std::string imageName;
 
         // Read the first 6 tokens:
-        if (!(iss >> cameraId >> camera_type >> width >> height >> fx >> fy >> cx >> cy)) {
+        if (!(iss >> cameraId >> camera_type >> data.width >> data.height >> fx >> fy >> cx >> cy)) {
             continue; // Skip invalid lines.
         }
 

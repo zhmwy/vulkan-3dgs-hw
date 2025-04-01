@@ -906,14 +906,6 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
-    if (training_step == save_step)
-    {
-        createGpu2CpuCopy(splat_buffers.xyz_array);
-        createGpu2CpuCopy(splat_buffers.scale_array);
-        createGpu2CpuCopy(splat_buffers.rotate_array);
-        createGpu2CpuCopy(splat_buffers.sh_coeff);
-        createGpu2CpuCopy(splat_buffers.opacity);
-    }
 }
 
 
@@ -3405,7 +3397,10 @@ void VulkanComputeExample::bindPipeline2CommandBuffer(
 //         float pos_lr = (start_lr - ((start_lr - end_lr) * (training_step / max_training_step)));
         float pos_lr = (start_lr - ((start_lr - end_lr) * (training_step / 30000)));
         
-        std::vector<float> pushConstants = { static_cast<float>(xyz_size), static_cast<float>((int)(current_scale * image_width)), static_cast<float>((int)(current_scale * image_height)), pos_lr, static_cast<float>(sh_degree), 0, 0, 0};
+        std::vector<float> pushConstants = { static_cast<float>(xyz_size), static_cast<float>((int)(current_scale * image_width)), static_cast<float>((int)(current_scale * image_height)), 
+            pos_lr, static_cast<float>(sh_degree), static_cast<float>(current_img_idx), 
+            0, 0
+        };
         vkCmdPushConstants(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float) * 8, pushConstants.data());
     }else{
         std::vector<uint32_t> pushConstants = { xyz_size, (unsigned int)(current_scale * image_width), (unsigned int)(current_scale * image_height), 0};
@@ -4046,63 +4041,87 @@ void VulkanComputeExample::executeComputeCommand()
 }
 
 
-void VulkanComputeExample::saveGaussians(std::string& dataPath, bool save_head){
+void VulkanComputeExample::saveGaussians(std::string dataPath, bool save_head){
     createGpu2CpuCopy(splat_buffers.xyz_array);
     createGpu2CpuCopy(splat_buffers.scale_array);
     createGpu2CpuCopy(splat_buffers.rotate_array);
     createGpu2CpuCopy(splat_buffers.sh_coeff);
     createGpu2CpuCopy(splat_buffers.opacity);
+    executeComputeCommand();
     
     LOGI("Saving start!");
     std::vector<float> positionData;
     copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
     inputGaussian.positions.clear();
     for (int i = 0; i < splat_count; i++) {
-        inputGaussian.positions.emplace_back(
-                positionData[i * 3], 
-                positionData[i * 3 + 1], 
-                positionData[i * 3 + 2]
-            );
+    inputGaussian.positions.emplace_back(
+            positionData[i * 3], 
+            positionData[i * 3 + 1], 
+            positionData[i * 3 + 2]
+        );
+    }
+    std::vector<float> scaleData;
+    copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
+    inputGaussian.scales.clear();
+    for (int i = 0; i < splat_count; i++) {
+        inputGaussian.scales.emplace_back(
+            scaleData[i * 3], 
+            scaleData[i * 3 + 1], 
+            scaleData[i * 3 + 2]
+        );
+    }
+    
+    std::vector<float> rotationData;
+    copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
+    inputGaussian.rotations.clear();
+    for (int i = 0; i < splat_count; i++) {
+        inputGaussian.rotations.emplace_back(
+            rotationData[i * 4], 
+            rotationData[i * 4 + 1], 
+            rotationData[i * 4 + 2], 
+            rotationData[i * 4 + 3]
+        );
+    }
+    
+    std::vector<float> featureData;
+    copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
+    inputGaussian.colors.clear();
+    for (int i = 0; i < splat_count; i++) {
+        DataLoader::InputInitStruct::Data colorData;
+        for (int j = 0; j < 48; j++) {
+            colorData.values[j] = featureData[i * 48 + j];
         }
-        std::vector<float> scaleData;
-        copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
-        inputGaussian.scales.clear();
-        for (int i = 0; i < splat_count; i++) {
-            inputGaussian.scales.emplace_back(
-                scaleData[i * 3], 
-                scaleData[i * 3 + 1], 
-                scaleData[i * 3 + 2]
-            );
-        }
-        
-        std::vector<float> rotationData;
-        copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
-        inputGaussian.rotations.clear();
-        for (int i = 0; i < splat_count; i++) {
-            inputGaussian.rotations.emplace_back(
-                rotationData[i * 4], 
-                rotationData[i * 4 + 1], 
-                rotationData[i * 4 + 2], 
-                rotationData[i * 4 + 3]
-            );
-        }
-        
-        std::vector<float> featureData;
-        copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
-        inputGaussian.colors.clear();
-        for (int i = 0; i < splat_count; i++) {
-            DataLoader::InputInitStruct::Data colorData;
-            for (int j = 0; j < 48; j++) {
-                colorData.values[j] = featureData[i * 48 + j];
-            }
-            inputGaussian.colors.push_back(colorData);
-        }
-        
-        copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
+        inputGaussian.colors.push_back(colorData);
+    }
+    
+    copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
 
-        LOGI("Successfully copied GPU buffers to inputGaussian!");
-        DataLoader::saveToPLY_tinyply(this->basepath + dataPath, inputGaussian, save_head);
+    LOGI("Successfully copied GPU buffers to inputGaussian!");
+    DataLoader::saveToPLY_tinyply(this->basepath + "/" + dataPath, inputGaussian, save_head);
 }
+
+
+void VulkanComputeExample::saveCameras(std::string dataPath){
+    createGpu2CpuCopy(splat_buffers.camera_extrs);
+    executeComputeCommand();
+    
+    LOGI("Saving camera extr start!");
+    std::vector<float> extrData;
+    copyGpuBufferToVector(splat_buffers.camera_extrs, extrData, inputGaussian.extr_tmp.size(), 7);
+    inputGaussian.extr_tmp.clear();
+    
+    for (int i = 0; i < inputGaussian.img_list.size(); i++) {
+        DataLoader::InputInitStruct::DataExtr extrData_temp;
+        for (int j = 0; j < 7; j++) {
+            extrData_temp.values[j] = extrData[i * 7 + j];
+        }
+        inputGaussian.extr_tmp.push_back(extrData_temp);
+    }
+    
+    LOGI("Successfully copied GPU buffers to inputGaussian!");
+    DataLoader::saveCameras(this->basepath + "/" + dataPath, inputGaussian);
+}
+
 
 void VulkanComputeExample::queryCmdTimeStart(std::string eventName)
 {

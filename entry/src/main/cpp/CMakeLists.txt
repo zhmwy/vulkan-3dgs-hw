@@ -19,7 +19,7 @@ include_directories(
 )
 
 add_library(3dgs SHARED
-    main.cpp
+    interface.cpp
     render/plugin_render.cpp
     render/algorithm/fsr.cpp
     render/render_to_cv_mat.cpp

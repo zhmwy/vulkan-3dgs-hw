@@ -111,7 +111,6 @@ public:
 
     int low_resolution_steps = 1000;
     int sh_degree = 1;
-    int save_step = 20000;
     
     RandomGenerator random_generator;
     int current_img_idx = 0;
@@ -490,7 +489,9 @@ public:
     void queryCmdTimeEnd(std::string enventName);
     
     void printGpuBuffers();
-    void saveGaussians(std::string& dataPath, bool save_head);
+    void saveGaussians(std::string dataPath, bool save_head = false);
+    void saveCameras(std::string dataPath);
+    
     virtual void getEnabledFeatures() override;
     virtual void getEnabledExtensions() override;
     

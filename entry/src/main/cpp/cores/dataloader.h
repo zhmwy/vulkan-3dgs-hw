@@ -59,6 +59,8 @@ public:
 
         std::string basepath = "";
         
+        int width, height;
+        
         void normalizeData();
         void computePositionStats();
     };
@@ -79,7 +81,9 @@ public:
     
     static std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);
     
-    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head);
+    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head = false);
     static void printPlyHeader(const std::string& filepath);
+    
+    static void saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data);
     
 };
