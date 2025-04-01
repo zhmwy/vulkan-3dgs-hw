@@ -95,12 +95,13 @@ int ProcessKeypoints(const std::string& inputPath) {
     int totalProcessedImages = 0;
     
     size_t lastSlash = inputPath.find_last_of('/');
-    std::string modelPath = inputPath.substr(0, lastSlash) + "/weights/yolov8-pose.om";
+    size_t secondLastSlash = inputPath.substr(0, lastSlash).find_last_of('/');
+    std::string modelPath = inputPath.substr(0, secondLastSlash) + "/weights/yolov8-pose.om";
     vector<vector<string>> keypoints_outputs;
     
     if (LoadModel(modelPath) != OH_NN_SUCCESS) {
         OH_LOG_ERROR(LOG_APP, "Model loading failed");
-        return -1;
+        return 0;
     }
 
     // Process images
@@ -125,7 +126,7 @@ int ProcessKeypoints(const std::string& inputPath) {
     std::ofstream outfile(outputPath);
     if (!outfile.is_open()) {
         OH_LOG_ERROR(LOG_APP, "Failed to create output file: %s", outputPath.c_str());
-        return -1;
+        return 0;
     }
 
     srand(time(NULL));//随机

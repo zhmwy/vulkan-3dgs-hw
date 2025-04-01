@@ -967,8 +967,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     std::string mediapath = scenepath + "/media";
 
     std::string imagesFilePath = slampath + "/images.txt";
-    std::string cameraFilePath = slampath + "/cameras.txt";             // TODO: slampath?
-    std::string videoInfoFilePath = slampath + "/videoInfo.txt";
+    std::string cameraFilePath = mediapath + "/cameras.txt";             // TODO: slampath?
+    std::string videoInfoFilePath = mediapath + "/videoInfo.txt";
     std::filesystem::create_directories(basePath + "/temp");
     
     // 2. Load intrinsics from cameras.txt

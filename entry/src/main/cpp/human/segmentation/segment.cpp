@@ -166,10 +166,10 @@ int GetSegments(std::string inputPath) {
     const int imgSize = 320;
     int model_output_size = 116 * 2100 * (imgSize / 320) ^2;
     int model_mask_size = 32 * (imgSize/4)^2;
-    
-    // Load model
+       
     size_t lastSlash = inputPath.find_last_of('/');
-    std::string modelPath = inputPath.substr(0, lastSlash) + "/weights/yolov8n-seg-320-new.om";
+    size_t secondLastSlash = inputPath.substr(0, lastSlash).find_last_of('/');
+    std::string modelPath = inputPath.substr(0, secondLastSlash) + "/weights/yolov8n-seg-320-new.om";
     if (LoadSegModel(modelPath) != OH_NN_SUCCESS) {
         OH_LOG_ERROR(LOG_APP, "Model loading failed");
         return -1;
