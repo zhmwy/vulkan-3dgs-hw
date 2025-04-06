@@ -76,7 +76,7 @@ public:
     static void loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
     
     static InputInitStruct loadInputTo(const std::string _scenepath);
-    static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed);
+    static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height = 640, int width = 480);
     static void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, std::vector<cv::Point>& faceCenters);
     
     static std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);

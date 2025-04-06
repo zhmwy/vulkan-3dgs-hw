@@ -957,7 +957,7 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
 }
 
 
-void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed)
+void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height, int width)
 {
     auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
     data.basepath = basePath;
@@ -967,7 +967,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     std::string mediapath = scenepath + "/media";
 
     std::string imagesFilePath = slampath + "/images.txt";
-    std::string cameraFilePath = mediapath + "/cameras.txt";             // TODO: slampath?
+    std::string cameraFilePath = slampath + "/cameras.txt";             // TODO: slampath?
     std::string videoInfoFilePath = mediapath + "/videoInfo.txt";
     std::filesystem::create_directories(basePath + "/temp");
     
@@ -999,25 +999,26 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
             if (!(iss >> cameraId >> camera_type >> data.width >> data.height >> fx >> fy >> cx >> cy)) {
                 continue;
             }
-
-            // width = 480, height = 640
-            float ratiox = 480.0 / data.width;
-            float ratioy = 640.0 / data.height;
-            fx *= ratiox;
-            fy *= ratioy;
-            cx *= ratiox;
-            cy *= ratioy;
-            data.width = 480;
-            data.height = 640;
         }
-        if(data.height < data.width){
-            int temp = data.height;
-            data.height = data.width;
-            data.width = temp;
-            float temp2 = cy;
-            cy = cx;
-            cx = temp2;
-        }
+            
+        // width = 480, height = 640
+        float ratiox = 1.0 * width / data.width;
+        float ratioy = 1.0 * height / data.height;
+        fx *= ratiox;
+        fy *= ratioy;
+        cx *= ratiox;
+        cy *= ratioy;
+        data.width = width;
+        data.height = height;
+        
+//         if(data.height < data.width){
+//             int temp = data.height;
+//             data.height = data.width;
+//             data.width = temp;
+//             float temp2 = cy;
+//             cy = cx;
+//             cx = temp2;
+//         }
 
         assert(camera_type == "PINHOLE" || camera_type == "pinhole");
 
@@ -1051,13 +1052,15 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         }
         uniqueImages.insert(imageName);
         
+        if(!std::filesystem::exists(scenepath + "/images/" + imageName))
+            continue;
+        
+        
         float norm = sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
         DataLoader::InputInitStruct::DataExtr extr = { qw / norm, qx / norm, qy / norm, qz / norm, tx, ty, tz };
         data.extr_tmp.push_back(extr);
-        
-        if(std::filesystem::exists(scenepath + "/images/" + imageName)){
-            data.img_list.push_back(scenepath + "/images/" + imageName);
-        }
+        data.img_list.push_back(scenepath + "/images/" + imageName);
+
         if (ext.size() == 0){
             size_t dotPos = imageName.rfind('.');
             if (dotPos != std::string::npos) {
@@ -1065,7 +1068,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
             }
         }
     }
-
+    data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
 
     // 1. Load video data
@@ -1076,6 +1079,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         LOGE("No video file!");
     }
     
+    /*
     std::vector<std::string> timestamps;
     std::ifstream videoInfoFile(videoInfoFilePath);
     if (!videoInfoFile.is_open()){
@@ -1106,17 +1110,18 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
             LOGE("Failed to process video with FFmpeg!");
         }
     }
+    */
     
-    std::string resume_gaussian_path = basePath + _scenepath + "/point_cloud.ply";
+    std::string resume_gaussian_path = scenepath + "/point_cloud.ply";
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
         bool is_human = HumanPreprocess(scenepath, data.head_bbox);
 //         bool is_human = false;
-        std::string pointsFilePath = scenepath + "/slam/points3D.txt";
+        std::string pointsFilePath = slampath + "/points3D.txt";
         load3DPoints(pointsFilePath, data);
         
-        if(is_human){
+        if (is_human) {
             std::string smplPath = scenepath + "/slam/smpl.txt";
             load3DPoints(smplPath, data);
             for(int i=0; i<data.head_bbox.size(); ++i){
@@ -1129,9 +1134,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     else{
         resumed = true;
     }
-    data.extr_tmp_test = data.extr_tmp;
     
-    videoInfoFile.close();
+//     videoInfoFile.close();
     imagesFile.close();
     camerasFile.close();
 }
