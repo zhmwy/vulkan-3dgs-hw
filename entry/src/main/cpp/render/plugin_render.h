@@ -20,7 +20,7 @@
 #include <ace/xcomponent/native_interface_xcomponent.h>
 #include <thread>
 #include <condition_variable>
-#include "model_3d_sponza.h"
+// #include "model_3d_sponza.h"
 #include "model_compute.h"
 #include "vulkanRender.h"
 

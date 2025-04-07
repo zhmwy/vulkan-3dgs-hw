@@ -26,7 +26,7 @@
 #include <chrono>
 #include <thread>
 
-#include <vk_radix_sort.h>
+// #include <vk_radix_sort.h>
 
 #include "cores/dataloader.h"
 #include "cores/random.h"
@@ -136,7 +136,7 @@ public:
         vkgs::Buffer sortHistOffsets;
         
         VkQueryPool queryPool = VK_NULL_HANDLE;
-        VrdxSorter sorter = VK_NULL_HANDLE;
+//         VrdxSorter sorter = VK_NULL_HANDLE;
     } sort_buffers;
 
     struct SplatBuffers {

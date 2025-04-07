@@ -44,36 +44,37 @@ add_library(3dgs SHARED
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
     cores/tinyply.cpp
-    cores/video2images.cpp
-                             human/head_mask/manageHeadMasks.cpp human/human.cpp
-                             human/keypoints/keypointsv2.cpp human/keypoints/HIAIModelManager.cpp human/keypoints/utils.cpp
-                             human/triangulation/triangulation.cpp
-                             human/SMPL/src/fit_smplv2.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
-                             human/SMPL/src/smpl/BlendShape.cpp human/SMPL/src/smpl/JointRegression.cpp human/SMPL/src/smpl/WorldTransformation.cpp
-                             human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp
-                             human/SMPL/src/smpl/smpl_male.cpp
+#    cores/video2images.cpp
+    human/head_mask/manageHeadMasks.cpp human/human.cpp
+    human/keypoints/keypointsv2.cpp human/keypoints/HIAIModelManager.cpp human/keypoints/utils.cpp
+    human/triangulation/triangulation.cpp
+    human/SMPL/src/fit_smplv2.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
+    human/SMPL/src/smpl/BlendShape.cpp human/SMPL/src/smpl/JointRegression.cpp human/SMPL/src/smpl/WorldTransformation.cpp
+    human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp
+    human/SMPL/src/smpl/smpl_male.cpp
 )
 
 
 # ktx
-set(KTX_SOURCES
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/texture.c
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/hashlist.c
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/checkheader.c
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/swap.c
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/memstream.c
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/filestream.c
-)
-set(KTX_INCLUDE
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/include
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib
-	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/other_include
-)
+#set(KTX_SOURCES
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/texture.c
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/hashlist.c
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/checkheader.c
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/swap.c
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/memstream.c
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/filestream.c
+#)
+#set(KTX_INCLUDE
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/include
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib
+#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/other_include
+#)
+#
+#add_library(libktx ${KTX_SOURCES})
+#
+#target_include_directories(libktx PUBLIC ${KTX_INCLUDE})
 
-add_library(libktx ${KTX_SOURCES})
-
-target_include_directories(libktx PUBLIC ${KTX_INCLUDE})
-target_include_directories(3dgs PRIVATE
+target_include_directories(3dgs PUBLIC
         3rdParty
         3rdParty/glm
         3rdParty/
@@ -115,7 +116,7 @@ find_library(
 
 
 #add_subdirectory(${NATIVERENDER_ROOT_PATH}/3rdParty/kompute/ ${CMAKE_CURRENT_BINARY_DIR}/kompute)
-add_subdirectory(3rdParty/vulkan_radix_sort)
+#add_subdirectory(3rdParty/vulkan_radix_sort)
 add_library(libassimp SHARED IMPORTED)
 set_target_properties(
     libassimp
@@ -133,13 +134,14 @@ find_library(
 )
 
 target_link_libraries(3dgs PUBLIC
- ${hilog-lib} ${libace-lib} ${libnapi-lib} ${libuv-lib} libnative_window.so libc++.a libktx librawfile.z.so libassimp ${xengine-lib} vk_radix_sort)
+ ${hilog-lib} ${libace-lib} ${libnapi-lib} ${libuv-lib} libnative_window.so libc++.a librawfile.z.so libassimp ${xengine-lib})
+
 
 # Human Part
 
 #target_link_libraries(3dgs PUBLIC ${NATIVERENDER_ROOT_PATH}/../../../libs/${OHOS_ARCH}/libsmpl.so)
-target_include_directories(3dgs PRIVATE human/SMPL/include)
-target_include_directories(3dgs PRIVATE human/segmentation)
+target_include_directories(3dgs PUBLIC human/SMPL/include)
+target_include_directories(3dgs PUBLIC human/segmentation)
 FIND_LIBRARY(hiai_foundation-lib hiai_foundation)
 
 target_link_libraries(3dgs PUBLIC libace_napi.z.so
@@ -171,51 +173,52 @@ target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OH
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_videoio.so.408)
 
 #Eigen和Ceres-solver相关
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/lib/libceres.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/lib/libgflags_nothreads.a
+target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/lib/libceres.a)
+target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/lib/libgflags_nothreads.a
                                     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/lib/libgflags.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/lib/libGKlib.a)
+target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/lib/libGKlib.a)
 
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgmock_main.a
+target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgmock_main.a
                                     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgmock.a
                                     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgtest_main.a
                                     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgtest.a)
 
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/lib/libmetis.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/glog/libglog.so.1)
+target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/lib/libmetis.a)
+target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/glog/libglog.so.1)
 
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/include)
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/eigen/${OHOS_ARCH}/include/eigen3)
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/include)
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/include)
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/glog/${OHOS_ARCH}/include)
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/include)
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/eigen/${OHOS_ARCH}/include/eigen3)
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/include)
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/include)
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/glog/${OHOS_ARCH}/include)
 
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock
                                         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock/internal
                                         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock/internal/custom
                                         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest
                                         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest/internal
                                         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest/internal/custom)
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/include)
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json/${OHOS_ARCH}/include)
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/include)
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json/${OHOS_ARCH}/include)
 
-#FFmpeg相关
-#修改文件CMakeLists.txt
-#因为此三方库中存在汇编编译的部分，所以需要修改CFLAGS参考如下，符号不可抢占且优先使用本地符号
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-int-conversion -Wl,-Bsymbolic")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-int-conversion -Wl,-Bsymbolic")
-#将三方库加入工程中
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavcodec.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavdevice.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavfilter.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavformat.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavutil.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libswresample.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libswscale.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zlib/${OHOS_ARCH}/lib/libz.a)
 
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/openssl_1_0_2u/${OHOS_ARCH}/lib/libcrypto.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/openssl_1_0_2u/${OHOS_ARCH}/lib/libssl.a)
-target_link_libraries(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rtmpdump/${OHOS_ARCH}/lib/librtmp.a)
-#将三方库的头文件加入工程中
-target_include_directories(3dgs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/include)
+##FFmpeg相关
+##修改文件CMakeLists.txt
+##因为此三方库中存在汇编编译的部分，所以需要修改CFLAGS参考如下，符号不可抢占且优先使用本地符号
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-int-conversion -Wl,-Bsymbolic")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-int-conversion -Wl,-Bsymbolic")
+##将三方库加入工程中
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavcodec.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavdevice.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavfilter.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavformat.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libavutil.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libswresample.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/lib/libswscale.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zlib/${OHOS_ARCH}/lib/libz.a)
+#
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/openssl_1_0_2u/${OHOS_ARCH}/lib/libcrypto.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/openssl_1_0_2u/${OHOS_ARCH}/lib/libssl.a)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rtmpdump/${OHOS_ARCH}/lib/librtmp.a)
+##将三方库的头文件加入工程中
+#target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/FFmpeg/${OHOS_ARCH}/include)

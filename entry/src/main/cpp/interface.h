@@ -7,19 +7,8 @@
 #ifndef VULKAN_3DGS_HW_MAIN_H
 #define VULKAN_3DGS_HW_MAIN_H
 
-#include <cstdint>
 #include <string>
-#include <unistd.h>
-#include "common/common.h"
-#include "file/file_operator.h"
-#include "render/plugin_render.h"
-#include "render/vulkanRender.h"
-#include "queue"
-#include "human/head_mask/manageHeadMasks.h"
-#include <sys/time.h>
-
-using ms = std::chrono::milliseconds;
-using clk = std::chrono::system_clock;
+#include <napi/native_api.h>
 
 napi_value Train3DGS(napi_env env, napi_callback_info info);
 
@@ -32,7 +21,27 @@ public:
     virtual ~Interface()=default;
 };
 
+
 extern "C" Interface* createInstance();
 extern "C" void destoryInstance(Interface* instance);
+
+
+class InterfaceImpl : public Interface {
+private:
+    std::string _dataPath;
+    std::string _outputPath;
+    float _progress;
+    bool _isInitialized;
+    bool _isTraining;
+    void updateProgress(float value);
+
+public:
+    InterfaceImpl();
+    ~InterfaceImpl();
+    void Init(std::string datapath, std::string outputpath);
+    void Train();
+    float GetProcess();
+};
+
 
 #endif //VULKAN_3DGS_HW_MAIN_H

@@ -1,4 +1,9 @@
 #include "interface.h"
+#include "common/common.h"
+#include "file/file_operator.h"
+#include "render/plugin_render.h"
+#include "render/vulkanRender.h"
+#include "human/head_mask/manageHeadMasks.h"
 
 std::mutex PluginRender::m_mutex;
 std::condition_variable PluginRender::m_con;
@@ -8,106 +13,88 @@ OH_NativeXComponent_Callback PluginRender::m_callback;
 
 napi_threadsafe_function g_progress_cb_train = nullptr;
 
+VulkanRender* _renderer = NULL;
 
 // Modified InterfaceImpl with progress integration
-class InterfaceImpl : public Interface {
-private:
-    VulkanRender* _renderer;
-    std::string _dataPath;
-    std::string _outputPath;
-    float _progress;
-    bool _isInitialized;
-    bool _isTraining;
-    
-    void updateProgress(float value){
-        _progress = value;
-    }
 
-public:
-    InterfaceImpl() : _renderer(nullptr), _progress(0.0f), _isInitialized(false), _isTraining(false) {}
-    
-    ~InterfaceImpl() override {
-        // Stop any ongoing training
-        if (_isTraining) {
-            _isTraining = false;
-        }
-        
-        if (_renderer) {
-            delete _renderer;
-            _renderer = nullptr;
-        }
-    }
-    
-    void Init(std::string datapath, std::string outputpath) override {
-        _dataPath = datapath;
-        _outputPath = outputpath;
-        
-        // Reset progress
-        updateProgress(0.0f);
-            // 这块本该放在init里，但是一放就APP_FREEZE
-        _renderer = new VulkanRender();
-        _renderer->loadTestData(_dataPath);
-        std::string sandbox_basepath = _renderer->basepath;
+InterfaceImpl::InterfaceImpl() : _progress(0.0f), _isInitialized(false), _isTraining(false) {}
 
-        _renderer->initVulkan();
-        _renderer->prepare();
-        _renderer->initBuffersValues();
-        _isInitialized = true;
-
-    }
-
-    void Train() override {
-        if (!_isInitialized || _isTraining) return;
-
-        // 这块本该放在init里，但是一放就APP_FREEZE啊
-//         _renderer = new VulkanRender();
-//         _renderer->loadTestData(_dataPath);
-//         std::string sandbox_basepath = _renderer->basepath;
-//
-//         _renderer->initVulkan();
-//         _renderer->prepare();
-//         _renderer->initBuffersValues();
-        
-        _isTraining = true;
-        GetProcess();
-
-        try {
-            std::vector<int> max_steps = {1200, 500, 500};
-            
-            // Main training loop
-            for (int step = 0; step < max_steps[0]; ++step) {
-                if (!_isTraining) break;
-                _renderer->render();
-                updateProgress(static_cast<float>(step * 100) / max_steps[0]);
-                GetProcess();
-            }
-
-            if (_isTraining) {
-                // Post-training operations
-//                 _renderer->saveCameras("/123/");
-                for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
-                    _renderer->renderImage(i);
-                    _renderer->renderRGB2Cpu(i, _outputPath);
-                }
-                updateProgress(100.0f);
-                GetProcess();
-            }
-        } catch (...) {
-            _isTraining = false;
-        }
+InterfaceImpl::~InterfaceImpl() {
+    if (_isTraining) {
         _isTraining = false;
     }
     
-    float GetProcess() override {
-        if (g_progress_cb_train) {
-            int* data = new int(_progress);
-            napi_status status = napi_acquire_threadsafe_function(g_progress_cb_train);
-            napi_call_threadsafe_function(g_progress_cb_train, data, napi_tsfn_blocking);
-            status = napi_release_threadsafe_function(g_progress_cb_train, napi_tsfn_release);
-        }
-        return _progress;
+    if (_renderer) {
+        delete _renderer;
+        _renderer = nullptr;
     }
-};
+}
+
+void InterfaceImpl::Init(std::string datapath, std::string outputpath) {
+    _dataPath = datapath;
+    _outputPath = outputpath;
+    
+    // Reset progress
+    updateProgress(0.0f);
+
+    _renderer = new VulkanRender();
+    _renderer->loadTestData(_dataPath);
+    std::string sandbox_basepath = _renderer->basepath;
+
+    _renderer->initVulkan();
+    _renderer->prepare();
+    _renderer->initBuffersValues();
+    _isInitialized = true;
+}
+
+void InterfaceImpl::Train() {
+    if (!_isInitialized || _isTraining) return;
+        
+    _isTraining = true;
+    GetProcess();
+
+    try {
+        std::vector<int> max_steps = {1200, 500, 500};
+        
+        // Main training loop
+        for (int step = 0; step < max_steps[0]; ++step) {
+            if (!_isTraining) break;
+            _renderer->render();
+            updateProgress(static_cast<float>(step * 100) / max_steps[0]);
+            GetProcess();
+        }
+        _renderer->saveCameras(_dataPath);
+        _renderer->saveGaussians(_dataPath);
+        
+        if (_isTraining) {
+            // Post-training operations
+//                 _renderer->saveCameras("/123/");
+            for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
+                _renderer->renderImage(i);
+                _renderer->renderRGB2Cpu(i, _outputPath);
+            }
+            updateProgress(100.0f);
+            GetProcess();
+        }
+    } catch (...) {
+        _isTraining = false;
+    }
+    _isTraining = false;
+}
+
+void InterfaceImpl::updateProgress(float value){
+    _progress = value;
+}
+
+float InterfaceImpl::GetProcess() {
+    if (g_progress_cb_train) {
+        int* data = new int(_progress);
+        napi_status status = napi_acquire_threadsafe_function(g_progress_cb_train);
+        napi_call_threadsafe_function(g_progress_cb_train, data, napi_tsfn_blocking);
+        status = napi_release_threadsafe_function(g_progress_cb_train, napi_tsfn_release);
+    }
+    return _progress;
+}
 
 // Progress reporting functions remain unchanged
 void CallJsProgressTrain(napi_env env, napi_value js_cb, void* context, void* data) {

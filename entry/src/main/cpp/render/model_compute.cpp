@@ -32,8 +32,8 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
     }
     else {
         bool resumed = false;
-        DataLoader::loadInput12(dataFolder, inputGaussian, resumed, HEIGHT, WIDTH);
-//         inputGaussian = DataLoader::loadInputTo(dataFolder);
+//         DataLoader::loadInput12(dataFolder, inputGaussian, resumed, HEIGHT, WIDTH);
+        inputGaussian = DataLoader::loadInputTo(dataFolder);
         if(resumed) hasKNN = true;
         
         inputGaussian.computePositionStats();
@@ -232,30 +232,23 @@ void VulkanComputeExample::printGpuBuffers()
 {
     LOGW("Current image index: %{public}d, training step: %{public}d", current_img_idx, training_step);
     
-    printGpuBuffer<float>("extr_params_render", splat_buffers.extr_params_render, 1, 7);
-    printGpuBuffer<float>("intr_params_render", splat_buffers.intr_params_render, 1, 4);
+    printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
+    printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
     printGpuBuffer<uint32_t>("curPointsNum", splat_buffers.curPointsNum, 1, 1);
     printGpuBuffer<float>("extr_mat", splat_buffers.extr_mat, 3, 4);
     printGpuBuffer<float>("extr_act", splat_buffers.extr_act, 1, 6);
-    
-    
     
     printGpuBuffer<float>("xyz_array", splat_buffers.xyz_array, 4, 3);
     printGpuBuffer<float>("scale_array", splat_buffers.scale_array, 4, 3);
     
     printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
-//     printGpuBuffer<float>("feature", splat_buffers.feature, 4, 3);
-    
-    printGpuBuffer<uint32_t>("visible", splat_buffers.visible, 4, 1);
-    
+
     ///////////////////
     printGpuBuffer<float>("cov2d", splat_buffers.cov2d, 4, 3);
     printGpuBuffer<uint32_t>("radius", splat_buffers.radius, 4, 1);
-//     printGpuBuffer<float>("conic", splat_buffers.conic, 4, 3);
     
-//     printGpuBuffer<float>("rfeat", splat_buffers.rfeat, 40, 40);
-//     printGpuBuffer<uint8_t>("rfeat_alpha", splat_buffers.rfeat_alpha, 40, 40);
-
+    printGpuBuffer<float>("dL_duvd", splat_buffers.dL_duvd, 4, 3);
+    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
 }
 
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
@@ -3192,51 +3185,6 @@ void VulkanComputeExample::resizeAndUploadTexture(
     this->resizeAndUploadTexture(
         texture, original_image_data, width, height, new_width, new_height, vulkanDevice, queue
     );
-    return;
-    
-    /*
-    if (new_width <= 0 || new_height <= 0) {
-        std::cerr << "Invalid scaled dimensions: " << new_width << "x" << new_height << std::endl;
-        return;
-    }
-
-    // 分配缩小后的图像缓冲区
-    unsigned char* resizedImage = new unsigned char[new_width * new_height * 4];
-
-    // 计算 stride（每行字节数）
-    int input_stride = width * 4;
-    int output_stride = new_width * 4;
-
-    // 使用 stb_image_resize 进行缩放
-    bool success = stbir_resize_uint8_linear(
-        original_image_data, width, height, input_stride, // 输入图像
-        resizedImage, new_width, new_height, output_stride, // 输出图像
-        STBIR_RGBA // 颜色格式（RGBA）
-    );
-
-    if (!success) {
-        std::cerr << "Failed to resize image!" << std::endl;
-        delete[] resizedImage;
-        return;
-    }
-
-    // 上传到 Vulkan 纹理
-    texture.fromBuffer(
-        resizedImage,               // 图像数据
-        new_width * new_height * 4,  // 数据大小
-        VK_FORMAT_R8G8B8A8_UNORM,    // 图像格式
-        new_width,                   // 宽度
-        new_height,                   // 高度
-        vulkanDevice,
-        queue,
-        VK_FILTER_LINEAR,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-        VK_IMAGE_LAYOUT_GENERAL
-    );
-
-    // 释放缩小后的图像数据
-    delete[] resizedImage;
-    */
 }
 
 
@@ -3418,7 +3366,7 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
         
         vks::Texture2D texture_resized;
         texture_resized.fromBuffer(
-            img.data,
+            dsp_img.data,
             dsp_width * dsp_height * 4,
             VK_FORMAT_R8G8B8A8_UNORM,
             dsp_width, dsp_height, 
@@ -4178,7 +4126,7 @@ void VulkanComputeExample::printLog(bool train)
         }
     }
     queryEventTime();
-    if (training_step >= 0 && train == false){
+    if (training_step >= 0 && train){
 //         printGpuBuffers();
     }
 }
