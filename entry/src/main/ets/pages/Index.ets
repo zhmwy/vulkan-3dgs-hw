@@ -1,5 +1,6 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import nativeRender from 'lib3dgs.so';
+// import nativeRender from 'lib3dgs.so';
+import nativeRender from 'libinput.so';
 import CommonConstants from '../common/CommonConstants';
 import image from '@ohos.multimedia.image'
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -56,8 +57,8 @@ struct Index {
         Button(this.isTraining ? 'Training...' : 'Start Training')
           .onClick(() => {
             if (!this.isTraining) {
-              // this.train3DGS("/assets/12_data/AVATAR");
-              this.train3DGS("/assets/AREngine/2024_09_27_11_20_29");
+              this.train3DGS("/assets/12_data/AVATAR");
+              // this.train3DGS("/assets/AREngine/2024_09_27_11_20_29");
             }
           })
           .margin(10)

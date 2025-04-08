@@ -1,5 +1,6 @@
 #include "render_to_cv_mat.h"
-   
+
+
 napi_value getSyncPixelMap(napi_env env, napi_callback_info info)
 {
       size_t argc = 2;
@@ -22,7 +23,7 @@ napi_value getSyncPixelMap(napi_env env, napi_callback_info info)
       if (rawFile != NULL) {
          // 获取文件大小，并读取数据
          long len = OH_ResourceManager_GetRawFileSize(rawFile);
-        LOGI("File len is: %{public}zu", len);
+
          uint8_t * data = static_cast<uint8_t *>(malloc(len));
          int res = OH_ResourceManager_ReadRawFile(rawFile, data, len);
 
@@ -74,13 +75,11 @@ napi_value getSyncPixelMap(napi_env env, napi_callback_info info)
          return pixelMap;
       }
     else{
-        LOGE("Rawfile open failed");
+//         LOGE("Rawfile open failed");
     }
       OH_ResourceManager_ReleaseNativeResourceManager(mNativeResMgr);
       return nullptr;
 }
-
-
 
 napi_value getSandBoxPixelMap(napi_env env, napi_callback_info info)
 {
@@ -97,14 +96,14 @@ napi_value getSandBoxPixelMap(napi_env env, napi_callback_info info)
       std::string sandboxPath(sandboxPathBuf, sandboxPathSize);
       std::string str(srcBuf, strSize);
       std::string imagePath = sandboxPath + str;
-      LOGI("Reading image from %{public}s", imagePath.c_str());
+
     
       FILE *fp;
       fp = fopen(imagePath.c_str(), "rb");
       fseek(fp, 0, SEEK_END);
       long len = ftell(fp);
       fseek(fp, 0, SEEK_SET);
-      LOGI("File len is: %{public}zu", len);
+
       uint8_t * data = static_cast<uint8_t *>(malloc(len));
       size_t bytesRead = fread(data, 1, len, fp);
       fclose(fp);
@@ -157,7 +156,7 @@ napi_value getSandBoxPixelMap(napi_env env, napi_callback_info info)
          return pixelMap;
       }
     else{
-        LOGE("Image file open failed");
+//         LOGE("Image file open failed");
     }
       return nullptr;
 }

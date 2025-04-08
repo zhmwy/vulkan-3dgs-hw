@@ -10,12 +10,14 @@
 #include <string>
 #include <napi/native_api.h>
 
-napi_value Train3DGS(napi_env env, napi_callback_info info);
+// napi_value getSyncPixelMap(napi_env env, napi_callback_info info);
+// napi_value getSandBoxPixelMap(napi_env env, napi_callback_info info);
+
 
 class Interface{
 public:
     Interface(){};
-    virtual void Init(std::string datapath, std::string modelpath)=0; //datapath是输入路径，modelpath是输出路径，优化后的txt覆盖原路径即可
+    virtual void Init(std::string datapath, std::string modelpath, napi_threadsafe_function g_progress_cb_train)=0; //datapath是输入路径，modelpath是输出路径，优化后的txt覆盖原路径即可
     virtual void Train()=0;
     virtual float GetProcess()=0;
     virtual ~Interface()=default;
@@ -33,12 +35,14 @@ private:
     float _progress;
     bool _isInitialized;
     bool _isTraining;
+    napi_threadsafe_function _g_progress_cb_train;
     void updateProgress(float value);
+    
 
 public:
     InterfaceImpl();
     ~InterfaceImpl();
-    void Init(std::string datapath, std::string outputpath);
+    void Init(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train);
     void Train();
     float GetProcess();
 };

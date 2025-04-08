@@ -22,10 +22,11 @@ add_library(3dgs SHARED
     interface.cpp
     render/plugin_render.cpp
     render/algorithm/fsr.cpp
-    render/render_to_cv_mat.cpp
+#    render/render_to_cv_mat.cpp
+#    napi_init.cpp
     render/vulkanRender.cpp
     manager/plugin_manager.cpp
-    napi_init.cpp
+
     vulkanbase/VulkanOhos.cpp
     vulkanbase/VulkanBuffer.cpp
     vulkanbase/VulkanDevice.cpp
@@ -201,6 +202,15 @@ target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/go
 target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/include)
 target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json/${OHOS_ARCH}/include)
 
+
+add_library(
+    input SHARED
+#    render/render_to_cv_mat.cpp
+    napi_init.cpp
+    main.cpp
+)
+
+target_link_libraries(input PRIVATE 3dgs)
 
 ##FFmpeg相关
 ##修改文件CMakeLists.txt
