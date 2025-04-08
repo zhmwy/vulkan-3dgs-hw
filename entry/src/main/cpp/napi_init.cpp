@@ -21,8 +21,9 @@
 #include <rawfile/raw_file.h>
 #include <rawfile/raw_dir.h>
 #include <rawfile/raw_file_manager.h>
-#include "render/render_to_cv_mat.h"
-#include "interface.h"
+// #include "render/render_to_cv_mat.h"
+// #include "interface.h"
+#include "main_3dgs.h"
 
 int init_called = 0;
 

@@ -1,5 +1,6 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import nativeRender from 'lib3dgs.so';
+// import nativeRender from 'lib3dgs.so';
+import nativeRender from 'libinput.so';
 import CommonConstants from '../common/CommonConstants';
 import image from '@ohos.multimedia.image'
 import { BusinessError } from '@kit.BasicServicesKit';
