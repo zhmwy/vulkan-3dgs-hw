@@ -54,7 +54,7 @@ void InterfaceImpl::Train() {
     GetProcess();
 
     try {
-        std::vector<int> max_steps = {1200, 500, 500};
+        std::vector<int> max_steps = {1500, 500, 500};
         
         // Main training loop
         for (int step = 0; step < max_steps[0]; ++step) {
@@ -63,13 +63,16 @@ void InterfaceImpl::Train() {
             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
             GetProcess();
         }
-        _renderer->saveCameras(_dataPath);
-        _renderer->saveGaussians(_dataPath);
+//         _renderer->saveCameras(_dataPath);
+//         _renderer->saveGaussians(_dataPath);
         
         if (_isTraining) {
             // Post-training operations
 //                 _renderer->saveCameras("/123/");
             for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
+                if(i >= 101){
+                    printf("");
+                }
                 _renderer->renderImage(i);
                 _renderer->renderRGB2Cpu(i, _outputPath);
             }

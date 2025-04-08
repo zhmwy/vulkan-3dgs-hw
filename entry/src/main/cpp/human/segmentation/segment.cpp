@@ -38,7 +38,7 @@ OH_NN_ReturnCode LoadSegModel(const std::string& modelPath) {
 }
 
 void SaveSegmentation(cv::Mat& img, const std::vector<OutputParams>& result) {
-    cv::Mat output(img.size(), img.type(), cv::Scalar(255, 255, 255));
+    cv::Mat output(img.size(), img.type(), cv::Scalar(0, 0, 0));
     for (const auto& res : result) {
         if (res.id == 0 && !res.boxMask.empty()) {
             cv::Mat fullMask = cv::Mat::zeros(img.size(), CV_8UC1);
@@ -177,7 +177,7 @@ int GetSegments(std::string inputPath) {
 
     // Process images
     std::string imgDir = inputPath + "/images/";
-    std::string segmentDir = inputPath + "/segments/";
+    std::string segmentDir = inputPath + "/images/";
     std::filesystem::create_directory(segmentDir);
     DIR* dir = opendir(imgDir.c_str());
     if (!dir) {
@@ -196,7 +196,7 @@ int GetSegments(std::string inputPath) {
     closedir(dir);
     auto begin = clk::now();
 
-    for (int i=0; i<imgList.size(); i+=3) {
+    for (int i=0; i<imgList.size(); ++i) {
         std::string imgName = imgList[i];
         std::string fullPath = imgDir + imgName;
         vector<Vec4d> params;
@@ -214,10 +214,12 @@ int GetSegments(std::string inputPath) {
         PostProcessingSeg(HIAIModelManager::GetInstance().GetResult(), params, output, imgSize);
         SaveSegmentation(img, output);
         std::string segmentPath = segmentDir + imgName;
-        
+        std::string tempPath = inputPath.substr(0, secondLastSlash) + "/temp/" + std::to_string(i) + ".jpg";
         if (!cv::imwrite(segmentPath, img)) {
             OH_LOG_ERROR(LOG_APP, "Failed to save result: %s", segmentPath.c_str());
         }
+        cv::imwrite(tempPath, img);
+        LOGI("Saving %{public}s", tempPath.c_str());
         OH_LOG_INFO(LOG_APP, "Body segmentation completed in %{public}.3f seconds for image %{public}d", 
             std::chrono::duration<double>(clk::now() - begin).count(), i);
     }

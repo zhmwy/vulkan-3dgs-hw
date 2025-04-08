@@ -366,6 +366,7 @@ int ProcessKeypoints(const std::string& inputPath) {
         }
         ofs.close();
     }
+    HIAIModelManager::GetInstance().UnloadModel();
 
     return 1;
 }

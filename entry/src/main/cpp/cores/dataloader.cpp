@@ -927,6 +927,7 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
     
     // Double extr_tmp to support adding face regions.
     data.extr_tmp.insert(data.extr_tmp.end(), data.extr_tmp.begin(), data.extr_tmp.end());
+    data.extr_tmp_test = data.extr_tmp;
     
     for(int i=0; i<faceCenters.size(); ++i){
         // Find the position of "images"
@@ -1079,39 +1080,6 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         LOGE("No video file!");
     }
     
-    /*
-    std::vector<std::string> timestamps;
-    std::ifstream videoInfoFile(videoInfoFilePath);
-    if (!videoInfoFile.is_open()){
-        LOGE("Cannot open videoInfo.txt!");
-    }
-    while (std::getline(videoInfoFile, line)) {
-        if (line.empty() || line[0] == '#')
-            continue;
-    
-        if (line.substr(0, 8) == "Rotation" || line.substr(0, 8) == "rotation")
-            continue;
-    
-        std::istringstream iss(line);
-        int frameId, zero;
-        std::string timestamp;
-        if (!(iss >> frameId >> timestamp >> zero)) {
-            continue; // Skip invalid lines.
-        }
-        timestamps.push_back(timestamp);
-    }
-    
-    if (data.img_list.size() != data.extr_tmp.size()){
-        std::vector<std::string>().swap(data.img_list);
-        
-        // Use FFmpeg instead of OpenCV to process the video
-        if (!processVideoWithFFmpeg(allVideoFile[0], timestamps, uniqueImages, 
-                                 scenepath, ext, data.width, data.height, data.img_list)) {
-            LOGE("Failed to process video with FFmpeg!");
-        }
-    }
-    */
-    
     std::string resume_gaussian_path = scenepath + "/point_cloud.ply";
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
@@ -1128,7 +1096,9 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
                 LOGI("head bbox: %{public}f", data.head_bbox[i]);
             }
             std::vector<cv::Point> faceCenters = projectHeadCenter(data);
-            createEnlargedFace(scenepath, data, faceCenters);
+            
+            GetSegments(scenepath);
+//             createEnlargedFace(scenepath, data, faceCenters);
         }
     }
     else{

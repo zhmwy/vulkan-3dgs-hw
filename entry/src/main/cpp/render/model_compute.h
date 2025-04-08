@@ -590,19 +590,9 @@ public:
             }
         }
         
-        // Create the directory if it doesn't exist
-        std::string save_dir = inputGaussian.basepath + dataFolder + "/head/head_masks";
-        std::filesystem::create_directories(save_dir);
-        
-        // Save the image
-        size_t lastSlash = inputGaussian.img_list[i].find_last_of("/");
-        std::string filename = save_dir + inputGaussian.img_list[i].substr(lastSlash);
-        LOGI("Saving rendered image to: %{public}s", filename.c_str());
-        cv::imwrite(filename, image);
-        
         std::string save_dir_debug = inputGaussian.basepath + "/temp";
         std::filesystem::create_directories(save_dir_debug);
-        filename = save_dir_debug + "/" + std::to_string(i) + ".jpg";
+        std::string filename = save_dir_debug + "/" + std::to_string(i) + ".jpg";
         LOGI("Saving rendered image to: %{public}s", filename.c_str());
         cv::imwrite(filename, image);
     }

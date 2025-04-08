@@ -63,9 +63,4 @@ int Preprocessing(const std::vector<cv::Mat> &SrcImgs,
 int PostProcessing(std::vector<std::vector<float>> result, 
                    std::vector<cv::Vec4d> &params,
                    std::vector<OutputPose> &output);
-
-bool PostProcessingSeg(std::vector<std::vector<float>> result, 
-                       std::vector<cv::Vec4d> &params, 
-                       std::vector<OutputParams> &output);
-
 #endif //POINTRIX_HUMAN_UITLS_H
