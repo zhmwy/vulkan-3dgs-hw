@@ -1,5 +1,6 @@
 CMakeLists.txt.user
-build
+entry/build/*
+!entry/build/default/intermediates/libs
 lego
 
 .DS_Store
