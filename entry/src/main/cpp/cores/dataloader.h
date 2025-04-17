@@ -57,7 +57,7 @@ public:
         glm::vec3 mean;
         float variance = 0;
 
-        std::string basepath = "";
+        std::string basepath = "/data/storage/el2/base/haps/entry/files";
         
         int width, height;
         

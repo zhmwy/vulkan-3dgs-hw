@@ -4214,7 +4214,7 @@ void VulkanComputeExample::saveGaussians(std::string dataPath, bool save_head){
     copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
 
     LOGI("Successfully copied GPU buffers to inputGaussian!");
-    DataLoader::saveToPLY_tinyply(this->basepath + "/" + dataPath, inputGaussian, save_head);
+    DataLoader::saveToPLY_tinyply(dataPath, inputGaussian, save_head);
 }
 
 
@@ -4236,7 +4236,7 @@ void VulkanComputeExample::saveCameras(std::string dataPath){
     }
     
     LOGI("Successfully copied GPU buffers to inputGaussian!");
-    DataLoader::saveCameras(this->basepath + "/" + dataPath, inputGaussian);
+    DataLoader::saveCameras(dataPath, inputGaussian);
 }
 
 

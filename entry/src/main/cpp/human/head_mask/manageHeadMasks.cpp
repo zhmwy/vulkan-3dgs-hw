@@ -220,7 +220,7 @@ cv::Size processImages(
         // Save result
         std::string output_path = (fs::path(images_folder) / mask_filename).string();
         cv::imwrite(output_path, result);
-        cv::imwrite("/data/storage/el2/base/haps/entry/files/temp/" + std::to_string(i) + ".jpg", result);
+        cv::imwrite("/data/storage/el1/base/haps/entry/files/temp/" + std::to_string(i) + ".jpg", result);
 
         LOGI("Saving new images to %{public}s.", output_path.c_str());
         

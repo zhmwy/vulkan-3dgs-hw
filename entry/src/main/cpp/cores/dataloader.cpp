@@ -529,7 +529,7 @@ void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::In
 }
 
 DataLoader::InputInitStruct  DataLoader::loadHeadGaussians(std::string dataPath, DataLoader::InputInitStruct& data) {
-    std::string resume_gaussian_path = data.basepath + dataPath + "/head/point_cloud.ply";
+    std::string resume_gaussian_path = dataPath + "/head/point_cloud.ply";
     loadInputGaussianData(resume_gaussian_path, data );
     return data;
 }
@@ -671,7 +671,8 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         } else {
             LOGI("No other points to save.");
         }
-    } else {
+    } 
+    else {
         std::string filename = fullDataPath + "/point_cloud.ply";
         std::ofstream outFile(filename, std::ios::binary);
         if (!outFile.is_open()) {
@@ -960,17 +961,15 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
 
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height, int width)
 {
-    auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
-    data.basepath = basePath;
-    
-    std::string scenepath = basePath + _scenepath;
-    std::string slampath = scenepath + "/slam";
+    std::string basePath = data.basepath;
+    std::string scenepath = _scenepath;
+    std::string slampath = scenepath;
     std::string mediapath = scenepath + "/media";
 
     std::string imagesFilePath = slampath + "/images.txt";
     std::string cameraFilePath = slampath + "/cameras.txt";             // TODO: slampath?
     std::string videoInfoFilePath = mediapath + "/videoInfo.txt";
-    std::filesystem::create_directories(basePath + "/temp");
+//     std::filesystem::create_directories(scenepath + "/temp");
     
     // 2. Load intrinsics from cameras.txt
 //     int height, width;
@@ -1113,12 +1112,11 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
 
 DataLoader::InputInitStruct DataLoader::loadInputTo(const std::string _scenepath)
 {
-    auto basePath = FileOperator::FileOperator::GetInstance()->GetHapFilesDir();
     DataLoader::InputInitStruct data;
-    data.basepath = basePath;
-    std::string scenepath = basePath + "/" + _scenepath;
+    std::string basePath = data.basepath;
+    std::string scenepath = _scenepath;
     
-    const std::string pointsDenseFilePath = scenepath + "/downsample2.ply";
+    const std::string pointsDenseFilePath = scenepath + "/downsample.ply";
     const std::string pointsFilePath = scenepath + "/slam/points3D.txt";
     const std::string imagesFilePath = scenepath + "/slam/images.txt";
     const std::string cameraFilePath = scenepath + "/slam/cameras.txt";

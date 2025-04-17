@@ -6,6 +6,8 @@
 #include <multimedia/image_framework/image_source_mdk.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
 
+const std::string basepath = "/data/storage/el2/base/haps/entry/files";
+
 napi_threadsafe_function g_progress_cb_train = nullptr;
 
 napi_value getSyncPixelMap(napi_env env, napi_callback_info info)
@@ -251,8 +253,8 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
     AsyncContext* context = new AsyncContext();
     context->resourceMgr = resourceMgr;
     context->impl = impl;
-    context->datapath = dataFolder;
-    context->outputpath = dataFolder;
+    context->datapath = basepath + "/" + dataFolder;
+    context->outputpath = basepath + "/" + dataFolder;
 
     // Setup promise
     napi_value promise;
