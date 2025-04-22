@@ -25,25 +25,25 @@ namespace vks
 
 		// Store Properties features, limits and properties of the physical device for later use
 		// Device properties also contain limits and sparse properties
-		vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+		vkGetPhysicalDevicePropertiesGS(physicalDevice, &properties);
 		// Features should be checked by the examples before using them
-		vkGetPhysicalDeviceFeatures(physicalDevice, &features);
+		vkGetPhysicalDeviceFeaturesGS(physicalDevice, &features);
 		// Memory properties are used regularly for creating all kinds of buffers
-		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+		vkGetPhysicalDeviceMemoryPropertiesGS(physicalDevice, &memoryProperties);
 		// Queue family properties, used for setting up requested queues upon device creation
 		uint32_t queueFamilyCount;
-		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+		vkGetPhysicalDeviceQueueFamilyPropertiesGS(physicalDevice, &queueFamilyCount, nullptr);
 		assert(queueFamilyCount > 0);
 		queueFamilyProperties.resize(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+		vkGetPhysicalDeviceQueueFamilyPropertiesGS(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
 
 		// Get list of supported extensions
 		uint32_t extCount = 0;
-		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, nullptr);
+		vkEnumerateDeviceExtensionPropertiesGS(physicalDevice, nullptr, &extCount, nullptr);
 		if (extCount > 0)
 		{
 			std::vector<VkExtensionProperties> extensions(extCount);
-			if (vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
+			if (vkEnumerateDeviceExtensionPropertiesGS(physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
 			{
 				for (auto ext : extensions)
 				{
@@ -62,11 +62,11 @@ namespace vks
 	{
 		if (commandPool)
 		{
-			vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
+			vkDestroyCommandPoolGS(logicalDevice, commandPool, nullptr);
 		}
 		if (logicalDevice)
 		{
-			vkDestroyDevice(logicalDevice, nullptr);
+			vkDestroyDeviceGS(logicalDevice, nullptr);
 		}
 	}
 
@@ -289,7 +289,7 @@ namespace vks
 		this->enabledFeatures = enabledFeatures;
 
         LOGI("VulkanDevice: vkCreateDevice device: &deviceCreateInfo :p %{public}p", &deviceCreateInfo);
-        VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
+        VkResult result = vkCreateDeviceGS(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
         LOGI("VulkanDevice: vkCreateDevice device: &logicalDevice :p %{public}p", &logicalDevice);
         LOGI("VulkanDevice: vkCreateDevice device: logicalDevice :p %{public}p", logicalDevice);
         if (result != VK_SUCCESS) 
@@ -321,12 +321,12 @@ namespace vks
 		// Create the buffer handle
 		VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
 		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, buffer));
+		VK_CHECK_RESULT(vkCreateBufferGS(logicalDevice, &bufferCreateInfo, nullptr, buffer));
 
 		// Create the memory backing up the buffer handle
 		VkMemoryRequirements memReqs;
 		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-		vkGetBufferMemoryRequirements(logicalDevice, *buffer, &memReqs);
+		vkGetBufferMemoryRequirementsGS(logicalDevice, *buffer, &memReqs);
 		memAlloc.allocationSize = memReqs.size;
 		// Find a memory type index that fits the properties of the buffer
 		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
@@ -337,13 +337,13 @@ namespace vks
 			allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
 			memAlloc.pNext = &allocFlagsInfo;
 		}
-		VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, memory));
+		VK_CHECK_RESULT(vkAllocateMemoryGS(logicalDevice, &memAlloc, nullptr, memory));
 			
 		// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 		if (data != nullptr)
 		{
 			void *mapped;
-			VK_CHECK_RESULT(vkMapMemory(logicalDevice, *memory, 0, size, 0, &mapped));
+			VK_CHECK_RESULT(vkMapMemoryGS(logicalDevice, *memory, 0, size, 0, &mapped));
 			memcpy(mapped, data, size);
 			// If host coherency hasn't been requested, do a manual flush to make writes visible
 			if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
@@ -352,13 +352,13 @@ namespace vks
 				mappedRange.memory = *memory;
 				mappedRange.offset = 0;
 				mappedRange.size = size;
-				vkFlushMappedMemoryRanges(logicalDevice, 1, &mappedRange);
+				vkFlushMappedMemoryRangesGS(logicalDevice, 1, &mappedRange);
 			}
-			vkUnmapMemory(logicalDevice, *memory);
+			vkUnmapMemoryGS(logicalDevice, *memory);
 		}
 
 		// Attach the memory to the buffer object
-		VK_CHECK_RESULT(vkBindBufferMemory(logicalDevice, *buffer, *memory, 0));
+		VK_CHECK_RESULT(vkBindBufferMemoryGS(logicalDevice, *buffer, *memory, 0));
 
 		return VK_SUCCESS;
 	}
@@ -380,12 +380,12 @@ namespace vks
 
 		// Create the buffer handle
 		VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
-		VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, &buffer->buffer));
+		VK_CHECK_RESULT(vkCreateBufferGS(logicalDevice, &bufferCreateInfo, nullptr, &buffer->buffer));
 
 		// Create the memory backing up the buffer handle
 		VkMemoryRequirements memReqs;
 		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-		vkGetBufferMemoryRequirements(logicalDevice, buffer->buffer, &memReqs);
+		vkGetBufferMemoryRequirementsGS(logicalDevice, buffer->buffer, &memReqs);
 		memAlloc.allocationSize = memReqs.size;
 		// Find a memory type index that fits the properties of the buffer
 		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
@@ -396,7 +396,7 @@ namespace vks
 			allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
 			memAlloc.pNext = &allocFlagsInfo;
 		}
-		VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, &buffer->memory));
+		VK_CHECK_RESULT(vkAllocateMemoryGS(logicalDevice, &memAlloc, nullptr, &buffer->memory));
 
 		buffer->alignment = memReqs.alignment;
 		buffer->size = size;
@@ -447,7 +447,7 @@ namespace vks
 			bufferCopy = *copyRegion;
 		}
 
-		vkCmdCopyBuffer(copyCmd, src->buffer, dst->buffer, 1, &bufferCopy);
+		vkCmdCopyBufferGS(copyCmd, src->buffer, dst->buffer, 1, &bufferCopy);
 
 		flushCommandBuffer(copyCmd, queue);
 	}
@@ -470,7 +470,7 @@ namespace vks
 		cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
 		cmdPoolInfo.flags = createFlags;
 		VkCommandPool cmdPool;
-		VK_CHECK_RESULT(vkCreateCommandPool(logicalDevice, &cmdPoolInfo, nullptr, &cmdPool));
+		VK_CHECK_RESULT(vkCreateCommandPoolGS(logicalDevice, &cmdPoolInfo, nullptr, &cmdPool));
 		return cmdPool;
 	}
 
@@ -487,12 +487,12 @@ namespace vks
 	{
 		VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(pool, level, 1);
 		VkCommandBuffer cmdBuffer;
-		VK_CHECK_RESULT(vkAllocateCommandBuffers(logicalDevice, &cmdBufAllocateInfo, &cmdBuffer));
+		VK_CHECK_RESULT(vkAllocateCommandBuffersGS(logicalDevice, &cmdBufAllocateInfo, &cmdBuffer));
 		// If requested, also start recording for the new command buffer
 		if (begin)
 		{
 			VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-			VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
+			VK_CHECK_RESULT(vkBeginCommandBufferGS(cmdBuffer, &cmdBufInfo));
 		}
 		return cmdBuffer;
 	}
@@ -520,7 +520,7 @@ namespace vks
 			return;
 		}
 
-		VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+		VK_CHECK_RESULT(vkEndCommandBufferGS(commandBuffer));
 
 		VkSubmitInfo submitInfo = vks::initializers::submitInfo();
 		submitInfo.commandBufferCount = 1;
@@ -528,15 +528,15 @@ namespace vks
 		// Create fence to ensure that the command buffer has finished executing
 		VkFenceCreateInfo fenceInfo = vks::initializers::fenceCreateInfo(VK_FLAGS_NONE);
 		VkFence fence;
-		VK_CHECK_RESULT(vkCreateFence(logicalDevice, &fenceInfo, nullptr, &fence));
+		VK_CHECK_RESULT(vkCreateFenceGS(logicalDevice, &fenceInfo, nullptr, &fence));
 		// Submit to the queue
-		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, fence));
+		VK_CHECK_RESULT(vkQueueSubmitGS(queue, 1, &submitInfo, fence));
 		// Wait for the fence to signal that command buffer has finished executing
-		VK_CHECK_RESULT(vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
-		vkDestroyFence(logicalDevice, fence, nullptr);
+		VK_CHECK_RESULT(vkWaitForFencesGS(logicalDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
+		vkDestroyFenceGS(logicalDevice, fence, nullptr);
 		if (free)
 		{
-			vkFreeCommandBuffers(logicalDevice, pool, 1, &commandBuffer);
+			vkFreeCommandBuffersGS(logicalDevice, pool, 1, &commandBuffer);
 		}
 	}
 
@@ -580,7 +580,7 @@ namespace vks
 		for (auto& format : depthFormats)
 		{
 			VkFormatProperties formatProperties;
-			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+			vkGetPhysicalDeviceFormatPropertiesGS(physicalDevice, format, &formatProperties);
 			// Format must support depth stencil attachment for optimal tiling
 			if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
 			{

@@ -73,15 +73,15 @@ public:
         void Destroy(VkDevice device)
         {
             if (view != VK_NULL_HANDLE) {
-                vkDestroyImageView(device, view, nullptr);
+                vkDestroyImageViewGS(device, view, nullptr);
                 view = VK_NULL_HANDLE;
             }
             if (image != VK_NULL_HANDLE) {
-                vkDestroyImage(device, image, nullptr);
+                vkDestroyImageGS(device, image, nullptr);
                 image = VK_NULL_HANDLE;
             }
             if (mem != VK_NULL_HANDLE) {
-                vkFreeMemory(device, mem, nullptr);
+                vkFreeMemoryGS(device, mem, nullptr);
                 mem = VK_NULL_HANDLE;
             }
         }
@@ -98,11 +98,11 @@ public:
         void Destroy(VkDevice device)
         {
             if (frameBuffer != VK_NULL_HANDLE) {
-                vkDestroyFramebuffer(device, frameBuffer, nullptr);
+                vkDestroyFramebufferGS(device, frameBuffer, nullptr);
                 frameBuffer = VK_NULL_HANDLE;
             }
             if (renderPass != VK_NULL_HANDLE) {
-                vkDestroyRenderPass(device, renderPass, nullptr);
+                vkDestroyRenderPassGS(device, renderPass, nullptr);
                 renderPass = VK_NULL_HANDLE;
             }
         }

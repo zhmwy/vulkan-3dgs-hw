@@ -22,7 +22,7 @@ namespace vks
 	*/
 	VkResult Buffer::map(VkDeviceSize size, VkDeviceSize offset)
 	{
-		return vkMapMemory(device, memory, offset, size, 0, &mapped);
+		return vkMapMemoryGS(device, memory, offset, size, 0, &mapped);
 	}
 
 	/**
@@ -34,7 +34,7 @@ namespace vks
 	{
 		if (mapped)
 		{
-			vkUnmapMemory(device, memory);
+			vkUnmapMemoryGS(device, memory);
 			mapped = nullptr;
 		}
 	}
@@ -49,7 +49,7 @@ namespace vks
 	VkResult Buffer::bind(VkDeviceSize offset)
 	{
     LOGI("Buffer::bind");
-		return vkBindBufferMemory(device, buffer, memory, offset);
+		return vkBindBufferMemoryGS(device, buffer, memory, offset);
 	}
 
 	/**
@@ -98,7 +98,7 @@ namespace vks
 		mappedRange.memory = memory;
 		mappedRange.offset = offset;
 		mappedRange.size = size;
-		return vkFlushMappedMemoryRanges(device, 1, &mappedRange);
+		return vkFlushMappedMemoryRangesGS(device, 1, &mappedRange);
 	}
 
 	/**
@@ -119,7 +119,7 @@ namespace vks
 		mappedRange.memory = memory;
 		mappedRange.offset = offset;
 		mappedRange.size = size;
-		return vkInvalidateMappedMemoryRanges(device, 1, &mappedRange);
+		return vkInvalidateMappedMemoryRangesGS(device, 1, &mappedRange);
 	}
 
 	/** 
@@ -130,11 +130,11 @@ namespace vks
             LOGI("Buffer::destroy");
 		if (buffer)
 		{
-			vkDestroyBuffer(device, buffer, nullptr);
+			vkDestroyBufferGS(device, buffer, nullptr);
 		}
 		if (memory)
 		{
-			vkFreeMemory(device, memory, nullptr);
+			vkFreeMemoryGS(device, memory, nullptr);
 		}
 	}
 };

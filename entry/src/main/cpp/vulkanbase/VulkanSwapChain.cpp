@@ -20,7 +20,7 @@ void VulkanSwapChain::initSurface(NativeWindow* window)
 	VkSurfaceCreateInfoOHOS surfaceCreateInfo = {};
 	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_SURFACE_CREATE_INFO_OHOS;
 	surfaceCreateInfo.window = window;
-	err = vkCreateSurfaceOHOS(instance, &surfaceCreateInfo, NULL, &surface);
+	err = vkCreateSurfaceOHOSGS(instance, &surfaceCreateInfo, NULL, &surface);
 
 	if (err != VK_SUCCESS) {
 		LOGE("Could not create surface!");
@@ -28,11 +28,11 @@ void VulkanSwapChain::initSurface(NativeWindow* window)
 
 	// Get available queue family properties
 	uint32_t queueCount;
-	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, NULL);
+	vkGetPhysicalDeviceQueueFamilyPropertiesGS(physicalDevice, &queueCount, NULL);
 	assert(queueCount >= 1);
 
 	std::vector<VkQueueFamilyProperties> queueProps(queueCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queueProps.data());
+	vkGetPhysicalDeviceQueueFamilyPropertiesGS(physicalDevice, &queueCount, queueProps.data());
 
 	// Iterate over each queue to learn whether it supports presenting:
 	// Find a queue with present support
@@ -148,19 +148,19 @@ void VulkanSwapChain::connect(VkInstance instance, VkPhysicalDevice physicalDevi
 	this->instance = instance;
 	this->physicalDevice = physicalDevice;
 	this->device = device;
-	fpGetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
-	fpGetPhysicalDeviceSurfaceCapabilitiesKHR =  reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
-	fpGetPhysicalDeviceSurfaceFormatsKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceFormatsKHR>(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
-	fpGetPhysicalDeviceSurfacePresentModesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
+	fpGetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(vkGetInstanceProcAddrGS(instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
+	fpGetPhysicalDeviceSurfaceCapabilitiesKHR =  reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddrGS(instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
+	fpGetPhysicalDeviceSurfaceFormatsKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceFormatsKHR>(vkGetInstanceProcAddrGS(instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
+	fpGetPhysicalDeviceSurfacePresentModesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddrGS(instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
 
-	fpCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(vkGetDeviceProcAddr(device, "vkCreateSwapchainKHR"));
-	fpDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(vkGetDeviceProcAddr(device, "vkDestroySwapchainKHR"));
-	fpGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(vkGetDeviceProcAddr(device, "vkGetSwapchainImagesKHR"));
-	fpAcquireNextImageKHR = reinterpret_cast<PFN_vkAcquireNextImageKHR>(vkGetDeviceProcAddr(device, "vkAcquireNextImageKHR"));
-	fpQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(vkGetDeviceProcAddr(device, "vkQueuePresentKHR"));
-	fpGetMemoryNativeBufferOHOS = reinterpret_cast<PFN_vkGetMemoryNativeBufferOHOS>(vkGetDeviceProcAddr(device, "vkGetMemoryNativeBufferOHOS"));
+	fpCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(vkGetDeviceProcAddrGS(device, "vkCreateSwapchainKHR"));
+	fpDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(vkGetDeviceProcAddrGS(device, "vkDestroySwapchainKHR"));
+	fpGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(vkGetDeviceProcAddrGS(device, "vkGetSwapchainImagesKHR"));
+	fpAcquireNextImageKHR = reinterpret_cast<PFN_vkAcquireNextImageKHR>(vkGetDeviceProcAddrGS(device, "vkAcquireNextImageKHR"));
+	fpQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(vkGetDeviceProcAddrGS(device, "vkQueuePresentKHR"));
+	fpGetMemoryNativeBufferOHOS = reinterpret_cast<PFN_vkGetMemoryNativeBufferOHOS>(vkGetDeviceProcAddrGS(device, "vkGetMemoryNativeBufferOHOS"));
 	std::cout << "fpGetMemoryNativeBufferOHOS is " << (fpGetMemoryNativeBufferOHOS ? "not null" : "null") << std::endl;
-	fpGetNativeBufferPropertiesOHOS = reinterpret_cast<PFN_vkGetNativeBufferPropertiesOHOS>(vkGetDeviceProcAddr(device, "vkGetNativeBufferPropertiesOHOS"));
+	fpGetNativeBufferPropertiesOHOS = reinterpret_cast<PFN_vkGetNativeBufferPropertiesOHOS>(vkGetDeviceProcAddrGS(device, "vkGetNativeBufferPropertiesOHOS"));
 	std::cout << "fpGetNativeBufferPropertiesOHOS is " << (fpGetNativeBufferPropertiesOHOS ? "not null" : "null") << std::endl;
 }
 
@@ -287,7 +287,7 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height)
 	{ 
 		for (uint32_t i = 0; i < imageCount; i++)
 		{
-			vkDestroyImageView(device, buffers[i].view, nullptr);
+			vkDestroyImageViewGS(device, buffers[i].view, nullptr);
 		}
 		fpDestroySwapchainKHR(device, oldSwapchain, nullptr);
 	}
@@ -324,7 +324,7 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height)
 
 		colorAttachmentView.image = buffers[i].image;
 
-		VK_CHECK_RESULT(vkCreateImageView(device, &colorAttachmentView, nullptr, &buffers[i].view));
+		VK_CHECK_RESULT(vkCreateImageViewGS(device, &colorAttachmentView, nullptr, &buffers[i].view));
 	}
 }
 
@@ -382,13 +382,13 @@ void VulkanSwapChain::cleanup()
 	{
 		for (uint32_t i = 0; i < imageCount; i++)
 		{
-			vkDestroyImageView(device, buffers[i].view, nullptr);
+			vkDestroyImageViewGS(device, buffers[i].view, nullptr);
 		}
 	}
 	if (surface != VK_NULL_HANDLE)
 	{
 		fpDestroySwapchainKHR(device, swapChain, nullptr);
-		vkDestroySurfaceKHR(instance, surface, nullptr);
+		vkDestroySurfaceKHRGS(instance, surface, nullptr);
 	}
 	surface = VK_NULL_HANDLE;
 	swapChain = VK_NULL_HANDLE;

@@ -81,8 +81,8 @@ void VulkanComputeExample::encoderenderSelectedImage()
     queryTime.clear();
 
     updRenderCmd(selected_image_index);
-    vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
     TransComputeBarrierBlock();
     current_scale = 1.0;
     
@@ -291,7 +291,7 @@ void VulkanComputeExample::copyExtrCmd()
     region.srcOffset = current_img_idx * 7 * sizeof(float);
     region.dstOffset = 0;
     region.size = sizeof(float) * 7;
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         splat_buffers.camera_extrs,
         splat_buffers.extr_params,
@@ -319,7 +319,7 @@ void VulkanComputeExample::imageToBufferCmd()
     
     if (training_step >= low_resolution_steps)
     {
-        vkCmdCopyImageToBuffer(
+        vkCmdCopyImageToBufferGS(
             compute.commandBuffer,
             inputGaussian.images[current_img_idx].image,
             inputGaussian.images[current_img_idx].imageLayout,
@@ -330,7 +330,7 @@ void VulkanComputeExample::imageToBufferCmd()
     }
     else
     {
-        vkCmdCopyImageToBuffer(
+        vkCmdCopyImageToBufferGS(
                 compute.commandBuffer,
                 inputGaussian.images_low_res[current_img_idx].image,
                 inputGaussian.images_low_res[current_img_idx].imageLayout,
@@ -372,29 +372,29 @@ void VulkanComputeExample::imageToBufferCmd()
 
 void VulkanComputeExample::zeroGradCmd()
 {
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dbackground, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dconic, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dcov2d, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dextr_params, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dfeature, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dintr_params, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dndc, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dopacity, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dopacity_act_array, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_drfeat, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_drotate, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dscale, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_duvd, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dxyz, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dshs_array, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dbackground, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dconic, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dcov2d, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dextr_params, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dfeature, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dintr_params, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dndc, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dopacity, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dopacity_act_array, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_drfeat, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_drotate, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dscale, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_duvd, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dxyz, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dshs_array, 0, VK_WHOLE_SIZE, 0);
     
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dconic_int, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dfeature_int, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dndc_int, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_dopacity_act_array_int, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.dL_duvd_int, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dconic_int, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dfeature_int, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dndc_int, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dopacity_act_array_int, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_duvd_int, 0, VK_WHOLE_SIZE, 0);
     
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
 }
 
 /*
@@ -413,7 +413,7 @@ void VulkanComputeExample::forwardCmd()
     grid_width = ((int)(current_scale * image_width) + 15) / 16;
     uint32_t grid_height = (int)(current_scale * image_height) / 16;
     grid_height = ((int)(current_scale * image_height) + 15) / 16;
-    vkCmdFillBuffer(
+    vkCmdFillBufferGS(
         compute.commandBuffer,
         splat_buffers.tile_range, 0,
         grid_width * grid_height * 2 * sizeof(int32_t), 0
@@ -428,7 +428,7 @@ void VulkanComputeExample::forwardCmd()
     copyRegionBB.srcOffset = 0; // Start at the beginning of the source buffer
     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
     copyRegionBB.size = splat_count * sizeof(uint32_t) * SORT_SIZE; // Size of data to copy
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         sort_buffers.unsort_index,
         sort_buffers.sortVBufferEven,
@@ -469,7 +469,7 @@ void VulkanComputeExample::forwardCmd()
     grid_width = ((int)(current_scale * image_width) + 15) / 16;
     uint32_t grid_height = (int)(current_scale * image_height) / 16;
     grid_height = ((int)(current_scale * image_height) + 15) / 16;
-    vkCmdFillBuffer(
+    vkCmdFillBufferGS(
         compute.commandBuffer,
         splat_buffers.tile_range, 0,
         grid_width * grid_height * 2 * sizeof(int32_t), 0
@@ -517,7 +517,7 @@ void VulkanComputeExample::forwardCmdTime()
     grid_width = ((int)(current_scale * image_width) + 15) / 16;
     uint32_t grid_height = (int)(current_scale * image_height) / 16;
     grid_height = ((int)(current_scale * image_height) + 15) / 16;
-    vkCmdFillBuffer(
+    vkCmdFillBufferGS(
         compute.commandBuffer,
         splat_buffers.tile_range, 0,
         grid_width * grid_height * 2 * sizeof(int32_t), 0
@@ -536,7 +536,7 @@ void VulkanComputeExample::forwardCmdTime()
 //     copyRegionBB.srcOffset = 0; // Start at the beginning of the source buffer
 //     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
 //     copyRegionBB.size = splat_count * sizeof(uint32_t) * SORT_SIZE; // Size of data to copy
-//     vkCmdCopyBuffer(
+//     vkCmdCopyBufferGS(
 //         compute.commandBuffer,
 //         sort_buffers.unsort_index,
 //         sort_buffers.sortVBufferEven,
@@ -584,7 +584,7 @@ void VulkanComputeExample::bufferToImageCmd()
     copyRegionI.imageOffset = { 0, 0, 0 };
     copyRegionI.imageExtent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1 };
 
-    vkCmdCopyBufferToImage(
+    vkCmdCopyBufferToImageGS(
         compute.commandBuffer,
         splat_buffers.rfeat_alpha,
         storageImage.image,
@@ -666,14 +666,14 @@ void VulkanComputeExample::densifyCmd()
     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
     copyRegionBB.size = splat_count * sizeof(uint32_t); // Size of data to copy
     
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         splat_buffers.xyz_gradient_mean,
         sort_buffers.sortKBufferEven,
         1,            // Number of regions to copy
         &copyRegionBB   // Pointer to the copy region
     );
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         sort_buffers.densify_idx,
         sort_buffers.sortVBufferEven,
@@ -685,14 +685,14 @@ void VulkanComputeExample::densifyCmd()
     radixSortCmd(splat_count);
     ComputeShaderMemoryBarrierBlock();
     
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         sort_buffers.sortKBufferEven,
         splat_buffers.xyz_gradient_mean,
         1,            // Number of regions to copy
         &copyRegionBB   // Pointer to the copy region
     );
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         sort_buffers.sortVBufferEven,
         sort_buffers.densify_idx,
@@ -707,10 +707,10 @@ void VulkanComputeExample::densifyCmd()
     bindPipeline2CommandBuffer(pipe_clone, FORWARD_PIPE, X, 1, 1, true);
     bindPipeline2CommandBuffer(pipe_split, FORWARD_PIPE, X, 1, 1, true);
     
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.xyz_gradient_accum, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.denom, 0, VK_WHOLE_SIZE, 0);
-    //vkCmdFillBuffer(compute.commandBuffer, splat_buffers.curPointsNum, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBuffer(compute.commandBuffer, splat_buffers.max_radii2D, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_gradient_accum, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.denom, 0, VK_WHOLE_SIZE, 0);
+    //vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.curPointsNum, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.max_radii2D, 0, VK_WHOLE_SIZE, 0);
 }
 
 void VulkanComputeExample::updRenderCmd()
@@ -738,7 +738,7 @@ void VulkanComputeExample::updRenderCmd()
         upd_cmd_buffer = true;
         
         // TODO: problem?
-        vkCmdCopyImage(
+        vkCmdCopyImageGS(
             compute.commandBuffer,
             inputGaussian.images[6].image,
             inputGaussian.images[6].imageLayout,
@@ -753,7 +753,7 @@ void VulkanComputeExample::updRenderCmd()
     region.srcOffset = 7 * (render_index % inputGaussian.intr_tmp.size()) * sizeof(float);
     region.dstOffset = 0;
     region.size = sizeof(float) * 7;
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         splat_buffers.camera_extrs,
         splat_buffers.extr_params_render,
@@ -799,7 +799,7 @@ void VulkanComputeExample::updRenderCmd(int index)
     region.srcOffset = 7 * (index) * sizeof(float);
     region.dstOffset = 0;
     region.size = sizeof(float) * 7;
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         splat_buffers.camera_extrs,
         splat_buffers.extr_params_render,
@@ -850,7 +850,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     queryCmdTimeEnd("02. reset grad");
 
     queryCmdTimeStart("03. forward fill visible point");
-    vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
     queryCmdTimeEnd("03. forward fill visible point");
     
     queryCmdTimeStart("04. forward fill buffer");
@@ -889,7 +889,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     
 //     ComputeTransBarrierBlock();
 //     updRenderCmd();
-//     vkCmdFillBuffer(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
 //     TransComputeBarrierBlock();
 //     bindPipeline2CommandBuffer(pipe_buffer_fill, 0, X, 1, 1);
 //     bindPipeline2CommandBuffer(pipe_project_render, FORWARD_PIPE, X, 1, 1);
@@ -957,21 +957,21 @@ VulkanComputeExample::~VulkanComputeExample()
 {
     if (device) {
         // Graphics
-        vkDestroyPipeline(device, graphics.pipeline, nullptr);
-        vkDestroyPipelineLayout(device, graphics.pipelineLayout, nullptr);
-        vkDestroyDescriptorSetLayout(device, graphics.descriptorSetLayout, nullptr);
-        vkDestroySemaphore(device, graphics.semaphore, nullptr);
+        vkDestroyPipelineGS(device, graphics.pipeline, nullptr);
+        vkDestroyPipelineLayoutGS(device, graphics.pipelineLayout, nullptr);
+        vkDestroyDescriptorSetLayoutGS(device, graphics.descriptorSetLayout, nullptr);
+        vkDestroySemaphoreGS(device, graphics.semaphore, nullptr);
         graphics.uniformBuffer.destroy();
 
         // Compute
         for (auto& pipeline : compute.pipelines)
         {
-            vkDestroyPipeline(device, pipeline, nullptr);
+            vkDestroyPipelineGS(device, pipeline, nullptr);
         }
-        vkDestroyPipelineLayout(device, compute.pipelineLayout, nullptr);
-        vkDestroyDescriptorSetLayout(device, compute.descriptorSetLayout, nullptr);
-        vkDestroySemaphore(device, compute.semaphore, nullptr);
-        vkDestroyCommandPool(device, compute.commandPool, nullptr);
+        vkDestroyPipelineLayoutGS(device, compute.pipelineLayout, nullptr);
+        vkDestroyDescriptorSetLayoutGS(device, compute.descriptorSetLayout, nullptr);
+        vkDestroySemaphoreGS(device, compute.semaphore, nullptr);
+        vkDestroyCommandPoolGS(device, compute.commandPool, nullptr);
 
         vertexBuffer.destroy();
         indexBuffer.destroy();
@@ -989,7 +989,7 @@ void VulkanComputeExample::getEnabledFeatures()
 {
     LOGI("getEnabledFeatures");
     deviceFeatures.shaderInt64 = VK_TRUE;
-    vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+    vkGetPhysicalDeviceFeaturesGS(physicalDevice, &deviceFeatures);
     enabledFeatures = deviceFeatures;
 
     // features
@@ -1000,7 +1000,7 @@ void VulkanComputeExample::getEnabledFeatures()
     imageless_framebuffer_feature_.pNext = &timeline_semaphore_features_;
 
     features_.pNext = &imageless_framebuffer_feature_;
-    vkGetPhysicalDeviceFeatures2(physicalDevice, &features_);
+    vkGetPhysicalDeviceFeatures2GS(physicalDevice, &features_);
 
     deviceCreatepNextChain = &features_; 
 }
@@ -1008,9 +1008,9 @@ void VulkanComputeExample::getEnabledFeatures()
 void VulkanComputeExample::getEnabledExtensions()
 {
     uint32_t extensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+    vkEnumerateDeviceExtensionPropertiesGS(physicalDevice, nullptr, &extensionCount, nullptr);
     std::vector<VkExtensionProperties> extensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, extensions.data());
+    vkEnumerateDeviceExtensionPropertiesGS(physicalDevice, nullptr, &extensionCount, extensions.data());
     // VK_EXT_shader_atomic_float
     bool hasAtomicFloatExtension = false;
     for (const auto& ext : extensions) {
@@ -1381,7 +1381,7 @@ void VulkanComputeExample::createPipelineLayout(
     VkDescriptorSetLayoutCreateInfo layoutInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
 
     VK_CHECK_RESULT(
-        vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &pipe_3dgs.descriptorSetLayout)
+        vkCreateDescriptorSetLayoutGS(device, &layoutInfo, nullptr, &pipe_3dgs.descriptorSetLayout)
     );
 
     // Define push constant range (optional)
@@ -1407,7 +1407,7 @@ void VulkanComputeExample::createPipelineLayout(
     }
 
     VK_CHECK_RESULT(
-        vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipe_3dgs.pipelineLayout)
+        vkCreatePipelineLayoutGS(device, &pipelineLayoutInfo, nullptr, &pipe_3dgs.pipelineLayout)
     );
 
     // Allocate descriptor set
@@ -1417,7 +1417,7 @@ void VulkanComputeExample::createPipelineLayout(
     );
 
     VK_CHECK_RESULT(
-        vkAllocateDescriptorSets(device, &allocInfo, &pipe_3dgs.descriptorSet)
+        vkAllocateDescriptorSetsGS(device, &allocInfo, &pipe_3dgs.descriptorSet)
     );
 }
 
@@ -1445,7 +1445,7 @@ void VulkanComputeExample::updateDescriptorSet(
         descriptorWrites[i].pBufferInfo = &bufferInfos[i];
     }
 
-    vkUpdateDescriptorSets(device, buffers.size(), descriptorWrites.data(), 0, nullptr);
+    vkUpdateDescriptorSetsGS(device, buffers.size(), descriptorWrites.data(), 0, nullptr);
 }
 
 
@@ -1506,7 +1506,7 @@ void VulkanComputeExample::setProjectionRenderPipeline()
     pipelineInfo.layout = pipe_project_render.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_project_render.pipelines[FORWARD_PIPE]
         )
     );
@@ -1571,7 +1571,7 @@ void VulkanComputeExample::setProjectionPipeline()
     pipelineInfo.layout = pipe_project.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_project.pipelines[FORWARD_PIPE]
         )
     );
@@ -1588,7 +1588,7 @@ void VulkanComputeExample::setProjectionPipeline()
     pipelineInfo.layout = pipe_project.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_project.pipelines[BACKWARD_PIPE]
         )
     );
@@ -1628,7 +1628,7 @@ void VulkanComputeExample::setKNNPipeline()
     pipelineInfo.layout = pipe_knn.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_knn.pipelines[FORWARD_PIPE]
         )
     );
@@ -1672,7 +1672,7 @@ void VulkanComputeExample::setInverseIndexPipeline()
     pipelineInfo.layout = pipe_inverse.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_inverse.pipelines[FORWARD_PIPE]
         )
     );
@@ -1691,7 +1691,7 @@ void VulkanComputeExample::setInverseIndexPipeline()
     pipelineInfo.layout = pipe_inverse.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_inverse.pipelines[BACKWARD_PIPE]
         )
     );
@@ -1746,7 +1746,7 @@ void VulkanComputeExample::setAlphaBlendingPipeline()
     pipelineInfo.layout = pipe_blending.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_blending.pipelines[FORWARD_PIPE]
         )
     );
@@ -1765,7 +1765,7 @@ void VulkanComputeExample::setAlphaBlendingPipeline()
     pipelineInfo.layout = pipe_blending.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_blending.pipelines[BACKWARD_PIPE]
         )
     );
@@ -1821,7 +1821,7 @@ void VulkanComputeExample::setAlphaBlendingIntPipeline()
     pipelineInfo.layout = pipe_blending_int.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_blending_int.pipelines[FORWARD_PIPE]
         )
     );
@@ -1840,7 +1840,7 @@ void VulkanComputeExample::setAlphaBlendingIntPipeline()
     pipelineInfo.layout = pipe_blending_int.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_blending_int.pipelines[BACKWARD_PIPE]
         )
     );
@@ -1884,7 +1884,7 @@ void VulkanComputeExample::setIntToFloatGradientPipeline()
     pipelineInfo.layout = pipe_int2float.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_int2float.pipelines[BACKWARD_PIPE]
         )
     );
@@ -1935,7 +1935,7 @@ void VulkanComputeExample::setComputeSHPipeline()
     pipelineInfo.layout = pipe_sh.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_sh.pipelines[FORWARD_PIPE]
         )
     );
@@ -1954,7 +1954,7 @@ void VulkanComputeExample::setComputeSHPipeline()
     pipelineInfo.layout = pipe_sh.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_sh.pipelines[BACKWARD_PIPE]
         )
     );
@@ -2005,7 +2005,7 @@ void VulkanComputeExample::setComputeSHRenderPipeline()
     pipelineInfo.layout = pipe_sh_render.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_sh_render.pipelines[FORWARD_PIPE]
         )
     );
@@ -2067,7 +2067,7 @@ void VulkanComputeExample::setOptimizationPipeline()
     pipelineInfo.layout = pipe_optimize.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_optimize.pipelines[FORWARD_PIPE]
         )
     );
@@ -2110,7 +2110,7 @@ void VulkanComputeExample::setExtrOptimizationPipeline()
     pipelineInfo.layout = pipe_optimize_extr.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_optimize_extr.pipelines[FORWARD_PIPE]
         )
     );
@@ -2153,7 +2153,7 @@ void VulkanComputeExample::setLossPipeline()
     pipelineInfo.layout = pipe_loss.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_loss.pipelines[FORWARD_PIPE]
         )
     );
@@ -2203,7 +2203,7 @@ void VulkanComputeExample::setComputeKeyPipeline()
     pipelineInfo.layout = pipe_compute_key.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_compute_key.pipelines[FORWARD_PIPE]
         )
     );
@@ -2248,7 +2248,7 @@ void VulkanComputeExample::setComputeTilePipeline()
     pipelineInfo.layout = pipe_compute_tile.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_compute_tile.pipelines[FORWARD_PIPE]
         )
     );
@@ -2294,7 +2294,7 @@ void VulkanComputeExample::setDensificationStatsPipeline()
     pipelineInfo.layout = pipe_densification_stats.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_densification_stats.pipelines[FORWARD_PIPE]
         )
     );
@@ -2338,7 +2338,7 @@ void VulkanComputeExample::setMeanGradPipeline()
     pipelineInfo.layout = pipe_mean_grad.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_mean_grad.pipelines[FORWARD_PIPE]
         )
     );
@@ -2384,7 +2384,7 @@ void VulkanComputeExample::setClonePipeline()
     pipelineInfo.layout = pipe_clone.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_clone.pipelines[FORWARD_PIPE]
         )
     );
@@ -2440,7 +2440,7 @@ void VulkanComputeExample::setPrunePipeline()
     pipelineInfo.layout = pipe_prune.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_prune.pipelines[FORWARD_PIPE]
         )
     );
@@ -2486,7 +2486,7 @@ void VulkanComputeExample::setSplitPipeline()
     pipelineInfo.layout = pipe_split.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_split.pipelines[FORWARD_PIPE]
         )
     );
@@ -2527,7 +2527,7 @@ void VulkanComputeExample::setResetOpacityPipeline()
     pipelineInfo.layout = pipe_reset_opacity.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_reset_opacity.pipelines[FORWARD_PIPE]
         )
     );
@@ -2685,7 +2685,7 @@ void VulkanComputeExample::setHist2Pipeline()
     pipelineInfo.layout = pipe_hist_offset.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_hist_offset.pipelines[0]
         )
     ); 
@@ -2725,7 +2725,7 @@ void VulkanComputeExample::setHistEvenPipeline()
     pipelineInfo.layout = pipe_hist_even.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_hist_even.pipelines[0]
         )
     );
@@ -2764,7 +2764,7 @@ void VulkanComputeExample::setHistOddPipeline()
     pipelineInfo.layout = pipe_hist_odd.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_hist_odd.pipelines[0]
         )
     ); 
@@ -2806,7 +2806,7 @@ void VulkanComputeExample::setSortEvenPipeline()
     pipelineInfo.layout = pipe_sort_even.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_sort_even.pipelines[0]
         )
     ); 
@@ -2848,7 +2848,7 @@ void VulkanComputeExample::setSortOddPipeline()
     pipelineInfo.layout = pipe_sort_odd.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_sort_odd.pipelines[0]
         )
     ); 
@@ -2888,7 +2888,7 @@ void VulkanComputeExample::setExtrProcessPipeline()
     pipelineInfo.layout = pipe_extr_process.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_extr_process.pipelines[0]
         )
     ); 
@@ -2929,7 +2929,7 @@ void VulkanComputeExample::setExtrProcessRenderPipeline()
     pipelineInfo.layout = pipe_extr_process_render.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_extr_process_render.pipelines[0]
         )
     ); 
@@ -2969,7 +2969,7 @@ void VulkanComputeExample::setImage2BufferPipeline()
     pipelineInfo.layout = pipe_copy_img2buffer.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_copy_img2buffer.pipelines[0]
         )
     );
@@ -3010,7 +3010,7 @@ void VulkanComputeExample::setBuffer2ImagePipeline()
     pipelineInfo.layout = pipe_copy_buffer2img.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_copy_buffer2img.pipelines[0]
         )
     );
@@ -3051,7 +3051,7 @@ void VulkanComputeExample::setBufferFillPipeline()
     pipelineInfo.layout = pipe_buffer_fill.pipelineLayout;
 
     VK_CHECK_RESULT(
-        vkCreateComputePipelines(
+        vkCreateComputePipelinesGS(
             device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_buffer_fill.pipelines[0]
         )
     );
@@ -3072,7 +3072,7 @@ void VulkanComputeExample::prepareStorageImage()
 
     VkFormatProperties formatProperties;
     // Get device properties for the requested texture format
-    vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+    vkGetPhysicalDeviceFormatPropertiesGS(physicalDevice, format, &formatProperties);
     // Check if requested image format supports image storage operations required for storing pixel from the compute shader
     assert(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
 
@@ -3152,7 +3152,7 @@ void VulkanComputeExample::prepareStorageImage()
     sampler.minLod = 0.0f;
     sampler.maxLod = 1.0f;
     sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-    VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &storageImage.sampler));
+    VK_CHECK_RESULT(vkCreateSamplerGS(device, &sampler, nullptr, &storageImage.sampler));
 
     // Create image view
     VkImageViewCreateInfo view = vks::initializers::imageViewCreateInfo();
@@ -3161,7 +3161,7 @@ void VulkanComputeExample::prepareStorageImage()
     view.format = format;
     view.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
     view.image = storageImage.image;
-    VK_CHECK_RESULT(vkCreateImageView(device, &view, nullptr, &storageImage.view));
+    VK_CHECK_RESULT(vkCreateImageViewGS(device, &view, nullptr, &storageImage.view));
 
     // Initialize a descriptor for later use
     storageImage.descriptor.imageLayout = storageImage.imageLayout;
@@ -3441,7 +3441,7 @@ void VulkanComputeExample::buildCommandBuffers()
     {
         renderPassBeginInfo.framebuffer = frameBuffers[i];
 
-        VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
+        VK_CHECK_RESULT(vkBeginCommandBufferGS(drawCmdBuffers[i], &cmdBufInfo));
 
         VkImageMemoryBarrier imageMemoryBarrier = {};
         imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -3453,7 +3453,7 @@ void VulkanComputeExample::buildCommandBuffers()
         imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        vkCmdPipelineBarrier(
+        vkCmdPipelineBarrierGS(
             drawCmdBuffers[i],
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -3462,36 +3462,36 @@ void VulkanComputeExample::buildCommandBuffers()
             0, nullptr,
             1, &imageMemoryBarrier);
 
-        vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBeginRenderPassGS(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
         VkViewport viewport = vks::initializers::viewport((float)screenWidth * 0.5f, (float)screenHeight, 0.0f, 1.0f);
-        vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
+        vkCmdSetViewportGS(drawCmdBuffers[i], 0, 1, &viewport);
 
         VkRect2D scissor = vks::initializers::rect2D(screenWidth, screenHeight, 0, 0);
-        vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
+        vkCmdSetScissorGS(drawCmdBuffers[i], 0, 1, &scissor);
 
         VkDeviceSize offsets[1] = { 0 };
-        vkCmdBindVertexBuffers(drawCmdBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
-        vkCmdBindIndexBuffer(drawCmdBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindVertexBuffersGS(drawCmdBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
+        vkCmdBindIndexBufferGS(drawCmdBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         // Left (pre compute)
-        vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipelineLayout, 0, 1, &graphics.descriptorSetPreCompute, 0, NULL);
-        vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipeline);
-        vkCmdDrawIndexed(drawCmdBuffers[i], indexCount, 1, 0, 0, 0);
+        vkCmdBindDescriptorSetsGS(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipelineLayout, 0, 1, &graphics.descriptorSetPreCompute, 0, NULL);
+        vkCmdBindPipelineGS(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipeline);
+        vkCmdDrawIndexedGS(drawCmdBuffers[i], indexCount, 1, 0, 0, 0);
 
         // Right (post compute)
-        vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipelineLayout, 0, 1, &graphics.descriptorSetPostCompute, 0, NULL);
-        vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipeline);
+        vkCmdBindDescriptorSetsGS(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipelineLayout, 0, 1, &graphics.descriptorSetPostCompute, 0, NULL);
+        vkCmdBindPipelineGS(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipeline);
 
         viewport.x = (float)screenWidth / 2.0f;
-        vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
-        vkCmdDrawIndexed(drawCmdBuffers[i], indexCount, 1, 0, 0, 0);
+        vkCmdSetViewportGS(drawCmdBuffers[i], 0, 1, &viewport);
+        vkCmdDrawIndexedGS(drawCmdBuffers[i], indexCount, 1, 0, 0, 0);
 
-        vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
+        vkCmdDrawGS(drawCmdBuffers[i], 3, 1, 0, 0);
 
-        vkCmdEndRenderPass(drawCmdBuffers[i]);
+        vkCmdEndRenderPassGS(drawCmdBuffers[i]);
 
-        VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
+        VK_CHECK_RESULT(vkEndCommandBufferGS(drawCmdBuffers[i]));
     }
 }
 
@@ -3501,8 +3501,8 @@ void VulkanComputeExample::bindPipeline2CommandBuffer(
     uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
     bool float_constant
 ) {
-    vkCmdBindPipeline(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelines[PIPELINE_INDEX]);
-    vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelineLayout, 0, 1, &pipe.descriptorSet, 0, nullptr);
+    vkCmdBindPipelineGS(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelines[PIPELINE_INDEX]);
+    vkCmdBindDescriptorSetsGS(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelineLayout, 0, 1, &pipe.descriptorSet, 0, nullptr);
 
     // Push constants
     uint32_t xyz_size = splat_count;
@@ -3517,15 +3517,15 @@ void VulkanComputeExample::bindPipeline2CommandBuffer(
             pos_lr, static_cast<float>(sh_degree), static_cast<float>(current_img_idx), 
             0, 0
         };
-        vkCmdPushConstants(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float) * 8, pushConstants.data());
+        vkCmdPushConstantsGS(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float) * 8, pushConstants.data());
     }else{
         std::vector<uint32_t> pushConstants = { xyz_size, (unsigned int)(current_scale * image_width), (unsigned int)(current_scale * image_height), 0};
-        vkCmdPushConstants(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) * 4, pushConstants.data());
+        vkCmdPushConstantsGS(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) * 4, pushConstants.data());
     }
 
     // Dispatch compute shader
     // uint32_t groupCountX = (MAX_SPLAT_COUNT + 256 - 1) / 256; // Ceiling division
-    vkCmdDispatch(compute.commandBuffer, dispatchX, dispatchY, dispatchZ);
+    vkCmdDispatchGS(compute.commandBuffer, dispatchX, dispatchY, dispatchZ);
 
     ComputeShaderMemoryBarrierBlock();
 //     ComputeTransBarrierBlock();
@@ -3538,8 +3538,8 @@ void VulkanComputeExample::bindPipeline2CommandBufferPushConstants(
     uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
     std::vector<uint32_t>& pushConstants
 ) {
-    vkCmdBindPipeline(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelines[PIPELINE_INDEX]);
-    vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelineLayout, 0, 1, &pipe.descriptorSet, 0, nullptr);
+    vkCmdBindPipelineGS(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelines[PIPELINE_INDEX]);
+    vkCmdBindDescriptorSetsGS(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelineLayout, 0, 1, &pipe.descriptorSet, 0, nullptr);
 
     // print out pushConstants
     // for (size_t i = 0; i < pushConstants.size(); ++i) {
@@ -3547,7 +3547,7 @@ void VulkanComputeExample::bindPipeline2CommandBufferPushConstants(
     // }
 
     // Push constants
-    vkCmdPushConstants(
+    vkCmdPushConstantsGS(
         compute.commandBuffer, 
         pipe.pipelineLayout, 
         VK_SHADER_STAGE_COMPUTE_BIT, 
@@ -3557,7 +3557,7 @@ void VulkanComputeExample::bindPipeline2CommandBufferPushConstants(
 
     // Dispatch compute shader
     // uint32_t groupCountX = (MAX_SPLAT_COUNT + 256 - 1) / 256; // Ceiling division
-    vkCmdDispatch(compute.commandBuffer, dispatchX, dispatchY, dispatchZ);
+    vkCmdDispatchGS(compute.commandBuffer, dispatchX, dispatchY, dispatchZ);
 
     ComputeShaderMemoryBarrierBlock();
 }
@@ -3570,7 +3570,7 @@ void VulkanComputeExample::ComputeMemoryBarrierBlock()
     memoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-    vkCmdPipelineBarrier(
+    vkCmdPipelineBarrierGS(
         compute.commandBuffer,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -3589,7 +3589,7 @@ void VulkanComputeExample::TransComputeBarrierBlock()
     memoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-    vkCmdPipelineBarrier(
+    vkCmdPipelineBarrierGS(
         compute.commandBuffer,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -3608,7 +3608,7 @@ void VulkanComputeExample::ComputeTransBarrierBlock()
     memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
     memoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
-    vkCmdPipelineBarrier(
+    vkCmdPipelineBarrierGS(
         compute.commandBuffer,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -3627,7 +3627,7 @@ void VulkanComputeExample::ComputeShaderMemoryBarrierBlock()
     memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 
-    vkCmdPipelineBarrier(
+    vkCmdPipelineBarrierGS(
         compute.commandBuffer,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -3644,7 +3644,7 @@ void VulkanComputeExample::createGpu2CpuCopy(vkgs::Buffer &buffer)
     region.srcOffset = 0;
     region.dstOffset = 0;
     region.size = buffer.size();
-    vkCmdCopyBuffer(
+    vkCmdCopyBufferGS(
         compute.commandBuffer,
         buffer,
         cpu_buffer,
@@ -3655,14 +3655,14 @@ void VulkanComputeExample::createGpu2CpuCopy(vkgs::Buffer &buffer)
 
 void VulkanComputeExample::buildComputeCommandBuffer(std::function<void()> func)
 {
-    vkQueueWaitIdle(compute.queue);
+    vkQueueWaitIdleGS(compute.queue);
 
     VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-    VK_CHECK_RESULT(vkBeginCommandBuffer(compute.commandBuffer, &cmdBufInfo));
+    VK_CHECK_RESULT(vkBeginCommandBufferGS(compute.commandBuffer, &cmdBufInfo));
     
     func();
 
-    VK_CHECK_RESULT(vkEndCommandBuffer(compute.commandBuffer));
+    VK_CHECK_RESULT(vkEndCommandBufferGS(compute.commandBuffer));
 }
 
 void VulkanComputeExample::generateQuad()
@@ -3711,46 +3711,46 @@ void VulkanComputeExample::setupDescriptorPool()
         vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 64),
     };
     VkDescriptorPoolCreateInfo descriptorPoolInfo = vks::initializers::descriptorPoolCreateInfo(poolSizes, 2048);
-    VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
+    VK_CHECK_RESULT(vkCreateDescriptorPoolGS(device, &descriptorPoolInfo, nullptr, &descriptorPool));
 }
 
 void VulkanComputeExample::prepareGraphics()
 {
     VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
-    VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &graphics.semaphore));
+    VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &graphics.semaphore));
 
     VkSubmitInfo submitInfo = vks::initializers::submitInfo();
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &graphics.semaphore;
-    VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
-    VK_CHECK_RESULT(vkQueueWaitIdle(queue));
+    VK_CHECK_RESULT(vkQueueSubmitGS(queue, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_CHECK_RESULT(vkQueueWaitIdleGS(queue));
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
         vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
     };
     VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
-    VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &graphics.descriptorSetLayout));
+    VK_CHECK_RESULT(vkCreateDescriptorSetLayoutGS(device, &descriptorLayout, nullptr, &graphics.descriptorSetLayout));
 
     VkDescriptorSetAllocateInfo allocInfo =
         vks::initializers::descriptorSetAllocateInfo(descriptorPool, &graphics.descriptorSetLayout, 1);
 
-    VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &graphics.descriptorSetPreCompute));
+    VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPreCompute));
     std::vector<VkWriteDescriptorSet> baseImageWriteDescriptorSets = {
         vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
         vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textureColorMap.descriptor)
     };
-    vkUpdateDescriptorSets(device, static_cast<uint32_t>(baseImageWriteDescriptorSets.size()), baseImageWriteDescriptorSets.data(), 0, nullptr);
+    vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(baseImageWriteDescriptorSets.size()), baseImageWriteDescriptorSets.data(), 0, nullptr);
 
-    VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &graphics.descriptorSetPostCompute));
+    VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPostCompute));
     std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
         vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
         vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &storageImage.descriptor)
     };
-    vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+    vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&graphics.descriptorSetLayout, 1);
-    VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &graphics.pipelineLayout));
+    VK_CHECK_RESULT(vkCreatePipelineLayoutGS(device, &pipelineLayoutCreateInfo, nullptr, &graphics.pipelineLayout));
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = vks::initializers::pipelineInputAssemblyStateCreateInfo(
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
@@ -3809,7 +3809,7 @@ void VulkanComputeExample::prepareGraphics()
     pipelineCreateInfo.pDynamicState = &dynamicState;
     pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
     pipelineCreateInfo.pStages = shaderStages.data();
-    VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &graphics.pipeline));
+    VK_CHECK_RESULT(vkCreateGraphicsPipelinesGS(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &graphics.pipeline));
 }
 
 template <typename T>
@@ -3862,7 +3862,7 @@ void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs
 
 void VulkanComputeExample::prepareCompute()
 {
-    vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices.compute, 0, &compute.queue);
+    vkGetDeviceQueueGS(device, vulkanDevice->queueFamilyIndices.compute, 0, &compute.queue);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 0),
@@ -3870,20 +3870,20 @@ void VulkanComputeExample::prepareCompute()
     };
 
     VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
-    VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &compute.descriptorSetLayout));
+    VK_CHECK_RESULT(vkCreateDescriptorSetLayoutGS(device, &descriptorLayout, nullptr, &compute.descriptorSetLayout));
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&compute.descriptorSetLayout, 1);
-    VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &compute.pipelineLayout));
+    VK_CHECK_RESULT(vkCreatePipelineLayoutGS(device, &pipelineLayoutCreateInfo, nullptr, &compute.pipelineLayout));
 
     VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(
         descriptorPool, &compute.descriptorSetLayout, 1);
-    VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &compute.descriptorSet));
+    VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &compute.descriptorSet));
 
     std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
         vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.descriptor),
         vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.descriptor)
     };
-    vkUpdateDescriptorSets(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, nullptr);
+    vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, nullptr);
 
     VkComputePipelineCreateInfo computePipelineCreateInfo = vks::initializers::computePipelineCreateInfo(
         compute.pipelineLayout, 0);
@@ -3900,8 +3900,8 @@ void VulkanComputeExample::prepareCompute()
 //         std::string fileName = getShadersPath() + "computeshader/" + shaderName + ".comp.spv";
         computePipelineCreateInfo.stage = loadShader(fileName, VK_SHADER_STAGE_COMPUTE_BIT);
         VkPipeline pipeline;
-//         VK_CHECK_RESULT(vkCreateComputePipelines(device, pipelineCache, 1, &computePipelineCreateInfo, nullptr, &pipeline));
-        VK_CHECK_RESULT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &pipeline));
+//         VK_CHECK_RESULT(vkCreateComputePipelinesGS(device, pipelineCache, 1, &computePipelineCreateInfo, nullptr, &pipeline));
+        VK_CHECK_RESULT(vkCreateComputePipelinesGS(device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &pipeline));
         compute.pipelines.push_back(pipeline);
     }
 
@@ -3909,28 +3909,28 @@ void VulkanComputeExample::prepareCompute()
     cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cmdPoolInfo.queueFamilyIndex = vulkanDevice->queueFamilyIndices.compute;
     cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    VK_CHECK_RESULT(vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &compute.commandPool));
+    VK_CHECK_RESULT(vkCreateCommandPoolGS(device, &cmdPoolInfo, nullptr, &compute.commandPool));
 
     VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(
         compute.commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
-    VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, &compute.commandBuffer));
+    VK_CHECK_RESULT(vkAllocateCommandBuffersGS(device, &cmdBufAllocateInfo, &compute.commandBuffer));
 
     VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
-    VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &compute.semaphore));
+    VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &compute.semaphore));
 
     VkQueryPoolCreateInfo queryPoolInfo = {};
     queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
     queryPoolInfo.queryCount = MAX_TIME_QUERY_NUM * 2; // Two timestamps: start and end
-    VK_CHECK_RESULT(vkCreateQueryPool(device, &queryPoolInfo, nullptr, &compute.queryPool));
+    VK_CHECK_RESULT(vkCreateQueryPoolGS(device, &queryPoolInfo, nullptr, &compute.queryPool));
     // buildComputeCommandBuffer();
 }
 
 void VulkanComputeExample::prepreAllocator()
 {
     VmaVulkanFunctions vulkanFunctions = {};
-    vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
-    vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+    vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddrGS;
+    vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddrGS;
     
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
     allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
@@ -3967,7 +3967,7 @@ bool VulkanComputeExample::prepare()
 //     VulkanExampleBase::prepare();
 
     VkPhysicalDeviceProperties deviceProperties;
-    vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+    vkGetPhysicalDevicePropertiesGS(physicalDevice, &deviceProperties);
     uint32_t maxAllocations = deviceProperties.limits.maxMemoryAllocationCount;
     LOGI("maxAllocations = %{public}u", maxAllocations);
 
@@ -4081,7 +4081,7 @@ void VulkanComputeExample::printLog(bool train)
     }
     VulkanExampleBase::submitFrame();
 #endif
-    vkQueueWaitIdle(compute.queue);
+    vkQueueWaitIdleGS(compute.queue);
     
     if (training_step >= 1)
     {
@@ -4143,7 +4143,7 @@ void VulkanComputeExample::executeComputeCommand()
     computeSubmitInfo.pWaitDstStageMask = &waitStageMask;
     computeSubmitInfo.signalSemaphoreCount = 1;
     computeSubmitInfo.pSignalSemaphores = &compute.semaphore;
-    VkResult res = vkQueueSubmit(compute.queue, 1, &computeSubmitInfo, VK_NULL_HANDLE);
+    VkResult res = vkQueueSubmitGS(compute.queue, 1, &computeSubmitInfo, VK_NULL_HANDLE);
 
     if (res != VK_SUCCESS) {
 #ifdef VULKAN_HW
@@ -4153,7 +4153,7 @@ void VulkanComputeExample::executeComputeCommand()
 #endif
     }
     
-    vkQueueWaitIdle(compute.queue);
+    vkQueueWaitIdleGS(compute.queue);
     
 }
 
@@ -4248,7 +4248,7 @@ void VulkanComputeExample::queryCmdTimeStart(std::string eventName)
     }
     unsigned int queryIndex = queryTime.size();
     queryTime[eventName] = { queryIndex * 2, queryIndex * 2 + 1 };
-    vkCmdWriteTimestamp(compute.commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, compute.queryPool, queryTime[eventName].startIndex);
+    vkCmdWriteTimestampGS(compute.commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, compute.queryPool, queryTime[eventName].startIndex);
 }
 
 void VulkanComputeExample::queryCmdTimeEnd(std::string eventName)
@@ -4256,13 +4256,13 @@ void VulkanComputeExample::queryCmdTimeEnd(std::string eventName)
     if (queryTime.find(eventName) == queryTime.end()) {
         throw std::runtime_error("Can Not Find Time Query Event!");
     }
-    vkCmdWriteTimestamp(compute.commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, compute.queryPool, queryTime[eventName].endIndex);
+    vkCmdWriteTimestampGS(compute.commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, compute.queryPool, queryTime[eventName].endIndex);
 }
 
 void VulkanComputeExample::queryEventTime()
 {
     uint64_t timestamps[MAX_TIME_QUERY_NUM * 2];
-    vkGetQueryPoolResults(device, compute.queryPool, 0, 2 * queryTime.size(), sizeof(timestamps), timestamps, sizeof(uint64_t),
+    vkGetQueryPoolResultsGS(device, compute.queryPool, 0, 2 * queryTime.size(), sizeof(timestamps), timestamps, sizeof(uint64_t),
         VK_QUERY_RESULT_64_BIT);
 
     double timestampPeriod = deviceProperties.limits.timestampPeriod; 

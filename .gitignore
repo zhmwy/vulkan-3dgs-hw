@@ -1,6 +1,7 @@
 CMakeLists.txt.user
 build
 lego
+human_bie
 
 .DS_Store
 .vscode
