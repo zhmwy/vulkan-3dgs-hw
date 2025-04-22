@@ -15,13 +15,13 @@ void LetterBox(const cv::Mat &image, cv::Mat &outImage, cv::Vec4d &params, const
     float r = std::min((float)newShape.height / (float)shape.height, (float)newShape.width / (float)shape.width);
     if (!scaleUp)
         r = std::min(r, 1.0f);
-    printf("原图尺寸：w:%d * h:%d, 要求尺寸：w:%d * h:%d, 即将采用的缩放比：%f\n", shape.width, shape.height,
+    LOGI("原图尺寸：w:%{public}d * h:%{public}d, 要求尺寸：w:%{public}d * h:%{public}d, 即将采用的缩放比：%%{public}f\n", shape.width, shape.height,
            newShape.width, newShape.height, r);
 
     // 依据前面的缩放比例后，原图的尺寸
     float ratio[2]{r, r};
     int new_un_pad[2] = {(int)std::round((float)shape.width * r), (int)std::round((float)shape.height * r)};
-    printf("等比例缩放后的尺寸该为：w:%d * h:%d\n", new_un_pad[0], new_un_pad[1]);
+    LOGI("等比例缩放后的尺寸该为：w:%{public}d * h:%{public}d\n", new_un_pad[0], new_un_pad[1]);
 
     // 计算距离目标尺寸的padding像素数
     auto dw = (float)(newShape.width - new_un_pad[0]);

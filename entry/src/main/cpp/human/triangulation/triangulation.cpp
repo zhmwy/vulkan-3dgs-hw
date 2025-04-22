@@ -58,7 +58,21 @@ bool readCameraIntrinsics(const std::string& filename, CameraIntrinsics& intrins
         float temp2 = intrinsics.cy;
         intrinsics.cy = intrinsics.cx;
         intrinsics.cx = temp2;
+        temp2 = intrinsics.fy;
+        intrinsics.fy = intrinsics.fx;
+        intrinsics.fx = temp2;
     }
+    if(intrinsics.width != 480){
+        float ratio = intrinsics.width / 480.;
+        assert(abs(ratio - intrinsics.height / 640.) < 0.1);
+        intrinsics.width /= ratio;
+        intrinsics.height /= ratio;
+        intrinsics.cx /= ratio;
+        intrinsics.cy /= ratio;
+        intrinsics.fx /= ratio;
+        intrinsics.fy /= ratio;
+    }
+    LOGI("Processed intr: %{public}f %{public}f %{public}f %{public}f",intrinsics.cx,intrinsics.cy,intrinsics.fx,intrinsics.fy);
     infile.close();
     return true;
 }

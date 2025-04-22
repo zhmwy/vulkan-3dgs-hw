@@ -81,7 +81,9 @@ void GetMask2(const cv::Mat& maskProposals, const cv::Mat& maskProtos, OutputPar
 
 }
 
-bool PostProcessingSeg(std::vector<std::vector<float>> result, std::vector<cv::Vec4d> &params, std::vector<OutputParams> &output, int imgSize) {
+bool PostProcessingSeg(std::vector<std::vector<float>> result, std::vector<cv::Vec4d> &params, 
+                        std::vector<OutputParams> &output, int inputSize, cv::Size imgSize) {
+    LOGI("ImageSize: %{public}d %{public}d", imgSize.width, imgSize.height);
 	float _classThreshold = 0.25;
 	float _nmsThreshold = 0.45;
 	float _maskThreshold = 0.5;
@@ -89,7 +91,7 @@ bool PostProcessingSeg(std::vector<std::vector<float>> result, std::vector<cv::V
 	float* all_data = result[0].data();
     float* mask_data = result[1].data();
 
-	std::vector<int> mask_protos_shape = {1, 32, imgSize/4, imgSize/4}; // 这些大小注意一下
+	std::vector<int> mask_protos_shape = {1, 32, inputSize/4, inputSize/4}; // 这些大小注意一下
 	int mask_protos_length = VectorProduct(mask_protos_shape);
 	int64_t one_output_length = 116 * 2100;
 	int net_width = 116;
@@ -131,7 +133,7 @@ bool PostProcessingSeg(std::vector<std::vector<float>> result, std::vector<cv::V
 	std::vector<int> nms_result;
 	cv::dnn::NMSBoxes(boxes, confidences, _classThreshold, _nmsThreshold, nms_result);
 	std::vector<std::vector<float>> temp_mask_proposals;
-	cv::Rect holeImgRect(0, 0, 480, 640); // 确保是不是640， 640
+	cv::Rect holeImgRect(0, 0, imgSize.width, imgSize.height); // 确保是不是640， 640
 	std::vector<OutputParams> temp_output;
 	for (int i = 0; i < nms_result.size(); ++i) {
 		int idx = nms_result[i];
@@ -148,8 +150,8 @@ bool PostProcessingSeg(std::vector<std::vector<float>> result, std::vector<cv::V
 	MaskParams mask_params;
 	mask_params.params = params[0];
 	mask_params.srcImgShape = cv::Size(1080, 1920);  // 是图像原始大小
-	mask_params.netHeight = imgSize;
-	mask_params.netWidth = imgSize;
+	mask_params.netHeight = inputSize;
+	mask_params.netWidth = inputSize;
 	mask_params.maskThreshold = _maskThreshold;
 	cv::Mat mask_protos = cv::Mat(mask_protos_shape, CV_32F, mask_data);
         

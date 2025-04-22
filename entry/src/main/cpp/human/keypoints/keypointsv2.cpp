@@ -42,7 +42,6 @@ OH_NN_ReturnCode RunModel() {
 // Modified LoadImage to use direct OpenCV loading
 OH_NN_ReturnCode LoadImage(const std::string& imagePath, vector<Vec4d>& params) {
     cv::Mat frame = cv::imread(imagePath);
-    LOGI("Image content: %{public}d, %{public}d", frame.at<int>(0, 0, 0), frame.at<int>(320, 240, 0));
     
     if (frame.empty()) {
         OH_LOG_ERROR(LOG_APP, "Failed to read image: %s", imagePath.c_str());
@@ -95,8 +94,8 @@ int ProcessKeypoints(const std::string& inputPath) {
     int totalProcessedImages = 0;
     
     size_t lastSlash = inputPath.find_last_of('/');
-    size_t secondLastSlash = inputPath.substr(0, lastSlash).find_last_of('/');
-    std::string modelPath = inputPath.substr(0, secondLastSlash) + "/weights/yolov8-pose.om";
+//     size_t secondLastSlash = inputPath.substr(0, lastSlash).find_last_of('/');
+    std::string modelPath = inputPath.substr(0, lastSlash) + "/weights/yolov8-pose.om";
     vector<vector<string>> keypoints_outputs;
     
     if (LoadModel(modelPath) != OH_NN_SUCCESS) {
@@ -153,6 +152,12 @@ int ProcessKeypoints(const std::string& inputPath) {
     int human_centered_count = 0;
 
     int id = 0;
+    cv::Mat imgSample = cv::imread(imgDir + sampled_image_paths[0]);
+    int width = imgSample.cols;
+    int height = imgSample.rows;
+    float ratio = width / 480.0;
+    assert(ratio == height/640.0);
+    
     for (const auto& imgName : sampled_image_paths) {
         int idx = selectedIndices[id];
         id++;
@@ -168,7 +173,7 @@ int ProcessKeypoints(const std::string& inputPath) {
     
             // 检查是否有检测结果在图片中心
             for (const auto& pose : result) {
-                if (isHumanCentered(pose.box, 480, 640)) {
+                if (isHumanCentered(pose.box, width, height)) {
                     human_centered_count++;
                     break; // 每张图片只计一次
                 }
@@ -186,8 +191,8 @@ int ProcessKeypoints(const std::string& inputPath) {
             for (size_t i = 0; i < 1; ++i) {
                 string data = imgName + "\n";
                 for (size_t k = 0; k < result[i].kps.size(); k += 3) {
-                    float x = result[0].kps[k];        
-                    float y = result[0].kps[k + 1];
+                    float x = result[0].kps[k] / ratio;        
+                    float y = result[0].kps[k + 1] / ratio;
                     float conf = result[0].kps[k + 2];
                     if (conf >= 0.75) {
                         keypoint_count[k / 3]++;
@@ -326,8 +331,8 @@ int ProcessKeypoints(const std::string& inputPath) {
                         string file_name = image_paths[neighbor];
                         string data = file_name + "\n";
                         for (size_t k = 0; k < result[0].kps.size(); k += 3) {
-                            float x = result[0].kps[k];
-                            float y = result[0].kps[k+1];
+                            float x = result[0].kps[k] / ratio;
+                            float y = result[0].kps[k+1] / ratio;
                             float conf = result[0].kps[k+2];
                             data += to_string(x) + " " + to_string(y) + " " + to_string(conf) + "\n";
                         }

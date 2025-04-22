@@ -49,11 +49,11 @@ void SaveSegmentation(cv::Mat& img, const std::vector<OutputParams>& result) {
     img = output;
 }
 
-OH_NN_ReturnCode LoadImages(vector<Vec4d>& params, vector<cv::Mat>& srcs, int imgSize) {
+OH_NN_ReturnCode LoadImages(vector<Vec4d>& params, vector<cv::Mat>& srcs, int inputSize) {
     vector<cv::Mat> input_images;
-    Preprocessing(srcs, input_images, params, imgSize);
+    Preprocessing(srcs, input_images, params, inputSize);
 
-    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(imgSize, imgSize));
+    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(inputSize, inputSize));
     std::vector<std::pair<float*, size_t>> inputDataList{
         {reinterpret_cast<float*>(blob.data), blob.total()}
     };
@@ -61,11 +61,11 @@ OH_NN_ReturnCode LoadImages(vector<Vec4d>& params, vector<cv::Mat>& srcs, int im
     return HIAIModelManager::GetInstance().InitIOTensors(inputDataList);
 }
 
-OH_NN_ReturnCode LoadImage(vector<Vec4d>& params, cv::Mat& frame, int imgSize) {
+OH_NN_ReturnCode LoadImage(vector<Vec4d>& params, cv::Mat& frame, int inputSize) {
     vector<cv::Mat> srcs{frame};
     vector<cv::Mat> input_images;
-    Preprocessing(srcs, input_images, params, imgSize);
-    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(imgSize, imgSize));
+    Preprocessing(srcs, input_images, params, inputSize);
+    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(inputSize, inputSize));
     OH_LOG_INFO(LOG_APP, "Input images size: %{public}zu", blob.total());
     
     std::vector<std::pair<float*, size_t>> inputDataList{
@@ -76,9 +76,9 @@ OH_NN_ReturnCode LoadImage(vector<Vec4d>& params, cv::Mat& frame, int imgSize) {
 }
 
 int GetSegments_Batched(std::string inputPath) {
-    const int imgSize = 320;
-    int model_output_size = 116 * 2100 * (imgSize / 320) ^2;
-    int model_mask_size = 32 * (imgSize/4)^2;
+    const int inputSize = 320;
+    int model_output_size = 116 * 2100 * (inputSize / 320) ^2;
+    int model_mask_size = 32 * (inputSize/4)^2;
     // Load model
     size_t lastSlash = inputPath.find_last_of('/');
     std::string modelPath = inputPath.substr(0, lastSlash) + "/weights/yolov8n-seg-320-batch4.om";
@@ -112,6 +112,8 @@ int GetSegments_Batched(std::string inputPath) {
     const int batch_size = 4;
     auto begin = clk::now();
     
+    cv::Mat imgSample = cv::imread(imgDir + imgList[0]);
+    
     for (int i=0; i<imgList.size(); ++i) {
         vector<Vec4d> params;
         
@@ -128,7 +130,7 @@ int GetSegments_Batched(std::string inputPath) {
         if(input_names.size()==batch_size){
             OH_LOG_INFO(LOG_APP, "Running with batch size: %{public}zu", input_imgs.size());
             
-            if (LoadImages(params, input_imgs, imgSize) != OH_NN_SUCCESS) continue;
+            if (LoadImages(params, input_imgs, inputSize) != OH_NN_SUCCESS) continue;
             if (RunModel() != OH_NN_SUCCESS) continue;
             vector<vector<float>> outputs = HIAIModelManager::GetInstance().GetResult();  // size仍然为2，只不过长度变为了3897600和3276800
             
@@ -142,7 +144,7 @@ int GetSegments_Batched(std::string inputPath) {
                 OH_LOG_INFO(LOG_APP, "Single output size: %{public}zu", single_output.size());
                 
                 std::vector<OutputParams> output;
-                PostProcessingSeg(single_output, params, output, imgSize);
+                PostProcessingSeg(single_output, params, output, inputSize, imgSample.size());
                 cv::Mat currentImg = input_imgs[j];
                 SaveSegmentation(currentImg, output);
                 std::string segmentPath = segmentDir + input_names[j];
@@ -163,13 +165,13 @@ int GetSegments_Batched(std::string inputPath) {
 }
 
 int GetSegments(std::string inputPath) {
-    const int imgSize = 320;
-    int model_output_size = 116 * 2100 * (imgSize / 320) ^2;
-    int model_mask_size = 32 * (imgSize/4)^2;
+    const int inputSize = 320;
+    int model_output_size = 116 * 2100 * (inputSize / 320) ^2;
+    int model_mask_size = 32 * (inputSize/4)^2;
        
     size_t lastSlash = inputPath.find_last_of('/');
-    size_t secondLastSlash = inputPath.substr(0, lastSlash).find_last_of('/');
-    std::string modelPath = inputPath.substr(0, secondLastSlash) + "/weights/yolov8n-seg-320-new.om";
+//     size_t secondLastSlash = inputPath.substr(0, lastSlash).find_last_of('/');
+    std::string modelPath = inputPath.substr(0, lastSlash) + "/weights/yolov8n-seg-320-new.om";
     if (LoadSegModel(modelPath) != OH_NN_SUCCESS) {
         OH_LOG_ERROR(LOG_APP, "Model loading failed");
         return -1;
@@ -195,6 +197,7 @@ int GetSegments(std::string inputPath) {
     }
     closedir(dir);
     auto begin = clk::now();
+    cv::Mat imgSample = cv::imread(imgDir + imgList[0]);
 
     for (int i=0; i<imgList.size(); ++i) {
         std::string imgName = imgList[i];
@@ -202,7 +205,7 @@ int GetSegments(std::string inputPath) {
         vector<Vec4d> params;
         
         cv::Mat img = cv::imread(fullPath);
-        if (LoadImage(params, img, imgSize) != OH_NN_SUCCESS) continue;
+        if (LoadImage(params, img, inputSize) != OH_NN_SUCCESS) continue;
         if (RunModel() != OH_NN_SUCCESS) continue;
 
         if (img.empty()) {
@@ -211,13 +214,13 @@ int GetSegments(std::string inputPath) {
         }
 
         std::vector<OutputParams> output;
-        PostProcessingSeg(HIAIModelManager::GetInstance().GetResult(), params, output, imgSize);
+        PostProcessingSeg(HIAIModelManager::GetInstance().GetResult(), params, output, inputSize, imgSample.size());
         SaveSegmentation(img, output);
         std::string segmentPath = segmentDir + imgName;
-        std::string tempPath = inputPath.substr(0, secondLastSlash) + "/temp/" + std::to_string(i) + ".jpg";
         if (!cv::imwrite(segmentPath, img)) {
             OH_LOG_ERROR(LOG_APP, "Failed to save result: %s", segmentPath.c_str());
         }
+        std::string tempPath = inputPath.substr(0, lastSlash) + "/temp/" + std::to_string(i) + ".jpg";
         cv::imwrite(tempPath, img);
         LOGI("Saving %{public}s", tempPath.c_str());
         OH_LOG_INFO(LOG_APP, "Body segmentation completed in %{public}.3f seconds for image %{public}d", 

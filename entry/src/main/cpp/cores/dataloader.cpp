@@ -910,11 +910,6 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
            
     std::filesystem::create_directories(scenepath + "/human");
     std::filesystem::create_directories(scenepath + "/human/images");
-    std::filesystem::create_directories(scenepath + "/human/slam");
-    std::ofstream new_intrinsics_file(scenepath + "/human/slam/cameras.txt");
-    if (!new_intrinsics_file.is_open()) {
-        LOGE("Failed to open intrinsics output file");
-    }
     
     // Copy intr_tmp multiple times to support adding face regions. 
     if (data.intr_tmp.size() == 1 && data.extr_tmp.size() > 1) {
@@ -936,10 +931,9 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
         size_t pos = path.find("images");
                 
         // Check if "images" was found
-        if (pos != std::string::npos) {
-            // Replace "images" with "images_orig"
-            path.replace(pos, 6, "images_orig");
-        }
+//         if (pos != std::string::npos) {
+//             path.replace(pos, 6, "images_orig");
+//         }
         pos = path.find_last_of('/');
         std::string basename = path.substr(pos + 1);
                 
@@ -1089,7 +1083,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         load3DPoints(pointsFilePath, data);
         
         if (is_human) {
-            std::string smplPath = scenepath + "/slam/smpl.txt";
+            std::string smplPath = scenepath + "/smpl.txt";
             load3DPoints(smplPath, data);
             for(int i=0; i<data.head_bbox.size(); ++i){
                 LOGI("head bbox: %{public}f", data.head_bbox[i]);
@@ -1097,7 +1091,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
             std::vector<cv::Point> faceCenters = projectHeadCenter(data);
             
             GetSegments(scenepath);
-//             createEnlargedFace(scenepath, data, faceCenters);
+            createEnlargedFace(scenepath, data, faceCenters);
         }
     }
     else{

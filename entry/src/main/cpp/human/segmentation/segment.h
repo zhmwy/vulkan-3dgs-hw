@@ -37,6 +37,7 @@
 #define LOG_DOMAIN 0x3200  // 全局domain宏，标识业务领域
 #define LOG_TAG "MY_TAG"   // 全局tag宏，标识模块日志tag
 
-bool PostProcessingSeg(std::vector<std::vector<float>> result, std::vector<cv::Vec4d> &params, std::vector<OutputParams> &output, int imgSize);
+bool PostProcessingSeg(std::vector<std::vector<float>> result, std::vector<cv::Vec4d> &params, 
+                        std::vector<OutputParams> &output, int inputSize, cv::Size imgSize);
 int GetSegments(std::string inputPath);
 int GetSegments_Batched(std::string inputPath);
