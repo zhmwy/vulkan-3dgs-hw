@@ -79,7 +79,7 @@ namespace vks
 			for (auto& format : depthFormats)
 			{
 				VkFormatProperties formatProps;
-				vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProps);
+				vkGetPhysicalDeviceFormatPropertiesGS(physicalDevice, format, &formatProps);
 				// Format must support depth stencil attachment for optimal tiling
 				if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
 				{
@@ -106,7 +106,7 @@ namespace vks
 		VkBool32 formatIsFilterable(VkPhysicalDevice physicalDevice, VkFormat format, VkImageTiling tiling)
 		{
 			VkFormatProperties formatProps;
-			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProps);
+			vkGetPhysicalDeviceFormatPropertiesGS(physicalDevice, format, &formatProps);
 
 			if (tiling == VK_IMAGE_TILING_OPTIMAL)
 				return formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
@@ -233,7 +233,7 @@ namespace vks
 			}
 
 			// Put barrier inside setup command buffer
-			vkCmdPipelineBarrier(
+			vkCmdPipelineBarrierGS(
 				cmdbuffer,
 				srcStageMask,
 				dstStageMask,
@@ -280,7 +280,7 @@ namespace vks
 			imageMemoryBarrier.image = image;
 			imageMemoryBarrier.subresourceRange = subresourceRange;
 
-			vkCmdPipelineBarrier(
+			vkCmdPipelineBarrierGS(
 				cmdbuffer,
 				srcStageMask,
 				dstStageMask,
@@ -310,7 +310,7 @@ namespace vks
 				moduleCreateInfo.codeSize = size;
 				moduleCreateInfo.pCode = (uint32_t*)shaderCode;
 
-				VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
+				VK_CHECK_RESULT(vkCreateShaderModuleGS(device, &moduleCreateInfo, NULL, &shaderModule));
 
 				delete[] shaderCode;
 

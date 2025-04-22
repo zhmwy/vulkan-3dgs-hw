@@ -44,7 +44,7 @@ void VulkanRender::draw()
     submitInfo.pWaitDstStageMask = graphicsWaitStageMasks;
     submitInfo.signalSemaphoreCount = 2;
     submitInfo.pSignalSemaphores = graphicsSignalSemaphores;
-    VkResult res = vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+    VkResult res = vkQueueSubmitGS(queue, 1, &submitInfo, VK_NULL_HANDLE);
     if (res != VK_SUCCESS) {
 #ifdef VULKAN_HW
         LOGE("VulkanExample Fatal : VkResult is %s", vks::tools::errorString(res).c_str());

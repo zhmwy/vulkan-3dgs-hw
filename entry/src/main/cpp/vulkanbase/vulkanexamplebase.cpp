@@ -23,11 +23,11 @@ VkResult VulkanExampleBase::createInstance()
     
 	// Get extensions supported by the instance and store for later use
 	uint32_t extCount = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+	vkEnumerateInstanceExtensionPropertiesGS(nullptr, &extCount, nullptr);
 	if (extCount > 0)
 	{
 		std::vector<VkExtensionProperties> extensions(extCount);
-		if (vkEnumerateInstanceExtensionProperties(nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
+		if (vkEnumerateInstanceExtensionPropertiesGS(nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
 		{
 			for (VkExtensionProperties extension : extensions)
 			{
@@ -60,10 +60,10 @@ VkResult VulkanExampleBase::createInstance()
 		instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.size();
 		instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
 	}
-    if (vkCreateInstance == nullptr) {
+    if (vkCreateInstanceGS == nullptr) {
         LOGI("VulkanExampleBase::create Instance vkCreateInstance is null");
     }
-    return vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+    return vkCreateInstanceGS(&instanceCreateInfo, nullptr, &instance);
 }
 
 void VulkanExampleBase::renderFrame() {}
@@ -78,19 +78,19 @@ void VulkanExampleBase::createCommandBuffers()
 			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			static_cast<uint32_t>(drawCmdBuffers.size()));
 
-	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, drawCmdBuffers.data()));
+	VK_CHECK_RESULT(vkAllocateCommandBuffersGS(device, &cmdBufAllocateInfo, drawCmdBuffers.data()));
 }
 
 void VulkanExampleBase::destroyCommandBuffers()
 {
-	vkFreeCommandBuffers(device, cmdPool, static_cast<uint32_t>(drawCmdBuffers.size()), drawCmdBuffers.data());
+	vkFreeCommandBuffersGS(device, cmdPool, static_cast<uint32_t>(drawCmdBuffers.size()), drawCmdBuffers.data());
 }
 
 void VulkanExampleBase::createPipelineCache()
 {
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
+	VK_CHECK_RESULT(vkCreatePipelineCacheGS(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
 }
 
 bool VulkanExampleBase::prepare()
@@ -152,7 +152,7 @@ void VulkanExampleBase::renderLoop()
     }
 	// Flush device to make sure all resources can be freed
 	if (device != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(device);
+        vkDeviceWaitIdleGS(device);
     }
 }
 
@@ -187,7 +187,7 @@ void VulkanExampleBase::submitFrame()
 		}
 	}
     
-	VK_CHECK_RESULT(vkQueueWaitIdle(queue));
+	VK_CHECK_RESULT(vkQueueWaitIdleGS(queue));
 }
 
 VulkanExampleBase::VulkanExampleBase()
@@ -206,43 +206,43 @@ VulkanExampleBase::~VulkanExampleBase()
 	swapChain.cleanup();
 	if (descriptorPool != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+		vkDestroyDescriptorPoolGS(device, descriptorPool, nullptr);
 	}
 	destroyCommandBuffers();
 	if (renderPass != VK_NULL_HANDLE)
 	{
-		vkDestroyRenderPass(device, renderPass, nullptr);
+		vkDestroyRenderPassGS(device, renderPass, nullptr);
 	}
 	for (uint32_t i = 0; i < frameBuffers.size(); i++)
 	{
-		vkDestroyFramebuffer(device, frameBuffers[i], nullptr);
+		vkDestroyFramebufferGS(device, frameBuffers[i], nullptr);
 	}
 
 	for (auto& shaderModule : shaderModules)
 	{
-		vkDestroyShaderModule(device, shaderModule, nullptr);
+		vkDestroyShaderModuleGS(device, shaderModule, nullptr);
 	}
 	for (auto& shaderModule : exampleModules)
 	{
-		vkDestroyShaderModule(device, shaderModule, nullptr);
+		vkDestroyShaderModuleGS(device, shaderModule, nullptr);
 	}
-	vkDestroyImageView(device, depthStencil.view, nullptr);
-	vkDestroyImage(device, depthStencil.image, nullptr);
-	vkFreeMemory(device, depthStencil.mem, nullptr);
+	vkDestroyImageViewGS(device, depthStencil.view, nullptr);
+	vkDestroyImageGS(device, depthStencil.image, nullptr);
+	vkFreeMemoryGS(device, depthStencil.mem, nullptr);
 
-	vkDestroyPipelineCache(device, pipelineCache, nullptr);
+	vkDestroyPipelineCacheGS(device, pipelineCache, nullptr);
 
-	vkDestroyCommandPool(device, cmdPool, nullptr);
+	vkDestroyCommandPoolGS(device, cmdPool, nullptr);
 
-	vkDestroySemaphore(device, semaphores.presentComplete, nullptr);
-	vkDestroySemaphore(device, semaphores.renderComplete, nullptr);
+	vkDestroySemaphoreGS(device, semaphores.presentComplete, nullptr);
+	vkDestroySemaphoreGS(device, semaphores.renderComplete, nullptr);
 	for (auto& fence : waitFences) {
-		vkDestroyFence(device, fence, nullptr);
+		vkDestroyFenceGS(device, fence, nullptr);
 	}
 
 	delete vulkanDevice;
 
-	vkDestroyInstance(instance, nullptr);
+	vkDestroyInstanceGS(instance, nullptr);
 }
 
 
@@ -267,14 +267,14 @@ bool VulkanExampleBase::initVulkan()
 	// Physical device
 	uint32_t gpuCount = 0;
 	// Get number of available physical devices
-    VK_CHECK_RESULT(vkEnumeratePhysicalDevices(instance, &gpuCount, nullptr));
+    VK_CHECK_RESULT(vkEnumeratePhysicalDevicesGS(instance, &gpuCount, nullptr));
     if (gpuCount == 0) {
 		LOGE("initVulkan: No device with Vulkan support found");
 		return false;
 	}
 	// Enumerate devices
 	std::vector<VkPhysicalDevice> physicalDevices(gpuCount);
-	err = vkEnumeratePhysicalDevices(instance, &gpuCount, physicalDevices.data());
+	err = vkEnumeratePhysicalDevicesGS(instance, &gpuCount, physicalDevices.data());
 	if (err) {
 		LOGE("initVulkan: Could not enumerate physical devices");
 		return false;
@@ -289,9 +289,9 @@ bool VulkanExampleBase::initVulkan()
 	physicalDevice = physicalDevices[selectedDevice];
 
 	// Store properties (including limits), features and memory properties of the physical device (so that examples can check against them)
-	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &deviceMemoryProperties);
+	vkGetPhysicalDevicePropertiesGS(physicalDevice, &deviceProperties);
+	vkGetPhysicalDeviceFeaturesGS(physicalDevice, &deviceFeatures);
+	vkGetPhysicalDeviceMemoryPropertiesGS(physicalDevice, &deviceMemoryProperties);
     
     getEnabledFeatures();
 
@@ -311,7 +311,7 @@ bool VulkanExampleBase::initVulkan()
 	device = vulkanDevice->logicalDevice;
 
     // Get a graphics queue from the device
-    vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices.graphics, 0, &queue);
+    vkGetDeviceQueueGS(device, vulkanDevice->queueFamilyIndices.graphics, 0, &queue);
 //     // Get a compute queue from the device
 //     vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices.compute, 0, &compute_queue);
     // Find a suitable depth format
@@ -324,10 +324,10 @@ bool VulkanExampleBase::initVulkan()
 	VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
 	// Create a semaphore used to synchronize image presentation
 	// Ensures that the image is displayed before we start submitting new commands to the queue
-	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.presentComplete));
+	VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &semaphores.presentComplete));
 	// Create a semaphore used to synchronize command submission
 	// Ensures that the image is not presented until all commands have been submitted and executed
-	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.renderComplete));
+	VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &semaphores.renderComplete));
 
 	// Set up submit info structure
 	// Semaphores will stay the same during application lifetime
@@ -356,7 +356,7 @@ void VulkanExampleBase::createSynchronizationPrimitives()
 	VkFenceCreateInfo fenceCreateInfo = vks::initializers::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
 	waitFences.resize(drawCmdBuffers.size());
 	for (auto& fence : waitFences) {
-		VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
+		VK_CHECK_RESULT(vkCreateFenceGS(device, &fenceCreateInfo, nullptr, &fence));
 	}
 }
 
@@ -367,7 +367,7 @@ void VulkanExampleBase::createCommandPool()
 	cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	cmdPoolInfo.queueFamilyIndex = swapChain.queueNodeIndex;
 	cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	VK_CHECK_RESULT(vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &cmdPool));
+	VK_CHECK_RESULT(vkCreateCommandPoolGS(device, &cmdPoolInfo, nullptr, &cmdPool));
 }
 
 void VulkanExampleBase::setupDepthStencil()
@@ -384,16 +384,16 @@ void VulkanExampleBase::setupDepthStencil()
 	imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCI.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-	VK_CHECK_RESULT(vkCreateImage(device, &imageCI, nullptr, &depthStencil.image));
+	VK_CHECK_RESULT(vkCreateImageGS(device, &imageCI, nullptr, &depthStencil.image));
 	VkMemoryRequirements memReqs{};
-	vkGetImageMemoryRequirements(device, depthStencil.image, &memReqs);
+	vkGetImageMemoryRequirementsGS(device, depthStencil.image, &memReqs);
 
 	VkMemoryAllocateInfo memAllloc{};
 	memAllloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memAllloc.allocationSize = memReqs.size;
 	memAllloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK_RESULT(vkAllocateMemory(device, &memAllloc, nullptr, &depthStencil.mem));
-	VK_CHECK_RESULT(vkBindImageMemory(device, depthStencil.image, depthStencil.mem, 0));
+	VK_CHECK_RESULT(vkAllocateMemoryGS(device, &memAllloc, nullptr, &depthStencil.mem));
+	VK_CHECK_RESULT(vkBindImageMemoryGS(device, depthStencil.image, depthStencil.mem, 0));
 
 	VkImageViewCreateInfo imageViewCI{};
 	imageViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -409,7 +409,7 @@ void VulkanExampleBase::setupDepthStencil()
 	if (depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
 		imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 	}
-    VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCI, nullptr, &depthStencil.view));
+    VK_CHECK_RESULT(vkCreateImageViewGS(device, &imageViewCI, nullptr, &depthStencil.view));
 }
 
 void VulkanExampleBase::setupFrameBuffer()
@@ -435,7 +435,7 @@ void VulkanExampleBase::setupFrameBuffer()
 	for (uint32_t i = 0; i < frameBuffers.size(); i++)
 	{
         attachments[0] = swapChain.buffers[i].view;
-        VK_CHECK_RESULT(vkCreateFramebuffer(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
+        VK_CHECK_RESULT(vkCreateFramebufferGS(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
     }
     LOGI("VulkanExampleBase::setupFrameBuffer end");
 }
@@ -513,7 +513,7 @@ void VulkanExampleBase::setupRenderPass()
 	renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
 	renderPassInfo.pDependencies = dependencies.data();
 
-	VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
+	VK_CHECK_RESULT(vkCreateRenderPassGS(device, &renderPassInfo, nullptr, &renderPass));
 }
 
 void VulkanExampleBase::windowResize()
@@ -527,7 +527,7 @@ void VulkanExampleBase::windowResize()
 	resized = true;
 
 	// Ensure all operations on the device have been finished before destroying resources
-	vkDeviceWaitIdle(device);
+	vkDeviceWaitIdleGS(device);
 
 	// Recreate swap chain
 	screenWidth = destWidth;
@@ -535,12 +535,12 @@ void VulkanExampleBase::windowResize()
 	setupSwapChain();
 
 	// Recreate the frame buffers
-	vkDestroyImageView(device, depthStencil.view, nullptr);
-	vkDestroyImage(device, depthStencil.image, nullptr);
-	vkFreeMemory(device, depthStencil.mem, nullptr);
+	vkDestroyImageViewGS(device, depthStencil.view, nullptr);
+	vkDestroyImageGS(device, depthStencil.image, nullptr);
+	vkFreeMemoryGS(device, depthStencil.mem, nullptr);
 	setupDepthStencil();
 	for (uint32_t i = 0; i < frameBuffers.size(); i++) {
-		vkDestroyFramebuffer(device, frameBuffers[i], nullptr);
+		vkDestroyFramebufferGS(device, frameBuffers[i], nullptr);
 	}
 	setupFrameBuffer();
 
@@ -552,11 +552,11 @@ void VulkanExampleBase::windowResize()
 
 	// SRS - Recreate fences in case number of swapchain images has changed on resize
 	for (auto& fence : waitFences) {
-		vkDestroyFence(device, fence, nullptr);
+		vkDestroyFenceGS(device, fence, nullptr);
 	}
 	createSynchronizationPrimitives();
 
-	vkDeviceWaitIdle(device);
+	vkDeviceWaitIdleGS(device);
 
 	// Notify derived class
 	windowResized();

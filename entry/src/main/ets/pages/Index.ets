@@ -59,6 +59,8 @@ struct Index {
             if (!this.isTraining) {
               this.train3DGS("/human_bie");
               // this.train3DGS("/assets/AREngine/2024_09_27_11_20_29");
+              // this.train3DGS("/assets/12_data/AVATAR");
+
               // this.train3DGS("/assets/human_bie");
             }
           })

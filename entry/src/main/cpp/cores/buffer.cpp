@@ -85,7 +85,7 @@ namespace vkgs {
             region.srcOffset = 0;
             region.dstOffset = 0;
             region.size = size;
-            vkCmdCopyBuffer(command_buffer, staging_buffer_, buffer_, 1, &region);
+            vkCmdCopyBufferGS(command_buffer, staging_buffer_, buffer_, 1, &region);
         }
     
         void* getMap()
