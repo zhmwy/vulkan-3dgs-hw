@@ -26,27 +26,39 @@
 /********************* For Unit Test ****************************/
 void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
 {
-    if(flag==LOAD_HEAD){
+    if (dataFolder.empty()){
+        throw std::runtime_error("The input data folder is empty.");
+    }
+    
+    if (dataFolder.back() == '/') {
+        dataFolder.pop_back();
+    }
+    
+    inputGaussian.basepath = dataFolder.substr(0, dataFolder.find_last_of("/"));
+    basepath = inputGaussian.basepath;
+    FileOperator::GetInstance()->set_defaultDir(basepath);
+    
+    if(flag==LOAD_HEAD) {
         LOGI("Loading Head gaussians!");
         DataLoader::loadHeadGaussians(dataFolder, inputGaussian);
     }
     else {
         bool resumed = false;
         DataLoader::loadInput12(dataFolder, inputGaussian, resumed, HEIGHT, WIDTH);
-//         inputGaussian = DataLoader::loadInputTo(dataFolder);
+//         DataLoader::loadInputTo(dataFolder, inputGaussian);
         if(resumed) hasKNN = true;
         
         inputGaussian.computePositionStats();
         inputGaussian.normalizeData();
 
     }
-    basepath = inputGaussian.basepath;
     
-    if(flag==LOAD_EXTRA){
-        std::string extra_path = basepath + dataFolder + "/head/other_gaussians.ply";
-        DataLoader::loadExtraGaussianData(extra_path, inputGaussian);
-    }
- 
+    
+//     if(flag == LOAD_EXTRA){
+//         std::string extra_path = dataFolder + "/head/other_gaussians.ply";
+//         DataLoader::loadExtraGaussianData(extra_path, inputGaussian);
+//     }
+    
     splat_count = inputGaussian.positions.size();
     random_generator.initialize(inputGaussian.img_list.size());
 }
@@ -3338,7 +3350,9 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
     image_width = textureColorMap.width;
     image_height = textureColorMap.height;
     
+    LOGI("Load Assets: loading images.");
     for (const std::string& filename : inputGaussian.img_list) {
+        LOGI("Load Assets: loading image %{public}s", filename.c_str());
         cv::Mat img = cv::imread(filename);
         if (img.empty()){
             std::cerr << "Failed to load image file: " << filename << std::endl;
@@ -3966,11 +3980,13 @@ bool VulkanComputeExample::prepare()
     }
 //     VulkanExampleBase::prepare();
 
+    LOGI("Prepare: Begin to prepare the training process.");
+    
     VkPhysicalDeviceProperties deviceProperties;
     vkGetPhysicalDevicePropertiesGS(physicalDevice, &deviceProperties);
     uint32_t maxAllocations = deviceProperties.limits.maxMemoryAllocationCount;
     LOGI("maxAllocations = %{public}u", maxAllocations);
-
+    
     prepreAllocator();
 //     loadAssets(low_resolotion_scale);
     loadAssets(WIDTH, HEIGHT, low_resolotion_scale);
@@ -3983,6 +3999,7 @@ bool VulkanComputeExample::prepare()
     buildCommandBuffers();
 
     // 3dgs specific
+    LOGI("Prepare: loading compute shaders");
     prepare3dgsBuffers();
     setProjectionPipeline();
     setProjectionRenderPipeline();
@@ -4017,7 +4034,7 @@ bool VulkanComputeExample::prepare()
     setPrunePipeline();
     
 //     buildComputeCommandBuffer();
-
+    LOGI("Prepare: Finished.");
     prepared = true;
     return prepared;
 }

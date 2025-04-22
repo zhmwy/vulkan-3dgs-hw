@@ -141,17 +141,22 @@ namespace vks {
                 LOGI("vk::ohos::loadVulkanLibrary: Could not load vulkan library %{public}s", dlerror());
                 return false;
             }
-            // // Load base function pointers
-            vkEnumerateInstanceExtensionPropertiesGS = reinterpret_cast<PFN_vkEnumerateInstanceExtensionProperties>(
-                dlsym(libVulkan, "vkEnumerateInstanceExtensionProperties"));
+            // Load base function pointers
+            LOGI("vk::ohos::loadVulkanLibrary: load vkEnumerateInstanceExtensionPropertiesGS");
+            vkEnumerateInstanceExtensionPropertiesGS = reinterpret_cast<PFN_vkEnumerateInstanceExtensionProperties>(dlsym(libVulkan, "vkEnumerateInstanceExtensionProperties"));
 
-            vkEnumerateInstanceLayerPropertiesGS = reinterpret_cast<PFN_vkEnumerateInstanceLayerProperties>(
-                dlsym(libVulkan, "vkEnumerateInstanceLayerProperties"));
-    
+            LOGI("vk::ohos::loadVulkanLibrary: load vkEnumerateInstanceLayerPropertiesGS");
+            vkEnumerateInstanceLayerPropertiesGS = reinterpret_cast<PFN_vkEnumerateInstanceLayerProperties>(dlsym(libVulkan, "vkEnumerateInstanceLayerProperties"));
+            
+            LOGI("vk::ohos::loadVulkanLibrary: load vkCreateInstanceGS");
             vkCreateInstanceGS = reinterpret_cast<PFN_vkCreateInstance>(dlsym(libVulkan, "vkCreateInstance"));
-            vkGetInstanceProcAddrGS =
-                reinterpret_cast<PFN_vkGetInstanceProcAddr>(dlsym(libVulkan, "vkGetInstanceProcAddr"));
+            
+            LOGI("vk::ohos::loadVulkanLibrary: load vkGetInstanceProcAddrGS");
+            vkGetInstanceProcAddrGS =reinterpret_cast<PFN_vkGetInstanceProcAddr>(dlsym(libVulkan, "vkGetInstanceProcAddr"));
+    
+            LOGI("vk::ohos::loadVulkanLibrary: load vkGetDeviceProcAddrGS");
             vkGetDeviceProcAddrGS = reinterpret_cast<PFN_vkGetDeviceProcAddr>(dlsym(libVulkan, "vkGetDeviceProcAddr"));
+            
             return true;
         }
 

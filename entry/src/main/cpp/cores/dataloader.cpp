@@ -1104,9 +1104,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
 }
 
 
-DataLoader::InputInitStruct DataLoader::loadInputTo(const std::string _scenepath)
+void DataLoader::loadInputTo(const std::string _scenepath, DataLoader::InputInitStruct& data)
 {
-    DataLoader::InputInitStruct data;
     std::string basePath = data.basepath;
     std::string scenepath = _scenepath;
     
@@ -1288,7 +1287,6 @@ DataLoader::InputInitStruct DataLoader::loadInputTo(const std::string _scenepath
     pointsFile.close();
     imagesFile.close();
     camerasFile.close();
-    
-    return data;
+
 }
 

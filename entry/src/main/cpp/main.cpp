@@ -241,6 +241,7 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
     std::string dataFolder(dataPath, pathLength);
 
     // Initialize file operations
+    FileOperator::GetInstance()->set_defaultDir(basepath);
     FileOperator::GetInstance()->InitEnv(env);
     FileOperator::GetInstance()->mgr_ = resourceMgr;
     FileOperator::GetInstance()->CopyRawDir("");

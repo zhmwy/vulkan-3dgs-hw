@@ -57,7 +57,7 @@ public:
         glm::vec3 mean;
         float variance = 0;
 
-        std::string basepath = "/data/storage/el2/base/haps/entry/files";
+        std::string basepath = "/data/storage/el1/base/files";
         
         int width, height;
         
@@ -75,7 +75,7 @@ public:
     static void loadExtrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
     static void loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
     
-    static InputInitStruct loadInputTo(const std::string _scenepath);
+    static void loadInputTo(const std::string _scenepath, DataLoader::InputInitStruct& data);
     static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height = 640, int width = 480);
     static void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, std::vector<cv::Point>& faceCenters);
     
