@@ -343,14 +343,14 @@ double ProcessTriangulation(std::string inputPath) {
     readKeypoints(keypointsFile, frames);
 
     // Read camera intrinsics
-    std::string camerasFile = inputPath + "/slam/cameras.txt";
+    std::string camerasFile = inputPath + "/cameras.txt";
     if (!readCameraIntrinsics(camerasFile, intrinsics)) {
         OH_LOG_ERROR(LOG_APP, "Failed to read camera intrinsics");
         return -1.0; // Indicate error
     }
 
     // Read camera extrinsics
-    std::string imagesFile = inputPath + "/slam/images.txt";
+    std::string imagesFile = inputPath + "/images.txt";
     readCameraExtrinsics(imagesFile, extrinsics_map);
 
     // Perform triangulation

@@ -23,7 +23,7 @@ struct Index {
     // 调用自定义的getSyncPixelMap接口，获取pixelMap
     // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/12_data/AVATAR/images_orig/frame_0000.jpg")
     // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/case1/images/15506175713000.jpg")
-    this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/human_bie/images/85864565279156.jpg")
+    this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "human_bie/images/85864565279156.jpg")
   }
 
   async train3DGS(inputPath: string) {
@@ -57,7 +57,7 @@ struct Index {
         Button(this.isTraining ? 'Training...' : 'Start Training')
           .onClick(() => {
             if (!this.isTraining) {
-              this.train3DGS("/assets/12_data/AVATAR");
+              this.train3DGS("/human_bie");
               // this.train3DGS("/assets/AREngine/2024_09_27_11_20_29");
               // this.train3DGS("/assets/human_bie");
             }

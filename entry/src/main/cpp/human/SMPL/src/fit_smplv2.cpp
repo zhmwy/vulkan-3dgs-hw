@@ -320,7 +320,7 @@ void write_points3D(std::string& outputPath,
 void FitSMPL(std::string inputPath, std::vector<float>& head_bbox) {
     auto begin = clk::now();
     
-    std::string outputPath = inputPath + "/slam/smpl.txt";
+    std::string outputPath = inputPath + "/smpl.txt";
     
     // Read keypoints with validity check
     auto [detected_keypoints_all, validity] = read_keypoints_from_ply_with_validity(inputPath + "/skeleton.ply");
