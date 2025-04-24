@@ -14,21 +14,21 @@
 // napi_value getSandBoxPixelMap(napi_env env, napi_callback_info info);
 
 
-class Interface{
+class InterfaceVulkan{
 public:
-    Interface(){};
-    virtual void Init(std::string datapath, std::string modelpath, napi_threadsafe_function g_progress_cb_train)=0; //datapath是输入路径，modelpath是输出路径，优化后的txt覆盖原路径即可
-    virtual void Train()=0;
-    virtual float GetProcess()=0;
-    virtual ~Interface()=default;
+    InterfaceVulkan(){};
+    virtual void InitVulkan(std::string datapath, std::string modelpath, napi_threadsafe_function g_progress_cb_train)=0; //datapath是输入路径，modelpath是输出路径，优化后的txt覆盖原路径即可
+    virtual void TrainVulkan()=0;
+    virtual float GetProcessVulkan()=0;
+    virtual ~InterfaceVulkan()=default;
 };
 
 
-extern "C" Interface* createInstance();
-extern "C" void destoryInstance(Interface* instance);
+extern "C" InterfaceVulkan* createInstance();
+extern "C" void destoryInstance(InterfaceVulkan* instance);
 
 
-class InterfaceImpl : public Interface {
+class InterfaceImplVulkan : public InterfaceVulkan {
 private:
     std::string _dataPath;
     std::string _outputPath;
@@ -40,11 +40,11 @@ private:
     
 
 public:
-    InterfaceImpl();
-    ~InterfaceImpl();
-    void Init(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train);
-    void Train();
-    float GetProcess();
+    InterfaceImplVulkan();
+    ~InterfaceImplVulkan();
+    void InitVulkan(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train);
+    void TrainVulkan();
+    float GetProcessVulkan();
 };
 
 

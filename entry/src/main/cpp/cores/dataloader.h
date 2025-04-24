@@ -55,7 +55,7 @@ public:
         glm::vec3 translate;
         float radius;
         glm::vec3 mean;
-        float variance = 0;
+        float variance = 1.0;
 
         std::string basepath = "/data/storage/el1/base/files";
         
@@ -63,6 +63,9 @@ public:
         
         void normalizeData();
         void computePositionStats();
+        
+        void denormalizeExtr();
+        void denormalizePoints();
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);

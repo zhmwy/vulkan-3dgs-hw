@@ -202,15 +202,15 @@ struct AsyncContext {
     napi_async_work work;
     napi_deferred deferred;
     NativeResourceManager* resourceMgr;
-    InterfaceImpl* impl;
+    InterfaceImplVulkan* impl;
     std::string datapath;
     std::string outputpath;
 };
 
 void ExecuteTraining(napi_env env, void* data) {
     AsyncContext* context = static_cast<AsyncContext*>(data);
-    context->impl->Init(context->datapath, context->outputpath, g_progress_cb_train);
-    context->impl->Train();
+    context->impl->InitVulkan(context->datapath, context->outputpath, g_progress_cb_train);
+    context->impl->TrainVulkan();
 }
 
 void CompleteTraining(napi_env env, napi_status status, void* data) {
@@ -247,7 +247,7 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
     FileOperator::GetInstance()->CopyRawDir("");
 
     // Create interface instance
-    InterfaceImpl* impl = static_cast<InterfaceImpl*>(createInstance());
+    InterfaceImplVulkan* impl = static_cast<InterfaceImplVulkan*>(createInstance());
 //     impl->Init(dataFolder, dataFolder);
 
     // Create async context

@@ -590,7 +590,7 @@ public:
             }
         }
         
-        std::string save_dir_debug = inputGaussian.basepath + "/temp";
+        std::string save_dir_debug = dataFolder + "/temp";
         std::filesystem::create_directories(save_dir_debug);
         std::string filename = save_dir_debug + "/" + std::to_string(i) + ".jpg";
         LOGI("Saving rendered image to: %{public}s", filename.c_str());

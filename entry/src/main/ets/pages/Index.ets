@@ -41,7 +41,7 @@ struct Index {
   }
 
   async switchImage(){
-    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/temp/" + this.currentImage.toString() + ".jpg")
+    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/AVATAR/temp/" + this.currentImage.toString() + ".jpg")
     // this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/assets/human_bie/images/85864565279156.jpg")
     this.currentImage = (this.currentImage + 1) % 1000
   }

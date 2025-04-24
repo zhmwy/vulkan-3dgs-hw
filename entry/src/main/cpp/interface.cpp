@@ -16,9 +16,9 @@ OH_NativeXComponent_Callback PluginRender::m_callback;
 // napi_threadsafe_function g_progress_cb_train = nullptr;
 VulkanRender* _renderer = NULL;
 
-InterfaceImpl::InterfaceImpl() : _progress(0.0f), _isInitialized(false), _isTraining(false), _g_progress_cb_train(nullptr) {}
+InterfaceImplVulkan::InterfaceImplVulkan() : _progress(0.0f), _isInitialized(false), _isTraining(false), _g_progress_cb_train(nullptr) {}
 
-InterfaceImpl::~InterfaceImpl() {
+InterfaceImplVulkan::~InterfaceImplVulkan() {
     if (_isTraining) {
         _isTraining = false;
     }
@@ -29,7 +29,7 @@ InterfaceImpl::~InterfaceImpl() {
     }
 }
 
-void InterfaceImpl::Init(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train) {
+void InterfaceImplVulkan::InitVulkan(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train) {
     _dataPath = datapath;
     _outputPath = outputpath;
     _g_progress_cb_train = g_progress_cb_train;
@@ -46,11 +46,11 @@ void InterfaceImpl::Init(std::string datapath, std::string outputpath, napi_thre
     _isInitialized = true;
 }
 
-void InterfaceImpl::Train() {
+void InterfaceImplVulkan::TrainVulkan() {
     if (!_isInitialized || _isTraining) return;
         
     _isTraining = true;
-    GetProcess();
+    GetProcessVulkan();
 
     try {
         std::vector<int> max_steps = {1200, 500, 500};
@@ -60,12 +60,12 @@ void InterfaceImpl::Train() {
             if (!_isTraining) break;
             _renderer->render();
             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
-            GetProcess();
+            GetProcessVulkan();
         }
         
-        std::filesystem::create_directories(_dataPath + "/result");
-        _renderer->saveCameras(_dataPath + "/result");
-        _renderer->saveGaussians(_dataPath + "/result");
+//         std::filesystem::create_directories(_dataPath + "/result");
+        _renderer->saveCameras(_dataPath);
+        _renderer->saveGaussians(_dataPath);
         
         if (_isTraining) {
             // Post-training operations
@@ -75,7 +75,7 @@ void InterfaceImpl::Train() {
                 _renderer->renderRGB2Cpu(i, _dataPath);
             }
             updateProgress(100.0f);
-            GetProcess();
+            GetProcessVulkan();
         }
     } catch (...) {
         _isTraining = false;
@@ -83,11 +83,11 @@ void InterfaceImpl::Train() {
     _isTraining = false;
 }
 
-void InterfaceImpl::updateProgress(float value){
+void InterfaceImplVulkan::updateProgress(float value){
     _progress = value;
 }
 
-float InterfaceImpl::GetProcess() {
+float InterfaceImplVulkan::GetProcessVulkan() {
     if (_g_progress_cb_train) {
         int* data = new int(_progress);
         napi_status status = napi_acquire_threadsafe_function(_g_progress_cb_train);
@@ -96,13 +96,13 @@ float InterfaceImpl::GetProcess() {
     }
     return _progress;
 }
+// 训练次数 / 总次数 * 100%
 
-
-extern "C" Interface* createInstance() {
-    return new InterfaceImpl();
+extern "C" InterfaceVulkan* createInstance() {
+    return new InterfaceImplVulkan();
 }
 
-extern "C" void destoryInstance(Interface* instance) {
+extern "C" void destoryInstance(InterfaceVulkan* instance) {
     if (instance) {
         delete instance;
     }

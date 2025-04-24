@@ -297,6 +297,39 @@ void DataLoader::InputInitStruct::normalizeData() {
     }
 }
 
+void DataLoader::InputInitStruct::denormalizeExtr() {
+    float stddev = glm::sqrt(variance) + 1e-6f;
+    for (auto& extr: extr_tmp) {
+        glm::mat4 W2C = quat2matrix(extr);
+        glm::mat4 C2W = glm::inverse(W2C);
+        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        
+        glm::vec3 normalized_center = cam_center * stddev + mean;
+        C2W[0][3] = normalized_center.x;
+        C2W[1][3] = normalized_center.y;
+        C2W[2][3] = normalized_center.z;
+        W2C = glm::inverse(C2W);
+        
+        extr.values[4] = W2C[0][3];
+        extr.values[5] = W2C[1][3];
+        extr.values[6] = W2C[2][3];
+    }
+}
+
+void DataLoader::InputInitStruct::denormalizePoints() {
+    if (positions.empty()) {
+        return;
+    }
+    float stddev = glm::sqrt(variance) + 1e-6f;
+    
+    for (auto& pos : positions) {
+        pos = pos * stddev + mean;
+    }
+    for (auto& scale : scales) {
+        scale = scale + glm::log(stddev);
+    }
+}
+
 void DataLoader::InputInitStruct::computePositionStats() {
     if (positions.empty()) {
         std::cerr << "Error: No position data available!" << std::endl;
@@ -673,7 +706,7 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         }
     } 
     else {
-        std::string filename = fullDataPath + "/point_cloud.ply";
+        std::string filename = fullDataPath + "/model.ply";
         std::ofstream outFile(filename, std::ios::binary);
         if (!outFile.is_open()) {
             LOGE("Error: Unable to open file %{public}s", filename.c_str());
@@ -779,7 +812,7 @@ void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::I
         extrFile << data.extr_tmp[i].values[4] << " ";
         extrFile << data.extr_tmp[i].values[5] << " ";
         extrFile << data.extr_tmp[i].values[6] << " ";
-        extrFile << "0 " << filename << "\n";
+        extrFile << "0 " << filename << "\n\n";
     }
     extrFile.close();
 }
@@ -1061,6 +1094,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
                 ext = imageName.substr(dotPos);
             }
         }
+        std::getline(imagesFile, line);
     }
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
