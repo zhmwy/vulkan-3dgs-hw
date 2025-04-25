@@ -98,11 +98,11 @@ float InterfaceImplVulkan::GetProcessVulkan() {
 }
 // 训练次数 / 总次数 * 100%
 
-extern "C" InterfaceVulkan* createInstance() {
+extern "C" InterfaceVulkan* createInstanceVulkan() {
     return new InterfaceImplVulkan();
 }
 
-extern "C" void destoryInstance(InterfaceVulkan* instance) {
+extern "C" void destoryInstanceVulkan(InterfaceVulkan* instance) {
     if (instance) {
         delete instance;
     }

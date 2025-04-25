@@ -24,8 +24,8 @@ public:
 };
 
 
-extern "C" InterfaceVulkan* createInstance();
-extern "C" void destoryInstance(InterfaceVulkan* instance);
+extern "C" InterfaceVulkan* createInstanceVulkan();
+extern "C" void destoryInstanceVulkan(InterfaceVulkan* instance);
 
 
 class InterfaceImplVulkan : public InterfaceVulkan {

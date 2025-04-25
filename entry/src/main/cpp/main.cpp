@@ -222,7 +222,7 @@ void CompleteTraining(napi_env env, napi_status status, void* data) {
     
     napi_delete_async_work(env, context->work);
     OH_ResourceManager_ReleaseNativeResourceManager(context->resourceMgr);
-    destoryInstance(context->impl);
+    destoryInstanceVulkan(context->impl);
     delete context;
 }
 
@@ -247,7 +247,7 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
     FileOperator::GetInstance()->CopyRawDir("");
 
     // Create interface instance
-    InterfaceImplVulkan* impl = static_cast<InterfaceImplVulkan*>(createInstance());
+    InterfaceImplVulkan* impl = static_cast<InterfaceImplVulkan*>(createInstanceVulkan());
 //     impl->Init(dataFolder, dataFolder);
 
     // Create async context

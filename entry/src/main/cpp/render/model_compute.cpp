@@ -990,9 +990,12 @@ VulkanComputeExample::~VulkanComputeExample()
 
         textureColorMap.destroy();
         storageImage.destroy();
-
-        vmaDestroyImage(allocator, storageImage.image, storageImageAllocation);
-        vmaDestroyAllocator(allocator);
+    
+        // buffer
+        
+//         vmaDestroyBuffer(allocator, sort_buffers.key, storageImageAllocation);
+//         vmaDestroyImage(allocator, storageImage.image, storageImageAllocation);
+//         vmaDestroyAllocator(allocator);
         //FreeConsole();
     }
 }
