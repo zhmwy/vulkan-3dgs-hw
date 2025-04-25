@@ -53,13 +53,16 @@ void InterfaceImpl::Train() {
     GetProcess();
 
     try {
-        std::vector<int> max_steps = {1200, 500, 500};
+        int max_steps = 1000;
+        _renderer->low_resolution_steps = 0;
+        _renderer->MAX_SPLAT_COUNT = 400000;
+        //_renderer->sh_degree = 1;
         
         // Main training loop
-        for (int step = 0; step < max_steps[0]; ++step) {
+        for (int step = 0; step < max_steps; ++step) {
             if (!_isTraining) break;
             _renderer->render();
-            updateProgress(static_cast<float>(step * 100) / max_steps[0]);
+            updateProgress(static_cast<float>(step * 100) / max_steps);
             GetProcess();
         }
         

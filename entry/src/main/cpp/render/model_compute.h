@@ -337,7 +337,8 @@ public:
     
     double total_psnr = 0;
     long long total_sort_point_count = 0;
-    double max_avg_splat_tile_num = 0;
+    double max_splat_tile_num = 0;
+    double avg_splat_tile_num = 0;
     float current_scale=1.0;
 
     int image_height;

@@ -50,6 +50,10 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
         
         inputGaussian.computePositionStats();
         inputGaussian.normalizeData();
+        
+        if(!resumed) {
+            inputGaussian.initSkyData();
+        }
 
     }
     
@@ -715,7 +719,7 @@ void VulkanComputeExample::densifyCmd()
     
 //     return;
     
-//     bindPipeline2CommandBuffer(pipe_prune, FORWARD_PIPE, X, 1, 1, true);
+    //bindPipeline2CommandBuffer(pipe_prune, FORWARD_PIPE, X, 1, 1, true);
     bindPipeline2CommandBuffer(pipe_clone, FORWARD_PIPE, X, 1, 1, true);
     bindPipeline2CommandBuffer(pipe_split, FORWARD_PIPE, X, 1, 1, true);
     
@@ -4129,17 +4133,19 @@ void VulkanComputeExample::printLog(bool train)
         }
 
         total_sort_point_count += sort_point_count;
-        max_avg_splat_tile_num = std::max(max_avg_splat_tile_num, 1.0 * sort_point_count / splat_count);
+        avg_splat_tile_num += 1.0 * sort_point_count / splat_count;
+        max_splat_tile_num = std::max(max_splat_tile_num, 1.0 * sort_point_count / splat_count);
         calculatePSNR(psnr_sum, (int)(current_scale * image_width), (int)(current_scale * image_height));
         if ((training_step + 1) % 100 == 0 && training_step != max_training_step)
         {
 
-            LOGI("Training Step[%{public}d]: Point Num: [%{public}d], Average PSNR： [%{public}f], Mean Sort Point: [%{public}f], Max Avg Splat Tile: [%{public}d]",
-                training_step, splat_count, total_psnr / 100, total_sort_point_count / 100.0, max_avg_splat_tile_num);
+            LOGI("Training Step[%{public}d]: Point Num: [%{public}d], Average PSNR： [%{public}f], Mean Sort Point: [%{public}f], Avg/Max Splat Tile: [%{public}f]/[%{public}d]",
+                training_step, splat_count, total_psnr / 100, total_sort_point_count / 100.0, avg_splat_tile_num/100.0, max_splat_tile_num);
 
             total_psnr = 0;
             total_sort_point_count = 0;
-            max_avg_splat_tile_num = 0;
+            max_splat_tile_num = 0;
+            avg_splat_tile_num = 0;
         }
     }
     queryEventTime();

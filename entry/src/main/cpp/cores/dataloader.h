@@ -63,6 +63,8 @@ public:
         
         void normalizeData();
         void computePositionStats();
+        
+        void initSkyData();
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);

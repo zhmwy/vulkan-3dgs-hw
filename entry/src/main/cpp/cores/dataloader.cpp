@@ -243,6 +243,50 @@ glm::mat4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
     return W2C;
 }
 
+void DataLoader::InputInitStruct::initSkyData() {
+    if (positions.empty()) {
+        std::cerr << "Error: No data available for normalization!" << std::endl;
+        return;
+    }
+    
+    int nPointCount = 10000;
+    double golden_angle = M_PI * (3 - sqrt(5));
+    
+    std::vector<glm::vec3> skyPositions(nPointCount);      // 3D positions (x, y, z)
+    std::vector<glm::vec3> skyScales(nPointCount);         // Scaling factors (scale_x, scale_y, scale_z)
+    std::vector<glm::vec4> skyRotations(nPointCount);      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
+    std::vector<float> skyOpacities(nPointCount);          // Opacity
+    std::vector<Data> skyColors(nPointCount);              // RGB colors (r, g, b)
+    
+    float C0 = 0.28209479177387814;
+    for (int i=0; i<nPointCount; i++) {
+        double phi = acos(1-2*i/nPointCount);
+        double theta = std::fmod(i * golden_angle, M_PI * 2);
+        
+        double x = cos(theta) * sin(phi) * 100;
+        double y = sin(theta) * sin(phi) * 100;
+        double z = cos(phi) * 100;
+        
+        skyPositions[i] = glm::vec3(x, y, z);
+        
+        skyScales[i] = glm::vec3(log(0.1f), log(0.1f), log(0.1f));
+        skyRotations[i] = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+
+        skyOpacities[i] = -2.197225f;
+        
+        Data colorData = {};
+        colorData.values[0]  = static_cast<float>(1.7724);
+        colorData.values[16] = static_cast<float>(1.7724);
+        colorData.values[32] = static_cast<float>(1.7724);
+        skyColors.push_back(colorData);
+    }
+    
+    positions.insert(positions.begin(), skyPositions.begin(), skyPositions.end());
+    scales.insert(scales.begin(), skyScales.begin(), skyScales.end());
+    rotations.insert(rotations.begin(), skyRotations.begin(), skyRotations.end());
+    opacities.insert(opacities.begin(), skyOpacities.begin(), skyOpacities.end());
+    colors.insert(colors.begin(), skyColors.begin(), skyColors.end());
+}
 
 void DataLoader::InputInitStruct::normalizeData() {
     if (positions.empty()) {
