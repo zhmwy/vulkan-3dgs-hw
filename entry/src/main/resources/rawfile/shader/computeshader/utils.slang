@@ -21,7 +21,7 @@ uint t2i(uint c, uint i, uint j, uint height, uint width) {
 }
 void replaceGS(
     RWStructuredBuffer<float> xyz,
-    RWStructuredBuffer<float> shs, int D,
+    RWStructuredBuffer<float4> shs,
     RWStructuredBuffer<float> opacity,
     RWStructuredBuffer<float> scale,
     RWStructuredBuffer<float> rotate,
@@ -34,9 +34,7 @@ void replaceGS(
     xyz[t2i(dst_idx, 2, 3)] = xyz[t2i(src_idx, 2, 3)];
 
     for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < D; j++) {
-            shs[t2i(dst_idx, i, j, 3, DD)] = shs[t2i(src_idx, i, j, 3, DD)];
-        }
+        shs[dst_idx * 3 + i] = shs[src_idx * 3 + i];
     }
 
     opacity[dst_idx] = opacity[src_idx];

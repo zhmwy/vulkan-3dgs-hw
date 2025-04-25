@@ -22,6 +22,8 @@
 #define HEIGHT 640
 #define WIDTH  480
 
+#define MAX_SH_DEGREE 12
+
 
 /********************* For Unit Test ****************************/
 void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
@@ -50,7 +52,7 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
         
         inputGaussian.computePositionStats();
         inputGaussian.normalizeData();
-
+        inputGaussian.compactLevel1();
     }
     
     
@@ -134,7 +136,7 @@ void VulkanComputeExample::encodeCpu2Gpu()
      );
     splat_buffers.sh_coeff.FromCpu(
         compute.commandBuffer,
-        inputGaussian.colors.data()
+        inputGaussian.level1Colors.data()
     );
     splat_buffers.camera_extrs.FromCpu(
         compute.commandBuffer,
@@ -1069,15 +1071,13 @@ void VulkanComputeExample::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     splat_buffers.sh_coeff = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
+        allocator, MAX_SPLAT_COUNT * MAX_SH_DEGREE * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     splat_buffers.dL_dshs_array = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
+        allocator, MAX_SPLAT_COUNT * MAX_SH_DEGREE * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
-    
-    
     
     splat_buffers.intr_params = vkgs::Buffer(
         allocator, 4 * sizeof(float),
@@ -1259,7 +1259,7 @@ void VulkanComputeExample::prepare3dgsBuffers()
     );
 
     splat_buffers.feature_array_avg = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 48 * sizeof(float), 
+        allocator, MAX_SPLAT_COUNT * MAX_SH_DEGREE * sizeof(float), 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
@@ -1285,7 +1285,7 @@ void VulkanComputeExample::prepare3dgsBuffers()
     );
 
     splat_buffers.feature_array_exp_avg = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 48 * sizeof(float), 
+        allocator, MAX_SPLAT_COUNT * MAX_SH_DEGREE * sizeof(float), 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
@@ -4217,16 +4217,18 @@ void VulkanComputeExample::saveGaussians(std::string dataPath, bool save_head){
         );
     }
     
-    std::vector<float> featureData;
-    copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
-    inputGaussian.colors.clear();
-    for (int i = 0; i < splat_count; i++) {
-        DataLoader::InputInitStruct::Data colorData;
-        for (int j = 0; j < 48; j++) {
-            colorData.values[j] = featureData[i * 48 + j];
-        }
-        inputGaussian.colors.push_back(colorData);
-    }
+    copyGpuBufferToVector(splat_buffers.sh_coeff, inputGaussian.level1Colors, splat_count, MAX_SH_DEGREE);
+    inputGaussian.uncompactLevel1();
+    //std::vector<float> featureData;
+    //copyGpuBufferToVector(splat_buffers.sh_coeff, inputGaussian.level1Colors, splat_count, MAX_SH_DEGREE);
+    //inputGaussian.colors.clear();
+    //for (int i = 0; i < splat_count; i++) {
+    //    DataLoader::InputInitStruct::Data colorData;
+    //    for (int j = 0; j < MAX_SH_DEGREE; j++) {
+    //        colorData.values[j] = featureData[i * MAX_SH_DEGREE + j];
+    //    }
+    //    inputGaussian.colors.push_back(colorData);
+    //}
     
     copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
     inputGaussian.denormalizePoints();

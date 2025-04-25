@@ -3,25 +3,25 @@
 [[vk::binding(0)]] RWStructuredBuffer<float> xyz_array;
 [[vk::binding(1)]] RWStructuredBuffer<float> scale_array;
 [[vk::binding(2)]] RWStructuredBuffer<float4> rotate_array;
-[[vk::binding(3)]] RWStructuredBuffer<float> feature_array;
+[[vk::binding(3)]] RWStructuredBuffer<float4> feature_array;
 [[vk::binding(4)]] RWStructuredBuffer<float> opacity_array;
 
 [[vk::binding(5)]] StructuredBuffer<float> dL_dxyz_array;
 [[vk::binding(6)]] StructuredBuffer<float> dL_dscale_array;
 [[vk::binding(7)]] StructuredBuffer<float4> dL_drotate_array;
-[[vk::binding(8)]] StructuredBuffer<float> dL_dfeature_array;
+[[vk::binding(8)]] StructuredBuffer<float4> dL_dfeature_array;
 [[vk::binding(9)]] StructuredBuffer<float> dL_dopacity_array;
 
 [[vk::binding(10)]] RWStructuredBuffer<float> xyz_array_exp_avg;
 [[vk::binding(11)]] RWStructuredBuffer<float> scale_array_exp_avg;
 [[vk::binding(12)]] RWStructuredBuffer<float4> rotate_array_exp_avg;
-[[vk::binding(13)]] RWStructuredBuffer<float> feature_array_exp_avg;
+[[vk::binding(13)]] RWStructuredBuffer<float4> feature_array_exp_avg;
 [[vk::binding(14)]] RWStructuredBuffer<float> opacity_array_exp_avg;
 
 [[vk::binding(15)]] RWStructuredBuffer<float> xyz_array_avg;
 [[vk::binding(16)]] RWStructuredBuffer<float> scale_array_avg;
 [[vk::binding(17)]] RWStructuredBuffer<float4> rotate_array_avg;
-[[vk::binding(18)]] RWStructuredBuffer<float> feature_array_avg;
+[[vk::binding(18)]] RWStructuredBuffer<float4> feature_array_avg;
 [[vk::binding(19)]] RWStructuredBuffer<float> opacity_array_avg;
 
 [[vk::binding(20)]] StructuredBuffer<int32_t> curPointsNum;
@@ -142,6 +142,42 @@ void update_adam(
 
         // Compute the step size using Adam formula
         float step = -learning_rate * m / (sqrt(v) + eps);
+
+        // Update the parameter
+        param_array[offset] += step;
+
+        // Write back the updated first-order and second-order moments
+        m_array[offset] = m;
+        v_array[offset] = v;
+    }
+}
+
+void update_adam_for_features4(
+    uint idx,                              // Index of the current element to process
+    StructuredBuffer<float4> grad_array,    // Input gradient array (read-only)
+    RWStructuredBuffer<float4> param_array, // Input parameter array to be updated (read-write)
+    RWStructuredBuffer<float4> m_array,     // First-order moment array (read-write)
+    RWStructuredBuffer<float4> v_array,     // Second-order moment array (read-write)
+)
+{
+    for (int k=0; k<3; ++k) {
+        int offset = idx * 3 + k;
+        // Read the gradient, first-order moment, and second-order moment for the current dimension
+        float4 grad = grad_array[offset];
+        float4 m = m_array[offset];
+        float4 v = v_array[offset];
+
+        // Update first-order moment (moving average of gradients)
+        m = beta1 * m + (1.0 - beta1) * grad;
+
+        // Update second-order moment (moving average of squared gradients)
+        v = beta2 * v + (1.0 - beta2) * grad * grad;
+
+        // Compute the step size using Adam formula
+        float4 step = -float4(learning_rate_features,
+                              learning_rate_features_rest,
+                              learning_rate_features_rest,
+                              learning_rate_features_rest) * m / (sqrt(v) + eps);
 
         // Update the parameter
         param_array[offset] += step;
@@ -293,9 +329,8 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     rotate_array_exp_avg[idx] = m_rotate;
     rotate_array_avg[idx] = v_rotate;
 
-    update_adam_for_features(
+    update_adam_for_features4(
         idx,
-        ((int)D) * 3,
         dL_dfeature_array,
         feature_array,
         feature_array_exp_avg,

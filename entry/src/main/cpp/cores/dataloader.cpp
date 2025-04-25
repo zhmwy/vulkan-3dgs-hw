@@ -243,6 +243,49 @@ glm::mat4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
     return W2C;
 }
 
+void DataLoader::InputInitStruct::compactLevel1() {
+    level1Colors.resize(colors.size() * 12);
+    
+    for (int i=0; i<colors.size(); ++i) {
+        level1Colors[i*12+0] = colors[i].values[0];
+        level1Colors[i*12+1] = colors[i].values[1];
+        level1Colors[i*12+2] = colors[i].values[2];
+        level1Colors[i*12+3] = colors[i].values[3];
+        
+        level1Colors[i*12+4] = colors[i].values[16];
+        level1Colors[i*12+5] = colors[i].values[17];
+        level1Colors[i*12+6] = colors[i].values[18];
+        level1Colors[i*12+7] = colors[i].values[19];
+
+        level1Colors[i*12+8] = colors[i].values[32];
+        level1Colors[i*12+9] = colors[i].values[33];
+        level1Colors[i*12+10] = colors[i].values[34];
+        level1Colors[i*12+11] = colors[i].values[35];
+    }
+}
+
+void DataLoader::InputInitStruct::uncompactLevel1() {
+    
+    colors.resize(level1Colors.size() / 12);
+    memset(colors.data(), 0, sizeof(DataLoader::InputInitStruct::Data) * colors.size());
+    
+    for (int i=0; i<colors.size(); ++i) {
+        colors[i].values[0] = level1Colors[i*12+0]; 
+        colors[i].values[1] = level1Colors[i*12+1]; 
+        colors[i].values[2] = level1Colors[i*12+2]; 
+        colors[i].values[3] = level1Colors[i*12+3]; 
+        
+        colors[i].values[16] = level1Colors[i*12+4];
+        colors[i].values[17] = level1Colors[i*12+5];
+        colors[i].values[18] = level1Colors[i*12+6];
+        colors[i].values[19] = level1Colors[i*12+7];
+
+        colors[i].values[32] = level1Colors[i*12+8];
+        colors[i].values[33] = level1Colors[i*12+9];
+        colors[i].values[34] = level1Colors[i*12+10];
+        colors[i].values[35] = level1Colors[i*12+11];
+    }
+}
 
 void DataLoader::InputInitStruct::normalizeData() {
     if (positions.empty()) {

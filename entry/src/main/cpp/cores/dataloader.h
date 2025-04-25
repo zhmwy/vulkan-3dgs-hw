@@ -41,6 +41,7 @@ public:
 
         
         std::vector<Data> colors;         // RGB colors (r, g, b)
+        std::vector<float> level1Colors;      // level1Colors
         std::vector<vks::Texture2D> images;   // Images
         std::vector<vks::Texture2D> images_low_res;
 
@@ -66,6 +67,9 @@ public:
         
         void denormalizeExtr();
         void denormalizePoints();
+        
+        void compactLevel1();
+        void uncompactLevel1();
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);

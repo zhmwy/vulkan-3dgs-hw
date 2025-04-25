@@ -21,13 +21,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.cer",
-          "storePassword": "0000001BA95BA7A80C46A392BB93046E3798207397FF060B5F760A596FC665905AA03E6E167E56B46D6736",
+          "certpath": "C:\\Users\\admin\\.ohos\\config\\default_vulkan-3dgs-hw-2_aX7IfrxV4_RNFEB5yWLoIHBBXgZNqr9DiLlYP8xmcuM=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B2DD6B4943658544345D7433F8D7E804A51F2E076E559E22DCA5F0DF0E1BDEBC9B4F14329BE483B",
-          "profile": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.p7b",
+          "keyPassword": "0000001B7334673CD20CB8D23D87A87F9C582156EAE616C7071D8271B532DE7646C1ACF01017BEF0D33A06",
+          "profile": "C:\\Users\\admin\\.ohos\\config\\default_vulkan-3dgs-hw-2_aX7IfrxV4_RNFEB5yWLoIHBBXgZNqr9DiLlYP8xmcuM=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.p12"
+          "storeFile": "C:\\Users\\admin\\.ohos\\config\\default_vulkan-3dgs-hw-2_aX7IfrxV4_RNFEB5yWLoIHBBXgZNqr9DiLlYP8xmcuM=.p12",
+          "storePassword": "0000001BE194E363656E5670004EC5BD6CBD0F7CDFD050BDCB759130F197A8281055CFC70448E9E1CEE32D"
         }
       }
     ]
