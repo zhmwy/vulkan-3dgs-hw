@@ -5,7 +5,7 @@
 #include <regex>
 #include <dirent.h>
 
-#include "human/human.h"
+// #include "human/human.h"
 
 int extractNumberKtx(const std::string& str) {
     std::regex re("r_(\\d+)\\.ktx");
@@ -869,7 +869,7 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
 }
 
 
-
+#if 0
 std::vector<cv::Point> DataLoader::projectHeadCenter(DataLoader::InputInitStruct& data)
 {
     // Calculate the center of the 3D bounding box
@@ -984,7 +984,7 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
         data.intr_tmp.push_back(new_intr);
     }
 }
-
+#endif
 
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height, int width)
 {
@@ -1018,7 +1018,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         // TODO:  slam: width >> height
 
         if (cameraFilePath == mediapath + "/cameras.txt") {
-            if (!(iss >> cameraId >> camera_type >> data.height >> data.width >> fx >> fy >> cy >> cx)) {
+            if (!(iss >> cameraId >> camera_type >> data.height >> data.width >> fy >> fx >> cy >> cx)) {
                 continue;
             }
         }
@@ -1109,13 +1109,13 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     
     std::string resume_gaussian_path = scenepath + "/point_cloud.ply";
     loadInputGaussianData(resume_gaussian_path, data);
+    std::string pointsFilePath = slampath + "/points3D.txt";
+    load3DPoints(pointsFilePath, data);
+#if 0
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
         bool is_human = HumanPreprocess(scenepath, data.head_bbox);
 //         bool is_human = false;
-        std::string pointsFilePath = slampath + "/points3D.txt";
-        load3DPoints(pointsFilePath, data);
-        
         if (is_human) {
             std::string smplPath = scenepath + "/smpl.txt";
             load3DPoints(smplPath, data);
@@ -1131,6 +1131,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     else{
         resumed = true;
     }
+#endif
     
 //     videoInfoFile.close();
     imagesFile.close();
