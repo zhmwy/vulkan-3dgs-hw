@@ -1020,7 +1020,7 @@ void VulkanComputeExample::getEnabledFeatures()
     deviceCreatepNextChain = &features_; 
 }
 
-void VulkanComputeExample::getEnabledExtensions()
+void VulkanComputeExample::getEnabledExtensionsGS()
 {
     uint32_t extensionCount = 0;
     vkEnumerateDeviceExtensionPropertiesGS(physicalDevice, nullptr, &extensionCount, nullptr);

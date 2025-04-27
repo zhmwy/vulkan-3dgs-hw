@@ -497,7 +497,7 @@ public:
     void saveCameras(std::string dataPath);
     
     virtual void getEnabledFeatures() override;
-    virtual void getEnabledExtensions() override;
+    virtual void getEnabledExtensionsGS() override;
     
     virtual void render()
     {
