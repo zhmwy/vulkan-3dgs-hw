@@ -206,7 +206,7 @@ public:
      * on the device */
     virtual void getEnabledFeatures();
 	/** @brief (Virtual) Called after the physical device extensions have been read, can be used to enable extensions based on the supported extension listing*/
-	virtual void getEnabledExtensions();
+	virtual void getEnabledExtensionsGS();
     /** @brief Prepares all Vulkan resources and functions required to run the sample */
 	virtual bool prepare();
 

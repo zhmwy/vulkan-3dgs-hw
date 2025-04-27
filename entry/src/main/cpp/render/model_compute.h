@@ -78,6 +78,8 @@ public:
     void createGpu2CpuCopys();
     VulkanComputeExample();
     ~VulkanComputeExample();
+    void DestoryBuffer(vkgs::Buffer buffer);
+    void DestoryBuffers();
 
     #ifdef VULKAN_PC
     uint32_t screenWidth;
@@ -497,7 +499,7 @@ public:
     void saveCameras(std::string dataPath);
     
     virtual void getEnabledFeatures() override;
-    virtual void getEnabledExtensions() override;
+    virtual void getEnabledExtensionsGS() override;
     
     virtual void render()
     {

@@ -301,7 +301,7 @@ bool VulkanExampleBase::initVulkan()
 	vulkanDevice = new vks::VulkanDevice(physicalDevice);
 
 	// Derived examples can enable extensions based on the list of supported extensions read from the physical device
-	getEnabledExtensions();
+	getEnabledExtensionsGS();
 
 	VkResult res = vulkanDevice->createLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
 	if (res != VK_SUCCESS) {
@@ -441,7 +441,7 @@ void VulkanExampleBase::setupFrameBuffer()
 }
 
 void VulkanExampleBase::getEnabledFeatures() {}
-void VulkanExampleBase::getEnabledExtensions() {}
+void VulkanExampleBase::getEnabledExtensionsGS() {}
 
 void VulkanExampleBase::setupRenderPass()
 {

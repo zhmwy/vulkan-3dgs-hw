@@ -409,65 +409,6 @@ void VulkanComputeExample::zeroGradCmd()
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
 }
 
-/*
-void VulkanComputeExample::forwardCmd()
-{
-
-    uint32_t X = 0;
-    uint32_t Y = 0;
-    
-
-    X = (splat_count + 256 - 1) / 256; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_inverse, FORWARD_PIPE, X, 1, 1);
-
-    
-    uint32_t grid_width = (int)(current_scale * image_width) / 16;
-    grid_width = ((int)(current_scale * image_width) + 15) / 16;
-    uint32_t grid_height = (int)(current_scale * image_height) / 16;
-    grid_height = ((int)(current_scale * image_height) + 15) / 16;
-    vkCmdFillBufferGS(
-        compute.commandBuffer,
-        splat_buffers.tile_range, 0,
-        grid_width * grid_height * 2 * sizeof(int32_t), 0
-    );
-    TransComputeBarrierBlock();
-
-    X = (splat_count + 256 - 1) / 256; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_compute_key, FORWARD_PIPE, X, 1, 1);
-    ComputeTransBarrierBlock();
-
-    VkBufferCopy copyRegionBB = {};
-    copyRegionBB.srcOffset = 0; // Start at the beginning of the source buffer
-    copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
-    copyRegionBB.size = splat_count * sizeof(uint32_t) * SORT_SIZE; // Size of data to copy
-    vkCmdCopyBufferGS(
-        compute.commandBuffer,
-        sort_buffers.unsort_index,
-        sort_buffers.sortVBufferEven,
-        1,            // Number of regions to copy
-        &copyRegionBB   // Pointer to the copy region
-    );
-    TransComputeBarrierBlock();
-
-    radixSortCmd(0);
-    ComputeShaderMemoryBarrierBlock();
-
-    X = (splat_count * SORT_SIZE + 256 - 1) / 256;
-    bindPipeline2CommandBuffer(pipe_compute_tile, FORWARD_PIPE, X, 1, 1);
-    
-
-
-    X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
-    Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_blending, FORWARD_PIPE, X, Y, 1);
-
-    
-    X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
-    Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_copy_buffer2img, 0, X, Y, 1);
-}
-*/
-
 void VulkanComputeExample::forwardCmd()
 {
 
@@ -965,6 +906,7 @@ VulkanComputeExample::VulkanComputeExample() : VulkanExampleBase()
     compute.pipelineIndex = 0;
 }
 
+
 VulkanComputeExample::~VulkanComputeExample()
 {
     if (device) {
@@ -985,20 +927,145 @@ VulkanComputeExample::~VulkanComputeExample()
         vkDestroySemaphoreGS(device, compute.semaphore, nullptr);
         vkDestroyCommandPoolGS(device, compute.commandPool, nullptr);
 
+//         this->DestoryBuffers();
+        
         vertexBuffer.destroy();
         indexBuffer.destroy();
 
         textureColorMap.destroy();
         storageImage.destroy();
-    
-        // buffer
         
-//         vmaDestroyBuffer(allocator, sort_buffers.key, storageImageAllocation);
 //         vmaDestroyImage(allocator, storageImage.image, storageImageAllocation);
 //         vmaDestroyAllocator(allocator);
         //FreeConsole();
     }
 }
+
+void VulkanComputeExample::DestoryBuffer(vkgs::Buffer buffer)
+{
+    if (buffer)
+        return;
+    vkDestroyBufferGS(device, buffer, nullptr);
+    
+}
+
+void VulkanComputeExample::DestoryBuffers()
+{
+    // sortBuffers
+//     DestoryBuffer(sort_buffers.key);
+//     DestoryBuffer(sort_buffers.index);
+//     DestoryBuffer(sort_buffers.unsort_index);
+//     DestoryBuffer(sort_buffers.sorted_idx_array);
+//     DestoryBuffer(sort_buffers.sort_storage);
+//     DestoryBuffer(sort_buffers.densify_idx);
+//     DestoryBuffer(sort_buffers.splat_visible_point_count);
+    
+//     vmaDestroyBuffer(allocator, sort_buffers.key, storageImageAllocation);
+//     vmaDestroyBuffer(allocator, sort_buffers.index, storageImageAllocation);
+//     vkDestroyBufferGS(device, sort_buffers.sorted_idx_array, nullptr);
+//     vkDestroyBufferGS(device, sort_buffers.unsort_index, nullptr);
+    
+    vmaDestroyBuffer(allocator, sort_buffers.sorted_idx_array, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.unsort_index, storageImageAllocation);
+
+    vmaDestroyBuffer(allocator, sort_buffers.sort_storage, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.densify_idx, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.splat_visible_point_count, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.splat_visible_point_count_cpu, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, sort_buffers.sortKBufferEven, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.sortKBufferOdd, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.sortVBufferEven, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.sortVBufferOdd, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.sortHistBuffer, storageImageAllocation);
+    vmaDestroyBuffer(allocator, sort_buffers.sortHistOffsets, storageImageAllocation);
+    
+    // SplatBuffers
+    vmaDestroyBuffer(allocator, splat_buffers.xyz_array, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.scale_array, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.rotate_array, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.intr_params, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.intr_params_render, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.extr_params, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.extr_params_render, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.visible, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.uvd, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.cov2d, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.cov3d, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.radius, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.tiles, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.tiles_rect, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.extr_mat, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.extr_act, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.camera_center, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.camera_extrs, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.conic, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.opacity, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.sh_coeff, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.feature, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.tile_range, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.background, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.rfeat, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.rfeat_alpha, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.final_T, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.ncontrib, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.dL_duvd, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dcov2d, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dxyz, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dscale, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_drotate, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dintr_params, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dextr_params, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.xyz_array_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.scale_array_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.rotate_array_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.feature_array_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.opacity_array_avg, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.xyz_array_exp_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.scale_array_exp_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.rotate_array_exp_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.feature_array_exp_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.opacity_array_exp_avg, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.camera_extrs_avg, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.camera_extrs_exp_avg, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.input_image_array, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.input_image_alpha_array, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.dL_drfeat, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dconic, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dopacity, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dfeature, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dndc, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dbackground, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dshs_array, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.opacity_act_array, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dopacity_act_array, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.max_radii2D, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.xyz_gradient_accum, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.denom, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.curPointsNum, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.xyz_gradient_mean, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.dL_duvd_int, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dconic_int, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dopacity_act_array_int, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dfeature_int, storageImageAllocation);
+    vmaDestroyBuffer(allocator, splat_buffers.dL_dndc_int, storageImageAllocation);
+    
+    vmaDestroyBuffer(allocator, splat_buffers.psnr_sum, storageImageAllocation);
+    
+    
+}
+
 
 void VulkanComputeExample::getEnabledFeatures()
 {
@@ -1020,7 +1087,7 @@ void VulkanComputeExample::getEnabledFeatures()
     deviceCreatepNextChain = &features_; 
 }
 
-void VulkanComputeExample::getEnabledExtensions()
+void VulkanComputeExample::getEnabledExtensionsGS()
 {
     uint32_t extensionCount = 0;
     vkEnumerateDeviceExtensionPropertiesGS(physicalDevice, nullptr, &extensionCount, nullptr);
