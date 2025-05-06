@@ -609,7 +609,6 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
 
         for (size_t i = 0; i < numPoints; ++i) {
             glm::vec3 pos = data.positions[i];
-//             glm::vec3 orig_pos = data.positions[i] * stddev + data.mean;
             
             bool inside = (pos.x >= x_min && pos.x <= x_max) &&
                           (pos.y >= y_min && pos.y <= y_max) &&
@@ -725,13 +724,9 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         opacities.reserve(numPoints);
         colors.reserve(numPoints * 3);
         f_rest.reserve(numPoints * 45);
-
-        float stddev = glm::sqrt(data.variance) + 1e-6f;
+        std::vector<float> normals(numPoints * 3, 0.0);
+        
         for (size_t i = 0; i < numPoints; ++i) {
-//             glm::vec3 pos = data.positions[i] * stddev + data.mean;
-//             glm::vec3 scale = (i < data.scales.size()) ? data.scales[i] + glm::log(stddev) : glm::vec3(1.0f);
-//             glm::vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : glm::vec4(0, 0, 0, 1);
-            
             glm::vec3 pos = data.positions[i];
             glm::vec3 scale = (i < data.scales.size()) ? data.scales[i]  : glm::vec3(1.0f);
             glm::vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : glm::vec4(0, 0, 0, 1);
@@ -762,21 +757,22 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         }
 
         plyFile.add_properties_to_element("vertex", {"x", "y", "z"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(positions.data()), tinyply::Type::INVALID, 0);
-        plyFile.add_properties_to_element("vertex", {"scale_0", "scale_1", "scale_2"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(scales.data()), tinyply::Type::INVALID, 0);
-        plyFile.add_properties_to_element("vertex", {"rot_0", "rot_1", "rot_2", "rot_3"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(rotations.data()), tinyply::Type::INVALID, 0);
-        plyFile.add_properties_to_element("vertex", {"opacity"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(opacities.data()), tinyply::Type::INVALID, 0);
+        plyFile.add_properties_to_element("vertex", {"nx", "ny", "nz"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(normals.data()), tinyply::Type::INVALID, 0);
         plyFile.add_properties_to_element("vertex", {"f_dc_0", "f_dc_1", "f_dc_2"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(colors.data()), tinyply::Type::INVALID, 0);
-
+        
         for (int i = 0; i < 45; ++i) {
             plyFile.add_properties_to_element("vertex", {"f_rest_" + std::to_string(i)}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(&f_rest[i * numPoints]), tinyply::Type::INVALID, 0);
         }
 
+        plyFile.add_properties_to_element("vertex", {"opacity"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(opacities.data()), tinyply::Type::INVALID, 0);
+        plyFile.add_properties_to_element("vertex", {"scale_0", "scale_1", "scale_2"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(scales.data()), tinyply::Type::INVALID, 0);
+        plyFile.add_properties_to_element("vertex", {"rot_0", "rot_1", "rot_2", "rot_3"}, tinyply::Type::FLOAT32, numPoints, reinterpret_cast<uint8_t*>(rotations.data()), tinyply::Type::INVALID, 0);
+        
         plyFile.write(outFile, true);
         outFile.close();
         std::cout << "Saved " << numPoints << " points to " << filename << " using tinyply." << std::endl;
     }
 }
-
 
 
 void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data){

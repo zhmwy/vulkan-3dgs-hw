@@ -22,9 +22,9 @@
         "type": "HarmonyOS",
         "material": {
           "certpath": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.cer",
-          "storePassword": "0000001BD0BBC769C801B096128ABE315881499D44A384832CA93F7C1F0AF9F94CAC9BC6B4534DA7C2EDCC",
+          "storePassword": "0000001B5B70B31CC5CA2AA4AD6A59E94D7FCC976E4AF67C66ECDD1C31C5CB2EDE5652B0FE980EECEFB15C",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B995ADC927782006D54A35615B2BF8CBB0F111C2E0A59AD7C4CA959506D265C5037BBED82CF54D9",
+          "keyPassword": "0000001B89DB891AE3D656BF66B4912397AA18592701FBEC9C57E4BF2BA804D64785E694B30032F983A1D6",
           "profile": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:\\Users\\user\\.ohos\\config\\default_vulkan-3dgs-hw_EBFX76F45QWwksFTeXSMM0i7ZRaYt6qEI2a8C2KeIsc=.p12"
