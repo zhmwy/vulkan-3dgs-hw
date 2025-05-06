@@ -63,7 +63,6 @@ void InterfaceImplVulkan::TrainVulkan() {
             GetProcessVulkan();
         }
         
-//         std::filesystem::create_directories(_dataPath + "/result");
         _renderer->saveCameras(_dataPath);
         _renderer->saveGaussians(_dataPath);
         

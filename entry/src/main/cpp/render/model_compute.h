@@ -337,7 +337,7 @@ public:
 
     std::vector<std::string> filterNames;
     
-    double total_psnr = 0;
+    float total_psnr = 0;
     long long total_sort_point_count = 0;
     double max_avg_splat_tile_num = 0;
     float current_scale=1.0;
@@ -483,10 +483,11 @@ public:
     void updateUniformBuffers();
 
     virtual bool prepare();
-    void calculatePSNR(float mse, int width, int height);
+    void calculatePSNR(float* mse, int width, int height);
     virtual void draw(){};
     virtual void printLog(bool train = true);
     void executeComputeCommand();
+    void executeTransCommand();
 
     // void drawUI(const VkCommandBuffer commandBuffer);
 
