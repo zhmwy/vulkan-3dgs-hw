@@ -310,6 +310,7 @@ public:
     Compute3DGS pipe_copy_img2buffer;
     Compute3DGS pipe_copy_buffer2img; 
     Compute3DGS pipe_buffer_fill;
+    Compute3DGS pipe_reset_psnr;
     Compute3DGS pipe_sh;
     Compute3DGS pipe_sh_render;
     Compute3DGS pipe_densification_stats;
@@ -404,6 +405,7 @@ public:
 
     // 3dgs compute pipelines
     void setBufferFillPipeline();
+    void setResetPSNRPipeline();
     void setImage2BufferPipeline();
     void setBuffer2ImagePipeline();
     void prepare3dgsBuffers();
