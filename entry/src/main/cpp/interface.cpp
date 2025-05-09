@@ -53,7 +53,8 @@ void InterfaceImplVulkan::TrainVulkan() {
     GetProcessVulkan();
 
     try {
-        std::vector<int> max_steps = {1200, 500, 500};
+        std::vector<int> max_steps = {1000, 500, 500};
+        _renderer->low_resolution_steps = 0;
         
         // Main training loop
         for (int step = 0; step < max_steps[0]; ++step) {

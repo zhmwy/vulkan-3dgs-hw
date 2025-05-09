@@ -19,8 +19,8 @@
 //#define TILE_NUM_AVG_MAX TILE_W_MAX * TILE_H_MAX
 #define TILE_NUM_AVG_MAX 100
 
-#define HEIGHT 640
-#define WIDTH  480
+#define HEIGHT 960
+#define WIDTH  720
 
 
 /********************* For Unit Test ****************************/

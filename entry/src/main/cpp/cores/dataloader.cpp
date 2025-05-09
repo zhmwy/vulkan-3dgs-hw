@@ -970,14 +970,14 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
                 
 //         LOGI("Reading from %{public}s", path.c_str());
         cv::Mat orig_img = cv::imread(path);
-        float scale_factor = orig_img.size[0] / 640;
+        float scale_factor = orig_img.size[0] / 960;
         cv::Point topLeft;
-        cv::Mat cropped_img = cropImage(orig_img, faceCenters[i] * scale_factor, cv::Size(480, 640), topLeft); //Size是width, height的顺序
+        cv::Mat cropped_img = cropImage(orig_img, faceCenters[i] * scale_factor, cv::Size(720, 960), topLeft); //Size是width, height的顺序
         cv::imwrite(scenepath + "/human/images/" + basename, cropped_img);
         data.img_list.push_back(scenepath + "/human/images/" + basename);
         
         std::vector<float> intr = data.intr_tmp[0];
-        std::vector<float> new_intr = calculateNewIntrinsics(intr[0], intr[1], intr[2], intr[3], topLeft, cv::Size(480, 640), scale_factor);
+        std::vector<float> new_intr = calculateNewIntrinsics(intr[0], intr[1], intr[2], intr[3], topLeft, cv::Size(720, 960), scale_factor);
         LOGI("fx:%{public}f fy:%{public}f cx:%{public}f cy:%{public}f", new_intr[0], new_intr[1], new_intr[2], new_intr[3]);
         data.intr_tmp.push_back(new_intr);
     }
@@ -1025,8 +1025,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
                 continue;
             }
         }
-            
-        // width = 480, height = 640
+        
         float ratiox = 1.0 * width / data.width;
         float ratioy = 1.0 * height / data.height;
         fx *= ratiox;
@@ -1109,7 +1108,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
-        bool is_human = HumanPreprocess(scenepath, data.head_bbox);
+        bool is_human = false; //HumanPreprocess(scenepath, data.head_bbox);
 //         bool is_human = false;
         std::string pointsFilePath = slampath + "/points3D.txt";
         load3DPoints(pointsFilePath, data);

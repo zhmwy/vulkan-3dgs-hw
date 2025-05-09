@@ -52,7 +52,7 @@ OH_NN_ReturnCode LoadImage(const std::string& imagePath, vector<Vec4d>& params) 
     vector<cv::Mat> input_images;
     Preprocessing(srcs, input_images, params);
 
-    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(640, 640));
+    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(960, 960));
     std::vector<std::pair<float*, size_t>> inputDataList{
         {reinterpret_cast<float*>(blob.data), blob.total()}
     };
@@ -61,7 +61,7 @@ OH_NN_ReturnCode LoadImage(const std::string& imagePath, vector<Vec4d>& params) 
 }
 
 // 判断人体是否居中
-bool isHumanCentered(const Rect& box, int imgWidth=480, int imgHeight=640) {
+bool isHumanCentered(const Rect& box, int imgWidth=720, int imgHeight=960) {
     // Calculate the center region (50% of the image dimensions)
     int centerX = imgWidth / 2;
     int centerY = imgHeight / 2;
@@ -155,8 +155,8 @@ int ProcessKeypoints(const std::string& inputPath) {
     cv::Mat imgSample = cv::imread(imgDir + sampled_image_paths[0]);
     int width = imgSample.cols;
     int height = imgSample.rows;
-    float ratio = width / 480.0;
-    assert(ratio == height/640.0);
+    float ratio = width / 720.0;
+    assert(ratio == height/960.0);
     
     for (const auto& imgName : sampled_image_paths) {
         int idx = selectedIndices[id];

@@ -555,7 +555,7 @@ public:
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
     
-    void renderRGB2Cpu(int i, std::string& dataFolder, int width=480, int height=640)
+    void renderRGB2Cpu(int i, std::string& dataFolder, int width=720, int height=960)
     {
         if (!prepared) {
             return;
