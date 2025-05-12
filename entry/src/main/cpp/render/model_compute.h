@@ -469,7 +469,7 @@ public:
     void resizeAndUploadTexture(vks::Texture2D& texture, const unsigned char* original_image_data, int width, int height, float scale, vks::VulkanDevice* vulkanDevice, VkQueue queue);
     void resizeAndUploadTexture(vks::Texture2D& texture, const unsigned char* original_image_data, int width, int height, int new_width, int new_height, vks::VulkanDevice* vulkanDevice, VkQueue queue);
     
-    void loadAssets(float scale);
+    vks::Texture2D loadAsset(int imgidx, int origin_width, int origin_height);
     void loadAssets(int origin_width, int origin_height, float scale);
     
     void buildCommandBuffers();

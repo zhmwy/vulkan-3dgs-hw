@@ -332,25 +332,29 @@ void VulkanComputeExample::imageToBufferCmd()
     
     if (training_step >= low_resolution_steps)
     {
+        vks::Texture tex = loadAsset(current_img_idx, WIDTH, HEIGHT);
         vkCmdCopyImageToBufferGS(
             compute.commandBuffer,
-            inputGaussian.images[current_img_idx].image,
-            inputGaussian.images[current_img_idx].imageLayout,
+            tex.image,
+            tex.imageLayout,
             splat_buffers.input_image_alpha_array,
             1,
             &copyRegionI
         );
+        tex.destroy();
     }
     else
     {
+        vks::Texture tex = loadAsset(current_img_idx, WIDTH*low_resolotion_scale, HEIGHT*low_resolotion_scale);
         vkCmdCopyImageToBufferGS(
                 compute.commandBuffer,
-                inputGaussian.images_low_res[current_img_idx].image,
-                inputGaussian.images_low_res[current_img_idx].imageLayout,
+                tex.image,
+                tex.imageLayout,
                 splat_buffers.input_image_alpha_array,
                 1,
                 &copyRegionI
             );
+        tex.destroy();
     }
     
     if (inputGaussian.intr_tmp.size() > 1)
@@ -666,70 +670,6 @@ void VulkanComputeExample::densifyCmd()
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.denom, 0, VK_WHOLE_SIZE, 0);
     //vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.curPointsNum, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.max_radii2D, 0, VK_WHOLE_SIZE, 0);
-}
-
-void VulkanComputeExample::updRenderCmd()
-{
-    VkImageCopy copyRegionI2I = {};
-    copyRegionI2I.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegionI2I.srcSubresource.mipLevel = 0;
-    copyRegionI2I.srcSubresource.baseArrayLayer = 0;
-    copyRegionI2I.srcSubresource.layerCount = 1;
-    copyRegionI2I.srcOffset = {0, 0, 0};
-
-    copyRegionI2I.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegionI2I.dstSubresource.mipLevel = 0;
-    copyRegionI2I.dstSubresource.baseArrayLayer = 0;
-    copyRegionI2I.dstSubresource.layerCount = 1;
-    copyRegionI2I.dstOffset = {static_cast<int32_t>((unsigned int)(image_width * current_scale)), static_cast<int32_t>((unsigned int)(image_height * current_scale)), 1};
-    copyRegionI2I.extent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1};
-
-    // render fix view
-    if (timer.elapsed() - timer.last_time > 16) {
-        timer.upd_last_time(timer.elapsed());
-        render_index += 1;
-        // render_index = 6;
-        last_step_tag = training_step;
-        upd_cmd_buffer = true;
-        
-        // TODO: problem?
-        vkCmdCopyImageGS(
-            compute.commandBuffer,
-            inputGaussian.images[6].image,
-            inputGaussian.images[6].imageLayout,
-            textureColorMap.image,
-            textureColorMap.imageLayout,
-            1,
-            &copyRegionI2I
-        );
-    }
-    
-    VkBufferCopy region = {};
-    region.srcOffset = 7 * (render_index % inputGaussian.intr_tmp.size()) * sizeof(float);
-    region.dstOffset = 0;
-    region.size = sizeof(float) * 7;
-    vkCmdCopyBufferGS(
-        compute.commandBuffer,
-        splat_buffers.camera_extrs,
-        splat_buffers.extr_params_render,
-        1, &region
-    );
-    
-    if (inputGaussian.intr_tmp.size() > 1)
-    {
-        splat_buffers.intr_params_render.FromCpu(
-            compute.commandBuffer,
-            inputGaussian.intr_tmp[render_index % inputGaussian.intr_tmp.size()].data()
-        );
-    }
-    else{
-        splat_buffers.intr_params_render.FromCpu(
-            compute.commandBuffer,
-            inputGaussian.intr_tmp[0].data()
-        );
-    }
-
-    TransComputeBarrierBlock();
 }
 
 void VulkanComputeExample::updRenderCmd(int index)
@@ -3349,80 +3289,26 @@ void VulkanComputeExample::resizeAndUploadTexture(
 
 }
 
-
-void VulkanComputeExample::loadAssets(float scale) {
-    std::cout << "Loading assets..." << std::endl;
-    
-    std::string filename = inputGaussian.img_list[0];
-    std::cout << "[loadAssets] filename: " << filename << std::endl;
-    
-    // 使用stb_image加载图像文件（无论是PNG还是JPEG）
-    int width, height, channels;
-    unsigned char* image_data = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-    if (!image_data) {
+vks::Texture2D VulkanComputeExample::loadAsset(int imgidx, int origin_width, int origin_height) {
+    vks::Texture2D tex;
+    std::string filename = inputGaussian.img_list[imgidx];
+    cv::Mat imgText = cv::imread(filename);
+    if (imgText.empty()){
         std::cerr << "Failed to load image file: " << filename << std::endl;
-        return;
+        return tex;
     }
-
-    // 使用 Vulkan 的 fromBuffer 方法将图像数据上传
-    textureColorMap.fromBuffer(
-        image_data,                // 图像数据
-        width * height * 4,         // 数据大小，RGBA 格式需要每个像素 4 字节
-        VK_FORMAT_R8G8B8A8_UNORM,   // 图像格式
-        width,                      // 图像宽度
-        height,                     // 图像高度
-        vulkanDevice,               // Vulkan 设备
-        queue,                      // Vulkan 队列
-        VK_FILTER_LINEAR,           // 滤波器
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,  // 用途
-        VK_IMAGE_LAYOUT_GENERAL     // 图像布局
+    cv::resize(imgText, imgText, cv::Size(origin_width, origin_height));
+    cv::cvtColor(imgText, imgText, cv::COLOR_BGR2RGBA);
+    tex.fromBuffer(
+        imgText.data,
+        origin_width * origin_height * 4,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        origin_width, origin_height, 
+        vulkanDevice, queue,
+        VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
     );
-    // 释放加载的图像数据
-    stbi_image_free(image_data);
-
-    image_width = textureColorMap.width;
-    image_height = textureColorMap.height;
-
-    // 遍历 inputGaussian.img_list 一次性加载图像
-    for (const std::string& filename : inputGaussian.img_list) {
-        // 加载图像
-        int width, height, channels;
-        unsigned char* image_data = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-        if (!image_data) {
-            std::cerr << "Failed to load image file: " << filename << std::endl;
-            continue;
-        }
-
-        // 创建 Vulkan 纹理对象（原始分辨率）
-        vks::Texture2D texture_original;
-        texture_original.fromBuffer(
-            image_data,              // 原始图像数据
-            width * height * 4,      // 数据大小
-            VK_FORMAT_R8G8B8A8_UNORM, // 图像格式
-            width,                    // 宽度
-            height,                   // 高度
-            vulkanDevice,
-            queue,
-            VK_FILTER_LINEAR,
-            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-            VK_IMAGE_LAYOUT_GENERAL
-        );
-
-        // 创建 Vulkan 纹理对象（缩小分辨率）
-        vks::Texture2D texture_resized;
-        resizeAndUploadTexture(texture_resized, image_data, width, height, scale, vulkanDevice, queue);
-
-        // 存入对应的 vector
-        inputGaussian.images.push_back(texture_original);
-        inputGaussian.images_low_res.push_back(texture_resized);
-
-        // 释放 STB 读取的图像数据
-        stbi_image_free(image_data);
-    }
-
-    std::cout << "Total images loaded: " << inputGaussian.images.size() << std::endl;
+    return tex;
 }
-
 
 void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float scale) {
     std::cout << "Loading assets..." << std::endl;
@@ -3445,88 +3331,6 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
     );
     image_width = textureColorMap.width;
     image_height = textureColorMap.height;
-    
-    LOGI("Load Assets: loading images.");
-    for (const std::string& filename : inputGaussian.img_list) {
-        LOGI("Load Assets: loading image %{public}s", filename.c_str());
-        cv::Mat img = cv::imread(filename);
-        if (img.empty()){
-            std::cerr << "Failed to load image file: " << filename << std::endl;
-            return;
-        }
-        cv::resize(img, img, cv::Size(origin_width, origin_height));
-        
-        int dsp_width = static_cast<int>(origin_width * scale);
-        int dsp_height = static_cast<int>(origin_height * scale);
-        cv::Mat dsp_img;
-        cv::resize(img, dsp_img, cv::Size(dsp_width, dsp_height));
-        
-        cv::cvtColor(img, img, cv::COLOR_BGR2RGBA);
-        cv::cvtColor(dsp_img, dsp_img, cv::COLOR_BGR2RGBA);
-        
-        vks::Texture2D texture_original;
-        texture_original.fromBuffer(
-            img.data,
-            origin_width * origin_height * 4,
-            VK_FORMAT_R8G8B8A8_UNORM,
-            origin_width, origin_height, 
-            vulkanDevice, queue,
-            VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
-        );
-        
-        vks::Texture2D texture_resized;
-        texture_resized.fromBuffer(
-            dsp_img.data,
-            dsp_width * dsp_height * 4,
-            VK_FORMAT_R8G8B8A8_UNORM,
-            dsp_width, dsp_height, 
-            vulkanDevice, queue,
-            VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
-        );
-        
-        inputGaussian.images.push_back(texture_original);
-        inputGaussian.images_low_res.push_back(texture_resized);
-    }
-    
-    /*
-    unsigned char* image_data = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-    if (!image_data) {
-        std::cerr << "Failed to load image file: " << filename << std::endl;
-        return;
-    }
-    
-    // textureColorMap
-    this->resizeAndUploadTexture(
-        textureColorMap, image_data, width, height, origin_width, origin_height, vulkanDevice, queue
-    );
-    // 释放加载的图像数据
-    stbi_image_free(image_data);
-
-    image_width = textureColorMap.width;
-    image_height = textureColorMap.height;
-
-    for (const std::string& filename : inputGaussian.img_list) {
-        int width, height, channels;
-        unsigned char* image_data = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-        if (!image_data) {
-            std::cerr << "Failed to load image file: " << filename << std::endl;
-            continue;
-        }
-        
-        vks::Texture2D texture_original;
-        this->resizeAndUploadTexture(
-            texture_original, image_data, width, height, 
-            origin_width, origin_height, vulkanDevice, queue
-        );
-        vks::Texture2D texture_resized;
-        this->resizeAndUploadTexture(
-            texture_resized, image_data, width, height, 
-            static_cast<int>(origin_width * scale), 
-            static_cast<int>(origin_height * scale),
-            vulkanDevice, queue
-        );
-    }
-    */
 }
 
 
