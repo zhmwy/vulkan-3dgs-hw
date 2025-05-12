@@ -15,7 +15,7 @@ void LetterBox(const cv::Mat &image, cv::Mat &outImage, cv::Vec4d &params, const
     float r = std::min((float)newShape.height / (float)shape.height, (float)newShape.width / (float)shape.width);
     if (!scaleUp)
         r = std::min(r, 1.0f);
-    LOGI("原图尺寸：w:%{public}d * h:%{public}d, 要求尺寸：w:%{public}d * h:%{public}d, 即将采用的缩放比：%%{public}f\n", shape.width, shape.height,
+    LOGI("原图尺寸：w:%{public}d * h:%{public}d, 要求尺寸：w:%{public}d * h:%{public}d, 即将采用的缩放比：%{public}f\n", shape.width, shape.height,
            newShape.width, newShape.height, r);
 
     // 依据前面的缩放比例后，原图的尺寸
@@ -40,7 +40,7 @@ void LetterBox(const cv::Mat &image, cv::Mat &outImage, cv::Vec4d &params, const
 
     dw /= 2.0f;
     dh /= 2.0f;
-    printf("填充padding: dw=%f , dh=%f\n", dw, dh);
+    LOGI("填充padding: dw=%{public}f , dh=%{public}f\n", dw, dh);
 
     // 等比例缩放
     if (shape.width != new_un_pad[0] && shape.height != new_un_pad[1]) {

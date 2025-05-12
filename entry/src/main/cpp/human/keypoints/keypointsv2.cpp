@@ -52,7 +52,7 @@ OH_NN_ReturnCode LoadImage(const std::string& imagePath, vector<Vec4d>& params) 
     vector<cv::Mat> input_images;
     Preprocessing(srcs, input_images, params);
 
-    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(960, 960));
+    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(640, 640));
     std::vector<std::pair<float*, size_t>> inputDataList{
         {reinterpret_cast<float*>(blob.data), blob.total()}
     };
@@ -156,7 +156,7 @@ int ProcessKeypoints(const std::string& inputPath) {
     int width = imgSample.cols;
     int height = imgSample.rows;
     float ratio = width / 720.0;
-    assert(ratio == height/960.0);
+    assert(ratio == height / 960.0);
     
     for (const auto& imgName : sampled_image_paths) {
         int idx = selectedIndices[id];
