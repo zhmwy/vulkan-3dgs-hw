@@ -806,6 +806,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     queryCmdTimeStart("03. forward fill visible point");
     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.psnr_sum, 0, VK_WHOLE_SIZE, 0);
     queryCmdTimeEnd("03. forward fill visible point");
     
     queryCmdTimeStart("04. forward fill buffer");
@@ -842,6 +843,8 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     queryCmdTimeEnd("00. compute overall");
     
+    
+    ComputeTransBarrierBlock();
 //     createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
@@ -4154,9 +4157,9 @@ void VulkanComputeExample::calculatePSNR(float* mse, int width, int height) {
         
         // PSNR 公式
         float psnr[3];
-        psnr[0] = 20.0 * std::log10(1.0 / meanSquaredError[0]);
-        psnr[1] = 20.0 * std::log10(1.0 / meanSquaredError[1]);
-        psnr[2] = 20.0 * std::log10(1.0 / meanSquaredError[2]);
+        psnr[0] = 10.0 * std::log10(1.0 / meanSquaredError[0]);
+        psnr[1] = 10.0 * std::log10(1.0 / meanSquaredError[1]);
+        psnr[2] = 10.0 * std::log10(1.0 / meanSquaredError[2]);
         
 //         LOGI("PSNR per image: %{public}f: ", (psnr[0] + psnr[1] + psnr[2]) / 3.0);
         
@@ -4178,10 +4181,10 @@ void copyGpuBufferToVector(const vkgs::Buffer& buffer, std::vector<T>& destVecto
 
 void VulkanComputeExample::printLog(bool train)
 {
-
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.psnr_sum, 0, VK_WHOLE_SIZE, 0);
-    TransComputeBarrierBlock();
-    executeTransCommand();
+    //vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.psnr_sum, 0, VK_WHOLE_SIZE, 0);
+    //TransComputeBarrierBlock();
+    //executeTransCommand();
+    
     if (training_step >= 1)
     {
         const vkgs::CpuBuffer& cpu_buffer = splat_buffers.curPointsNum.cpu_buffer;
@@ -4218,7 +4221,7 @@ void VulkanComputeExample::printLog(bool train)
         {
 
             LOGI("Training Step[%{public}d]: Point Num: [%{public}d], Average PSNR： [%{public}f], Mean Sort Point: [%{public}f], Max Avg Splat Tile: [%{public}f]",
-                training_step, splat_count, total_psnr / 100, total_sort_point_count / 100.0, max_avg_splat_tile_num);
+                training_step+1, splat_count, total_psnr / 100, total_sort_point_count / 100.0, max_avg_splat_tile_num);
 
             total_psnr = 0;
             total_sort_point_count = 0;
