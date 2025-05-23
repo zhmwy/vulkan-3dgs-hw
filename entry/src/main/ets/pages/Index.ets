@@ -41,7 +41,9 @@ struct Index {
   }
 
   async switchImage(){
-    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/AVATAR/temp/" + this.currentImage.toString() + ".jpg")
+    // this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/AVATAR/temp/" + this.currentImage.toString() + ".jpg")
+    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/human_bie/temp/" + this.currentImage.toString() + ".jpg")
+    // this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/2024_09_27_11_20_29/temp/" + this.currentImage.toString() + ".jpg")
     // this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/assets/human_bie/images/85864565279156.jpg")
     this.currentImage = (this.currentImage + 1) % 1000
   }
@@ -57,8 +59,9 @@ struct Index {
         Button(this.isTraining ? 'Training...' : 'Start Training')
           .onClick(() => {
             if (!this.isTraining) {
-              // this.train3DGS("human_bie");
-              this.train3DGS("AVATAR");
+              this.train3DGS("human_bie");
+              // this.train3DGS("AVATAR");
+              // this.train3DGS("small_dragon");
               // this.train3DGS("2024_09_27_11_20_29");
             }
           })

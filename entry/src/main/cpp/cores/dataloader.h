@@ -59,6 +59,11 @@ public:
 
         std::string basepath = "/data/storage/el1/base/files";
         
+        std::vector<float> time_stamps; // Time for Gaussian-Flow
+        std::vector<glm::vec4> xyz_flow_params;
+        std::vector<glm::vec4> rot_flow_params;
+
+        
         int width, height;
         
         void normalizeData();

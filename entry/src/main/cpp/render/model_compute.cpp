@@ -116,6 +116,15 @@ void VulkanComputeExample::encodeCpu2Gpu()
     inputGaussian.opacities.resize(MAX_SPLAT_COUNT);
     inputGaussian.colors.resize(MAX_SPLAT_COUNT);
     
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rot_flow_params, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
+    
     splat_buffers.xyz_array.FromCpu(
         compute.commandBuffer,
         inputGaussian.positions.data()
@@ -352,6 +361,14 @@ void VulkanComputeExample::imageToBufferCmd()
             );
     }
     
+    if (training_step >= flow_steps)
+    {
+        splat_buffers.time_stamp.FromCpu(
+            compute.commandBuffer,
+            &inputGaussian.time_stamps[current_img_idx]
+        );
+    }
+    
     if (inputGaussian.intr_tmp.size() > 1)
     {
         auto intr_tmp_low_resolution = inputGaussian.intr_tmp[current_img_idx];
@@ -405,6 +422,9 @@ void VulkanComputeExample::zeroGradCmd()
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dndc_int, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dopacity_act_array_int, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_duvd_int, 0, VK_WHOLE_SIZE, 0);
+    
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dxyz_flow, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_drot_flow, 0, VK_WHOLE_SIZE, 0);
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
 }
@@ -871,6 +891,9 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     
     queryCmdTimeStart("05. forward EWA");
     bindPipeline2CommandBuffer(pipe_extr_process, FORWARD_PIPE, 1, 1, 1);
+//     if (training_step > flow_steps){
+//         bindPipeline2CommandBuffer(pipe_flow, FORWARD_PIPE, X, 1, 1);
+//     }
     bindPipeline2CommandBuffer(pipe_project, FORWARD_PIPE, X, 1, 1);
     queryCmdTimeEnd("05. forward EWA");
     
@@ -1075,12 +1098,48 @@ void VulkanComputeExample::prepare3dgsBuffers()
         allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    
+    splat_buffers.time_stamp = vkgs::Buffer(
+        allocator, sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.xyz_flow_params = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.rot_flow_params = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.dL_dxyz_flow = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.dL_drot_flow = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.xyz_flow_avg = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.rot_flow_avg = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.xyz_flow_exp_avg = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.xyz_flow_exp_avg = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    
     splat_buffers.dL_dshs_array = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
-    
-    
     
     splat_buffers.intr_params = vkgs::Buffer(
         allocator, 4 * sizeof(float),
@@ -1212,6 +1271,8 @@ void VulkanComputeExample::prepare3dgsBuffers()
         allocator, MAX_SPLAT_COUNT * 4 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    
+    
     splat_buffers.dL_dintr_params = vkgs::Buffer(
         allocator, 4 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1286,6 +1347,7 @@ void VulkanComputeExample::prepare3dgsBuffers()
         allocator, MAX_SPLAT_COUNT * 4 * sizeof(float), 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    
 
     splat_buffers.feature_array_exp_avg = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * 48 * sizeof(float), 
@@ -1609,6 +1671,69 @@ void VulkanComputeExample::setProjectionPipeline()
     );
 
     std::cout << "[setProjectionPipeline] Projection pipeline set" << std::endl;
+}
+
+void VulkanComputeExample::setFlowPipeline()
+{
+    const uint32_t bindingCount = 7;
+    createPipelineLayout(
+        pipe_flow,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.time_stamp,         //0
+        &splat_buffers.xyz_array,       //1
+        &splat_buffers.rotate_array,    //2
+        &splat_buffers.xyz_flow_params,     //3
+        &splat_buffers.rot_flow_params,     //4
+        &splat_buffers.curPointsNum,     //5
+        &splat_buffers.visible,     //6
+    };
+
+    updateDescriptorSet(pipe_flow.descriptorSet, splatBuffers);
+
+    pipe_flow.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/flow_forward.comp.spv");
+#ifdef VULKAN_PC
+    shaderCode = "../../shaders/glsl/computeshader/flow_forward.comp.spv";
+    std::cout << "[setProjectionPipeline] shaderCode: " << shaderCode << std::endl;
+#endif
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_flow.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_flow.pipelines[FORWARD_PIPE]
+        )
+    );
+#if 0
+    shaderCode = getPath("shader/computeshader/flow_backward.comp.spv");
+#ifdef VULKAN_PC
+    shaderCode = "../../shaders/glsl/computeshader/project_ewa_backward.comp.spv";
+    std::cout << "[setProjectionPipeline] shaderCode: " << shaderCode << std::endl;
+#endif
+
+    pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_flow.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_flow.pipelines[BACKWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setProjectionPipeline] Projection pipeline set" << std::endl;
+#endif
 }
 
 void VulkanComputeExample::setKNNPipeline()
@@ -4004,8 +4129,10 @@ bool VulkanComputeExample::prepare()
     // 3dgs specific
     LOGI("Prepare: loading compute shaders");
     prepare3dgsBuffers();
+    
     setProjectionPipeline();
     setProjectionRenderPipeline();
+    setFlowPipeline();
     setSortPipeline();
     setComputeKeyPipeline();
     setComputeTilePipeline();

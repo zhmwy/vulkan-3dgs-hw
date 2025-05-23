@@ -110,6 +110,7 @@ public:
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 1000;
+    int flow_steps = 10;
     int sh_degree = 1;
     
     RandomGenerator random_generator;
@@ -160,6 +161,16 @@ public:
         vkgs::Buffer camera_center;     // 3  parameters
         vkgs::Buffer camera_extrs;
         
+        // Gaussian-Flow buffers
+        vkgs::Buffer time_stamp;
+        vkgs::Buffer xyz_flow_params;     // [P, 16, 3, 3]
+        vkgs::Buffer rot_flow_params;     // [P, 16, 4, 3]
+        vkgs::Buffer dL_dxyz_flow;
+        vkgs::Buffer dL_drot_flow;
+        vkgs::Buffer xyz_flow_avg;
+        vkgs::Buffer rot_flow_avg;
+        vkgs::Buffer xyz_flow_exp_avg;
+        vkgs::Buffer rot_flow_exp_avg;
         
         // alpha blending buffers
         vkgs::Buffer conic;
@@ -182,7 +193,7 @@ public:
         vkgs::Buffer dL_drotate;
         vkgs::Buffer dL_dintr_params;
         vkgs::Buffer dL_dextr_params;
-
+        
         // vkgs::Buffer dL_drfeat_array;
         // vkgs::Buffer dL_dconic_array;
         // vkgs::Buffer dL_dopacity_array;
@@ -197,12 +208,14 @@ public:
         vkgs::Buffer feature_array_avg;
         vkgs::Buffer opacity_array_avg;
 
+        
         vkgs::Buffer xyz_array_exp_avg;
         vkgs::Buffer scale_array_exp_avg;
         vkgs::Buffer rotate_array_exp_avg;
         vkgs::Buffer feature_array_exp_avg;
         vkgs::Buffer opacity_array_exp_avg;
 
+        
         vkgs::Buffer camera_extrs_avg;
         vkgs::Buffer camera_extrs_exp_avg;
         
@@ -293,6 +306,7 @@ public:
         std::vector<VkPipeline> pipelines;
     };
     Compute3DGS pipe_project, pipe_project_render;
+    Compute3DGS pipe_flow;
     Compute3DGS pipe_compute_key;
     Compute3DGS pipe_compute_tile;
     Compute3DGS pipe_inverse;
@@ -405,6 +419,7 @@ public:
     void setImage2BufferPipeline();
     void setBuffer2ImagePipeline();
     void prepare3dgsBuffers();
+    void setFlowPipeline();
     void setProjectionPipeline();  
     void setKNNPipeline();
     void setProjectionRenderPipeline();
