@@ -1210,6 +1210,14 @@ void VulkanComputeExample::prepare3dgsBuffers()
         allocator, sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    splat_buffers.xyz_base_array = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.rot_base_array = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 4 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
     splat_buffers.xyz_flow_params = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -4412,6 +4420,8 @@ bool VulkanComputeExample::prepare()
     
     setOptimizationPipeline();
     setOptimizeFlowPipeline();
+    setPostFlowOptimPipeline();
+
     setExtrOptimizationPipeline();
     
     setLossPipeline();
