@@ -60,8 +60,6 @@ struct Index {
           .onClick(() => {
             if (!this.isTraining) {
               this.train3DGS("human_bie");
-              // this.train3DGS("AVATAR");
-              // this.train3DGS("small_dragon");
               // this.train3DGS("2024_09_27_11_20_29");
             }
           })

@@ -47,7 +47,7 @@ void VulkanRender::draw()
     VkResult res = vkQueueSubmitGS(queue, 1, &submitInfo, VK_NULL_HANDLE);
     if (res != VK_SUCCESS) {
 #ifdef VULKAN_HW
-        LOGE("VulkanExample Fatal : VkResult is %s", vks::tools::errorString(res).c_str());
+        LOGE("VulkanExample Fatal : VkResult is %{public}s", vks::tools::errorString(res).c_str());
 #elif defined(VULKAN_PC)
         std::cerr << "VulkanExample Fatal : VkResult is " << vks::tools::errorString(res) << std::endl;
 #endif

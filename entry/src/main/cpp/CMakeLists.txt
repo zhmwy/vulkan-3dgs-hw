@@ -57,25 +57,6 @@ add_library(3dgs SHARED
 )
 
 
-# ktx
-#set(KTX_SOURCES
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/texture.c
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/hashlist.c
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/checkheader.c
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/swap.c
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/memstream.c
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib/filestream.c
-#)
-#set(KTX_INCLUDE
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/include
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/lib
-#	${NATIVERENDER_ROOT_PATH}/3rdParty/ktx/other_include
-#)
-#
-#add_library(libktx ${KTX_SOURCES})
-#
-#target_include_directories(libktx PUBLIC ${KTX_INCLUDE})
-
 target_include_directories(3dgs PUBLIC
         3rdParty
         3rdParty/glm
@@ -186,13 +167,13 @@ target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googlet
                                     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgtest.a)
 
 target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/lib/libmetis.a)
-target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/glog/libglog.so.1)
+#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/glog/libglog.so.1)
 
 target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/include)
 target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/eigen/${OHOS_ARCH}/include/eigen3)
 target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/include)
 target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/include)
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/glog/${OHOS_ARCH}/include)
+#target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/glog/${OHOS_ARCH}/include)
 
 target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock
                                         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock/internal

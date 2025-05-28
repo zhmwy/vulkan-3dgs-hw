@@ -78,6 +78,8 @@ public:
     void createGpu2CpuCopys();
     VulkanComputeExample();
     ~VulkanComputeExample();
+    void DestoryBuffer(vkgs::Buffer buffer);
+    void DestoryBuffers();
 
     #ifdef VULKAN_PC
     uint32_t screenWidth;
@@ -110,7 +112,7 @@ public:
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 1000;
-    int flow_steps = 10;
+    int flow_steps = 0;
     int sh_degree = 1;
     
     RandomGenerator random_generator;
@@ -163,6 +165,8 @@ public:
         
         // Gaussian-Flow buffers
         vkgs::Buffer time_stamp;
+        vkgs::Buffer xyz_base_array; 
+        vkgs::Buffer rot_base_array;
         vkgs::Buffer xyz_flow_params;     // [P, 16, 3, 3]
         vkgs::Buffer rot_flow_params;     // [P, 16, 4, 3]
         vkgs::Buffer dL_dxyz_flow;
@@ -316,12 +320,15 @@ public:
     Compute3DGS pipe_int2float;
     
     Compute3DGS pipe_optimize;
+    Compute3DGS pipe_post_flow_optimize;
+    Compute3DGS pipe_optimize_flow;
     Compute3DGS pipe_optimize_extr;
     
     Compute3DGS pipe_loss;
     Compute3DGS pipe_copy_img2buffer;
     Compute3DGS pipe_copy_buffer2img; 
     Compute3DGS pipe_buffer_fill;
+    Compute3DGS pipe_reset_psnr;
     Compute3DGS pipe_sh;
     Compute3DGS pipe_sh_render;
     Compute3DGS pipe_densification_stats;
@@ -349,7 +356,7 @@ public:
 
     std::vector<std::string> filterNames;
     
-    double total_psnr = 0;
+    float total_psnr = 0;
     long long total_sort_point_count = 0;
     double max_avg_splat_tile_num = 0;
     float current_scale=1.0;
@@ -416,6 +423,7 @@ public:
 
     // 3dgs compute pipelines
     void setBufferFillPipeline();
+    void setResetPSNRPipeline();
     void setImage2BufferPipeline();
     void setBuffer2ImagePipeline();
     void prepare3dgsBuffers();
@@ -437,6 +445,8 @@ public:
     void setAlphaBlendingIntPipeline();
     void setIntToFloatGradientPipeline();
     void setOptimizationPipeline();
+    void setPostFlowOptimPipeline();
+    void setOptimizeFlowPipeline();
     void setExtrOptimizationPipeline();
     
     void setLossPipeline();
@@ -473,7 +483,9 @@ public:
     }
     void radixSortCmd(uint32_t numInstances);
     void copyExtrCmd();
-    
+    void initBaseCmd();
+    void copyBaseCmd();
+
     // Methods
     void prepreAllocator();
     void prepareStorageImage();
@@ -496,10 +508,11 @@ public:
     void updateUniformBuffers();
 
     virtual bool prepare();
-    void calculatePSNR(float mse, int width, int height);
+    void calculatePSNR(float* mse, int width, int height);
     virtual void draw(){};
     virtual void printLog(bool train = true);
     void executeComputeCommand();
+    void executeTransCommand();
 
     // void drawUI(const VkCommandBuffer commandBuffer);
 
@@ -512,7 +525,7 @@ public:
     void saveCameras(std::string dataPath);
     
     virtual void getEnabledFeatures() override;
-    virtual void getEnabledExtensions() override;
+    virtual void getEnabledExtensionsGS() override;
     
     virtual void render()
     {
