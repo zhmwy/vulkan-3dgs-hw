@@ -112,7 +112,7 @@ public:
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 1000;
-    int flow_steps = 0;
+    int flow_steps = 1500;
     int sh_degree = 1;
     
     RandomGenerator random_generator;
