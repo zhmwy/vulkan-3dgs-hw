@@ -349,11 +349,33 @@ void DataLoader::InputInitStruct::computePositionStats() {
     }
     variance = sum / static_cast<double>(positions.size());  // **求均值**
     
-    this->mean = mean;
-    this->variance = variance;
+//     this->mean = mean;
+//     this->variance = variance;
     
     std::cout << "Position Mean: (" << mean.x << ", " << mean.y << ", " << mean.z << ")" << std::endl;
     std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
+}
+
+void DataLoader::InputInitStruct::getNerfppNorm() {
+    this->radius = -1.0;
+    glm::vec3 cam_centers = glm::vec3(0, 0, 0);
+    for (auto& extr : extr_tmp) {
+        glm::mat4 W2C = quat2matrix(extr);
+        glm::mat4 C2W = glm::inverse(W2C);
+        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        cam_centers += cam_center;
+    }
+    cam_centers /= extr_tmp.size();
+    
+    for (auto& extr : extr_tmp) {
+        glm::mat4 W2C = quat2matrix(extr);
+        glm::mat4 C2W = glm::inverse(W2C);
+        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        glm::vec3 dist = cam_centers - cam_center;
+        this->radius = std::max(this->radius, sqrt(dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]));
+    }
+    
+    this->radius *= 1.1;
 }
 
 void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data) {
@@ -1082,6 +1104,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         
         
         float norm = sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
+        norm = 1;
         DataLoader::InputInitStruct::DataExtr extr = { qw / norm, qx / norm, qy / norm, qz / norm, tx, ty, tz };
         data.extr_tmp.push_back(extr);
         data.img_list.push_back(scenepath + "/images/" + imageName);

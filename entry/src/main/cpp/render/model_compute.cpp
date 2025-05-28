@@ -8,16 +8,11 @@
 #include <stb_image.h>  // 引入stb_image.h库
 #include <stb_image_resize2.h>
 
-
 #define TILE_W (((int)(current_scale * image_width) + 15) / 16)
 #define TILE_H (((int)(current_scale * image_height) + 15) / 16)
-//#define TILE_NUM TILE_W * TILE_H
-#define TILE_NUM_AVG 100
 
-#define TILE_W_MAX (((int)(image_width) + 15) / 16)
-#define TILE_H_MAX (((int)(image_height) + 15) / 16)
-//#define TILE_NUM_AVG_MAX TILE_W_MAX * TILE_H_MAX
-#define TILE_NUM_AVG_MAX 100
+// #define TILE_W_MAX (((int)(image_width) + 15) / 16)
+// #define TILE_H_MAX (((int)(image_height) + 15) / 16)
 
 #define HEIGHT 640
 #define WIDTH  480
@@ -48,9 +43,9 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
 //         DataLoader::loadInputTo(dataFolder, inputGaussian);
         if(resumed) hasKNN = true;
         
-        inputGaussian.computePositionStats();
-        inputGaussian.normalizeData();
-
+        inputGaussian.getNerfppNorm();
+//         inputGaussian.computePositionStats();
+//         inputGaussian.normalizeData();
     }
     
     
@@ -201,7 +196,6 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.input_image_array); 
     createGpu2CpuCopy(splat_buffers.input_image_alpha_array);
     
-    createGpu2CpuCopy(splat_buffers.dL_duvd);             // Copy dL_duvd
     createGpu2CpuCopy(splat_buffers.dL_dxyz);
     createGpu2CpuCopy(splat_buffers.dL_dopacity);
     createGpu2CpuCopy(splat_buffers.dL_dscale);
@@ -223,7 +217,8 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.dL_dextr_params);
     createGpu2CpuCopy(splat_buffers.intr_params_render);
     
-    
+    createGpu2CpuCopy(sort_buffers.sortKBufferEven);
+    createGpu2CpuCopy(sort_buffers.sortVBufferEven);
     
 }
 
@@ -240,33 +235,70 @@ int cumsum_cpu(const vkgs::Buffer& buffer)
     return sum;
 }
 
+void printKeyAndSortedIdx(vkgs::Buffer& sortKBufferEven, vkgs::Buffer& sorted_idx_array, int length)
+{
+    const vkgs::CpuBuffer &key_cpu_buffer = sortKBufferEven.cpu_buffer;
+    if (key_cpu_buffer.isInit == false) return;
+    int size = key_cpu_buffer.size() / sizeof(uint32_t);  // 根据元素大小计算数量
+    if (length > 0) {
+        size = std::min(size, length);
+    }
+    const uint32_t* Key = reinterpret_cast<const uint32_t*>(key_cpu_buffer.data());
+    
+    const vkgs::CpuBuffer &idx_cpu_buffer = sorted_idx_array.cpu_buffer;
+    if (idx_cpu_buffer.isInit == false) return;
+    size = idx_cpu_buffer.size() / sizeof(uint32_t);  // 根据元素大小计算数量
+    if (length > 0)
+        size = std::min(size, length);
+    const uint32_t* idx = reinterpret_cast<const uint32_t*>(idx_cpu_buffer.data());
+    
+    
+    for (int i = 0; i < size; i++) {
+        LOGE("%{public}d: %{public}d, %{public}d %{public}d", i + 524000, Key[i + 524000], uint32_t(Key[i + 524000]) >> 19, idx[i + 524000]);
+    }
+    
+}
+
 void VulkanComputeExample::printGpuBuffers()
 {
     LOGW("Current image index: %{public}d, training step: %{public}d", current_img_idx, training_step);
     
-//     printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
-//     printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
+    printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
+    printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
 //     printGpuBuffer<uint32_t>("curPointsNum", splat_buffers.curPointsNum, 1, 1);
-//     printGpuBuffer<float>("extr_mat", splat_buffers.extr_mat, 3, 4);
-//     printGpuBuffer<float>("extr_act", splat_buffers.extr_act, 1, 6);
-//    
-//     printGpuBuffer<float>("xyz_array", splat_buffers.xyz_array, 4, 3);
-//     printGpuBuffer<float>("scale_array", splat_buffers.scale_array, 4, 3);
-//    
-//     printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
-//
-//     ///////////////////
-//     printGpuBuffer<float>("cov2d", splat_buffers.cov2d, 4, 3);
-//     printGpuBuffer<uint32_t>("radius", splat_buffers.radius, 4, 1);
+    printGpuBuffer<float>("extr_mat", splat_buffers.extr_mat, 3, 4);
+    printGpuBuffer<float>("extr_act", splat_buffers.extr_act, 1, 6);
 
-    printGpuBuffer<uint32_t>("visible", splat_buffers.visible, 4, 1);
-    printGpuBuffer<float>("dL_duvd", splat_buffers.dL_duvd, 4, 3);
-    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
+    
+//     printGpuBuffer<float>("scale_array", splat_buffers.scale_array, 4, 3);
+
+//     printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
+// //     printGpuBuffer<uint32_t>("radius", splat_buffers.radius, 4, 1);
+// //     printGpuBuffer<uint32_t>("splat_visible_point_count", sort_buffers.splat_visible_point_count, 1, 1);
+//     printGpuBuffer<float>("rfeat", splat_buffers.rfeat, 4, 4);
+//    
+//     printGpuBuffer<float>("dL_drfeat", splat_buffers.dL_drfeat, 3, 3);
+//     printGpuBuffer<float>("dL_duvd", splat_buffers.dL_duvd, 3, 3);
+//     printGpuBuffer<float>("dL_dfeature", splat_buffers.dL_dfeature, 3, 3);
+    
+    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 3, 3);
+    printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 3, 1);
+    printGpuBuffer<float>("dL_drotate", splat_buffers.dL_drotate, 3, 4);
+    printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 3, 3);
+    printGpuBuffer<float>("dL_dshs", splat_buffers.dL_dshs_array, 3, 48);
+    
+    printGpuBuffer<float>("xyz_array", splat_buffers.xyz_array, 3, 3);
+    printGpuBuffer<float>("scale_array", splat_buffers.scale_array, 3, 3);
+    printGpuBuffer<float>("rotate_array", splat_buffers.rotate_array, 3, 4);
+    printGpuBuffer<float>("opacity", splat_buffers.opacity, 3, 1);
+    printGpuBuffer<float>("sh", splat_buffers.sh_coeff, 3, 48);
+    
 }
 
+    
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
 {
-    uint32_t launch_size = splat_count * SORT_SIZE;
+    uint32_t launch_size = splat_count * SORT_SIZE * 3;
     uint32_t numRadixSortBlocksPerWorkgroup = 512;
     uint32_t invocationSize = (launch_size + numRadixSortBlocksPerWorkgroup - 1) / numRadixSortBlocksPerWorkgroup;
     invocationSize = (invocationSize + 511) / 512;
@@ -327,7 +359,7 @@ void VulkanComputeExample::imageToBufferCmd()
     copyRegionI.imageExtent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1 };
     
     current_img_idx = random_generator.generate();
-
+    
 //     current_img_idx = 0;
     
     if (training_step >= low_resolution_steps)
@@ -408,6 +440,7 @@ void VulkanComputeExample::zeroGradCmd()
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_duvd_int, 0, VK_WHOLE_SIZE, 0);
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
+//     TransComputeBarrierBlock();
 }
 
 void VulkanComputeExample::forwardCmd()
@@ -426,7 +459,7 @@ void VulkanComputeExample::forwardCmd()
     vkCmdFillBufferGS(
         compute.commandBuffer,
         splat_buffers.tile_range, 0,
-        grid_width * grid_height * 2 * sizeof(int32_t), 0
+        VK_WHOLE_SIZE, 0
     );
     TransComputeBarrierBlock();
     
@@ -438,7 +471,7 @@ void VulkanComputeExample::forwardCmd()
     radixSortCmd(0);
     ComputeShaderMemoryBarrierBlock();
 
-    X = (splat_count * SORT_SIZE + 256 - 1) / 256;
+    X = (splat_count * SORT_SIZE * 10 + 256 - 1) / 256;
     bindPipeline2CommandBuffer(pipe_compute_tile, FORWARD_PIPE, X, 1, 1);
 
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
@@ -464,7 +497,7 @@ void VulkanComputeExample::forwardCmdTime()
     bindPipeline2CommandBuffer(pipe_inverse, FORWARD_PIPE, X, 1, 1);
     queryCmdTimeEnd("07. forward inverse");
     /********************* Inverse index gaussian point ***********************/
-
+    
     
     queryCmdTimeStart("08. forward fill tile_range");
     uint32_t grid_width = (int)(current_scale * image_width) / 16;
@@ -474,7 +507,7 @@ void VulkanComputeExample::forwardCmdTime()
     vkCmdFillBufferGS(
         compute.commandBuffer,
         splat_buffers.tile_range, 0,
-        grid_width * grid_height * 2 * sizeof(int32_t), 0
+        VK_WHOLE_SIZE, 0
     );
     TransComputeBarrierBlock();
     queryCmdTimeEnd("08. forward fill tile_range");
@@ -486,30 +519,19 @@ void VulkanComputeExample::forwardCmdTime()
     queryCmdTimeEnd("09. forward compute key");
     
     queryCmdTimeStart("10. forward copy index");
-//     VkBufferCopy copyRegionBB = {};
-//     copyRegionBB.srcOffset = 0; // Start at the beginning of the source buffer
-//     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
-//     copyRegionBB.size = splat_count * sizeof(uint32_t) * SORT_SIZE; // Size of data to copy
-//     vkCmdCopyBufferGS(
-//         compute.commandBuffer,
-//         sort_buffers.unsort_index,
-//         sort_buffers.sortVBufferEven,
-//         1,            // Number of regions to copy
-//         &copyRegionBB   // Pointer to the copy region
-//     );
-//     TransComputeBarrierBlock();
     queryCmdTimeEnd("10. forward copy index");
     
     queryCmdTimeStart("11. forward sort");
     radixSortCmd(0);
     ComputeShaderMemoryBarrierBlock();
+
     queryCmdTimeEnd("11. forward sort");
     
     queryCmdTimeStart("12. forward compute tile");
-    X = (splat_count * SORT_SIZE + 256 - 1) / 256;
+    X = (splat_count * SORT_SIZE * 2 + 512 - 1) / 512;
     bindPipeline2CommandBuffer(pipe_compute_tile, FORWARD_PIPE, X, 1, 1);
     queryCmdTimeEnd("12. forward compute tile");
-    
+
     /*********************  Alpha blending ***********************/
     queryCmdTimeStart("13. forward blend");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
@@ -568,10 +590,11 @@ void VulkanComputeExample::backwardCmd()
     queryCmdTimeStart("16. Backward blending");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
-
+//     bindPipeline2CommandBuffer(pipe_blending, BACKWARD_PIPE, X, Y, 1);
     bindPipeline2CommandBuffer(pipe_blending_int, BACKWARD_PIPE, X, Y, 1);
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_int2float, BACKWARD_PIPE, X, 1, 1);
+
 
     queryCmdTimeEnd("16. Backward blending");
     /*********************  Alpha blending backward ***********************/
@@ -605,7 +628,7 @@ void VulkanComputeExample::optimizeStepCmd()
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_optimize, FORWARD_PIPE, X, 1, 1, true);
     X = 1;
-    bindPipeline2CommandBuffer(pipe_optimize_extr, FORWARD_PIPE, X, 1, 1, true);
+//     bindPipeline2CommandBuffer(pipe_optimize_extr, FORWARD_PIPE, X, 1, 1, true);
     /*********************  Adam optimizer ***********************/
 }
 
@@ -823,6 +846,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     queryCmdTimeEnd("06. forward SH");
 
     forwardCmdTime();
+    
     backwardCmd();
 
     queryCmdTimeStart("20. training optimize");
@@ -1217,10 +1241,8 @@ void VulkanComputeExample::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
-    uint32_t grid_width = image_width / 16;
-    grid_width = (image_width + 15) / 16;
-    uint32_t grid_height = image_height / 16;
-    grid_height = (image_height + 15) / 16;
+    uint32_t grid_width = (image_width + 15) / 16;
+    uint32_t grid_height = (image_height + 15) / 16;
     splat_buffers.tile_range = vkgs::Buffer(
         allocator, grid_width * grid_height * 2 * sizeof(int32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -2603,18 +2625,6 @@ void VulkanComputeExample::setResetOpacityPipeline()
 
 void VulkanComputeExample::setSortPipeline()
 {
-//     // create sorter
-//     VrdxSorterCreateInfo sorter_info = {};
-//     sorter_info.physicalDevice = physicalDevice;
-//     sorter_info.device = device;
-// //   sorter_info.pipelineCache = context_.pipeline_cache();
-//     vrdxCreateSorter(&sorter_info, &sort_buffers.sorter);
-//
-//     // preallocate sorter storage
-//     VrdxSorterStorageRequirements requirements;
-//     vrdxGetSorterKeyValueStorageRequirements(sort_buffers.sorter, MAX_SPLAT_COUNT * SORT_SIZE, &requirements);
-//     sort_buffers.sort_storage = vkgs::Buffer(allocator, requirements.size, requirements.usage);
-
     sort_buffers.splat_visible_point_count = vkgs::Buffer(
         allocator, 
         sizeof(uint32_t),
@@ -2627,22 +2637,6 @@ void VulkanComputeExample::setSortPipeline()
     sort_buffers.splat_visible_point_count_cpu = vkgs::CpuBuffer(
         allocator, sizeof(uint32_t)
     );
-
-//     sort_buffers.key = vkgs::Buffer(
-//         allocator, 
-//         MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
-//         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-//         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-//         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-//     );
-//
-//     sort_buffers.index = vkgs::Buffer(
-//         allocator, 
-//         MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
-//         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-//         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-//         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-//     );
 
     sort_buffers.unsort_index = vkgs::Buffer(
         allocator, 
@@ -2660,7 +2654,7 @@ void VulkanComputeExample::setSortPipeline()
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
     );
     
-    uint32_t numWorkgroups = (splat_count * SORT_SIZE / 512 + 511) / 512;
+    uint32_t numWorkgroups = (MAX_SPLAT_COUNT * SORT_SIZE / 512 + 511) / 512;
     uint32_t radixBin = 256; //2^8
     sort_buffers.sortHistBuffer = vkgs::Buffer(
         allocator, 
@@ -3624,8 +3618,8 @@ void VulkanComputeExample::bindPipeline2CommandBuffer(
         float pos_lr = (start_lr - ((start_lr - end_lr) * (training_step / 30000)));
         
         std::vector<float> pushConstants = { static_cast<float>(xyz_size), static_cast<float>((int)(current_scale * image_width)), static_cast<float>((int)(current_scale * image_height)), 
-            pos_lr, static_cast<float>(sh_degree), static_cast<float>(current_img_idx), 
-            0, 0
+            pos_lr * inputGaussian.radius, static_cast<float>(sh_degree), inputGaussian.radius, static_cast<float>(training_step),
+            0
         };
         vkCmdPushConstantsGS(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float) * 8, pushConstants.data());
     }else{
@@ -3947,6 +3941,20 @@ void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs
         return;
     }
     
+    if (varName == "sortKBufferEven") {
+        for (int i = 0; i < size; i++) {
+            LOGW("%{public}d: %{public}d, %{public}d", i, num[i], uint32_t(num[i]) >> 19);
+        }
+        return;
+    }
+    
+    if (varName == "sorted_idx_array" || varName == "sortVBufferEven") {
+        for (int i = 0; i < size; i++) {
+            LOGW("%{public}d: %{public}d", i, num[i]);
+        }
+        return;
+    }
+    
     #ifdef VULKAN_HW
     for (int i = 0; i < pointNum; i++) {
         LOGW("%{public}d: ", i);
@@ -3960,7 +3968,7 @@ void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs
             
             else {
                 if (varName.substr(0, 2) == "dL" || varName == "xyz_gradient_accum" || varName == "xyz_gradient_mean") {
-                    LOGW("%{public}.16f ", num[i * length + j]);
+                    LOGW("%{public}.24f ", num[i * length + j]);
                 }
                 else
                     LOGW("%{public}f ", num[i * length + j]);
@@ -4154,9 +4162,9 @@ void VulkanComputeExample::calculatePSNR(float* mse, int width, int height) {
         
         // PSNR 公式
         float psnr[3];
-        psnr[0] = 20.0 * std::log10(1.0 / meanSquaredError[0]);
-        psnr[1] = 20.0 * std::log10(1.0 / meanSquaredError[1]);
-        psnr[2] = 20.0 * std::log10(1.0 / meanSquaredError[2]);
+        psnr[0] = 10.0 * std::log10(1.0 / meanSquaredError[0]);
+        psnr[1] = 10.0 * std::log10(1.0 / meanSquaredError[1]);
+        psnr[2] = 10.0 * std::log10(1.0 / meanSquaredError[2]);
         
 //         LOGI("PSNR per image: %{public}f: ", (psnr[0] + psnr[1] + psnr[2]) / 3.0);
         
@@ -4212,12 +4220,13 @@ void VulkanComputeExample::printLog(bool train)
         }
 
         total_sort_point_count += sort_point_count;
+//         total_sort_point_count = std::max(total_sort_point_count, sort_point_count);
         max_avg_splat_tile_num = std::max(max_avg_splat_tile_num, 1.0 * sort_point_count / splat_count);
         calculatePSNR(psnr_sum, (int)(current_scale * image_width), (int)(current_scale * image_height));
         if ((training_step + 1) % 100 == 0 && training_step != max_training_step)
         {
 
-            LOGI("Training Step[%{public}d]: Point Num: [%{public}d], Average PSNR： [%{public}f], Mean Sort Point: [%{public}f], Max Avg Splat Tile: [%{public}f]",
+            LOGI("Training Step[%{public}d]: Point Num: [%{public}d], Average PSNR： [%{public}f], Max Sort Point: [%{public}f], Max Avg Splat Tile: [%{public}f]",
                 training_step, splat_count, total_psnr / 100, total_sort_point_count / 100.0, max_avg_splat_tile_num);
 
             total_psnr = 0;

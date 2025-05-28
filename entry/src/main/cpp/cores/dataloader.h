@@ -53,8 +53,8 @@ public:
 
         std::vector<glm::vec3> cam_centers;
         glm::vec3 translate;
-        float radius;
-        glm::vec3 mean;
+        float radius = 1.0;
+        glm::vec3 mean = glm::vec3(0.0, 0.0, 0.0);
         float variance = 1.0;
 
         std::string basepath = "/data/storage/el1/base/files";
@@ -63,6 +63,7 @@ public:
         
         void normalizeData();
         void computePositionStats();
+        void getNerfppNorm();
         
         void denormalizeExtr();
         void denormalizePoints();

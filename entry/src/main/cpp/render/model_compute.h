@@ -50,7 +50,7 @@
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
-#define SORT_SIZE 100    // must be equal to TILE_NUM_AVG_MAX!!!!!!!!
+#define SORT_SIZE 10
 
 #define LOAD_HEAD 0
 #define LOAD_EXTRA 1
@@ -100,7 +100,7 @@ public:
     std::vector<float> intr_render_tmp;
 
     // Predefine 3DGS hyperparameters
-    int MAX_SPLAT_COUNT = 200000;
+    int MAX_SPLAT_COUNT = 400000;
     static const int MAX_TIME_QUERY_NUM = 100;
     static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;
@@ -112,7 +112,7 @@ public:
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 1000;
-    int sh_degree = 1;
+    int sh_degree = 1;     // 1, 4, 9, 16
     
     RandomGenerator random_generator;
     int current_img_idx = 0;
@@ -339,7 +339,7 @@ public:
     std::vector<std::string> filterNames;
     
     float total_psnr = 0;
-    long long total_sort_point_count = 0;
+    int total_sort_point_count = 0;
     double max_avg_splat_tile_num = 0;
     float current_scale=1.0;
 
@@ -514,7 +514,7 @@ public:
         });
         
         executeComputeCommand();
-        printLog();
+        printLog(true);
 
         if (training_step < max_training_step){
             training_step++;
@@ -595,9 +595,11 @@ public:
             }
         }
         
+        std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
+        
         std::string save_dir_debug = dataFolder + "/temp";
         std::filesystem::create_directories(save_dir_debug);
-        std::string filename = save_dir_debug + "/" + std::to_string(i) + ".jpg";
+        std::string filename = save_dir_debug + "/" + imgname;
         LOGI("Saving rendered image to: %{public}s", filename.c_str());
         cv::imwrite(filename, image);
     }
