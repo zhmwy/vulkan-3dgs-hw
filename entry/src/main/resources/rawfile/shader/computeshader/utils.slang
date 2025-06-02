@@ -2,7 +2,8 @@
 #define BLOCK_X 16
 #define BLOCK_Y 16
 #define PIXELS_PER_TILE (BLOCK_X * BLOCK_Y)
-#define MAX_SPLAT_COUNT 200000
+#define MAX_SPLAT_COUNT 400000
+#define DENSIFY_RATIO 0.1
 
 static const uint toAddNum = 500;
 static const float percent_dense = 0.01;

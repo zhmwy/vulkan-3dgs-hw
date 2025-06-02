@@ -50,11 +50,13 @@
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
-#define SORT_SIZE 10
+#define SORT_SIZE 50
 
 #define LOAD_HEAD 0
 #define LOAD_EXTRA 1
 
+#define HEIGHT 640
+#define WIDTH  480
 
 #define VULKAN_HW
 // #define VULKAN_PC
@@ -317,9 +319,12 @@ public:
     Compute3DGS pipe_mean_grad;
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
+    Compute3DGS pipe_clone_3dgs;
+    Compute3DGS pipe_split_3dgs;
     Compute3DGS pipe_reset_opacity;
     Compute3DGS pipe_extr_process;
     Compute3DGS pipe_extr_process_render;
+    Compute3DGS pipe_calc_MSE;
     
     
     Compute3DGS pipe_knn;
@@ -420,6 +425,9 @@ public:
     void setClonePipeline();
     void setPrunePipeline();
     void setSplitPipeline();
+    void setClone3DGSPipeline();
+    void setSplit3DGSPipeline();
+    
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
@@ -427,6 +435,7 @@ public:
     void setIntToFloatGradientPipeline();
     void setOptimizationPipeline();
     void setExtrOptimizationPipeline();
+    void setCalcMSEPipeline();
     
     void setLossPipeline();
     void setComputeSHPipeline();
@@ -555,7 +564,7 @@ public:
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
     
-    void renderRGB2Cpu(int i, std::string& dataFolder, int width=480, int height=640)
+    void renderRGB2Cpu(int i, std::string& dataFolder)
     {
         if (!prepared) {
             return;
@@ -563,20 +572,25 @@ public:
 
         buildComputeCommandBuffer([this]() {
             encodeGetImageBuffer();
-            });
-
+            createGpu2CpuCopy(splat_buffers.psnr_sum);
+        });
         executeComputeCommand();
         
         const float* num= reinterpret_cast<const float*> (getArrayFromGpuBuffer(splat_buffers.rfeat));
         int point_num = splat_buffers.rfeat.size() / 3 / sizeof(float);
         
         // Create OpenCV Mat for the image (8-bit, 3 channels)
-        cv::Mat image(height, width, CV_8UC3);
+        cv::Mat image(HEIGHT, WIDTH, CV_8UC3);
     
         // Convert from planar format (RRRGGGBBB) to interleaved format (BGR for OpenCV)
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int pixelIndex = y * width + x;
+        
+        cv::Mat gt = cv::imread(inputGaussian.img_list[i]);
+        cv::resize(gt, gt, cv::Size(WIDTH, HEIGHT));
+        float MSE[3] = {0,0,0};
+        
+        for (int y = 0; y < HEIGHT; y++) {
+            for (int x = 0; x < WIDTH; x++) {
+                int pixelIndex = y * WIDTH + x;
                 
                 // Make sure we don't go out of bounds
                 if (pixelIndex < point_num) {
@@ -584,6 +598,14 @@ public:
                     float r = num[pixelIndex];                // R value
                     float g = num[point_num + pixelIndex];    // G value
                     float b = num[2 * point_num + pixelIndex]; // B value
+                    
+                    float r_gt = gt.at<cv::Vec3b>(y, x)[2] / 255.0;
+                    float g_gt = gt.at<cv::Vec3b>(y, x)[1] / 255.0;
+                    float b_gt = gt.at<cv::Vec3b>(y, x)[0] / 255.0;
+                    MSE[0] += (r - r_gt) * (r - r_gt);
+                    MSE[1] += (g - g_gt) * (g - g_gt);
+                    MSE[2] += (b - b_gt) * (b - b_gt);
+                    
                     // Convert float values [0,1] to uchar [0,255]
                     uchar r_uchar = static_cast<uchar>(std::min(std::max(r * 255.0f, 0.0f), 255.0f));
                     uchar g_uchar = static_cast<uchar>(std::min(std::max(g * 255.0f, 0.0f), 255.0f));
@@ -594,6 +616,8 @@ public:
                 }
             }
         }
+        
+        calculatePSNR(MSE, WIDTH, HEIGHT);
         
         std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
         
