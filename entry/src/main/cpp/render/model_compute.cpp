@@ -283,6 +283,7 @@ void VulkanComputeExample::printGpuBuffers()
     printGpuBuffer<float>("dm_dmu1", splat_buffers.dm_dmu1, 1, 480);
     printGpuBuffer<float>("dm_dsigma1_sq", splat_buffers.dm_dsigma1_sq, 1, 480);
     printGpuBuffer<float>("dm_dsigma12", splat_buffers.dm_dsigma12, 1, 480);
+    printGpuBuffer<float>("dL_drfeat", splat_buffers.dL_drfeat, 1, 480);
     
 }
 
@@ -351,7 +352,7 @@ void VulkanComputeExample::imageToBufferCmd()
     
     current_img_idx = random_generator.generate();
     
-    current_img_idx = 0;
+//     current_img_idx = 0;
     
     if (training_step >= low_resolution_steps)
     {
@@ -888,7 +889,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     queryCmdTimeEnd("00. compute overall");
     
-    createGpu2CpuCopys();
+//     createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
 }
@@ -4469,7 +4470,7 @@ void VulkanComputeExample::printLog(bool train)
     queryEventTime();
 //     if (training_step >= 0 && train && training_step >= 500){
     if (training_step >= 0){
-        printGpuBuffers();
+//         printGpuBuffers();
     }
 
 }

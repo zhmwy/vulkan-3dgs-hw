@@ -113,7 +113,7 @@ public:
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
 
-    int low_resolution_steps = -1;
+    int low_resolution_steps = 1000;
     int sh_degree = 1;     // 1, 4, 9, 16
     
     RandomGenerator random_generator;

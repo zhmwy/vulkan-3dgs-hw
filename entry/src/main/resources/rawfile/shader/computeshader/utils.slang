@@ -11,7 +11,7 @@ static const float percent_dense = 0.01;
 static const uint DD = 16; // the upper bound of D
 static const float min_opacity = 0.005;
 static const int max_screen_size = -1;
-static const float lambda_dssim = 1.0;
+static const float lambda_dssim = 0.2;
 
 uint t2i(uint i, uint j, uint width) {
     return i * width + j;
