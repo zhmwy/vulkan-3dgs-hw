@@ -45,19 +45,9 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
     }
     
     
-//     if(flag == LOAD_EXTRA){
-//         std::string extra_path = dataFolder + "/head/other_gaussians.ply";
-//         DataLoader::loadExtraGaussianData(extra_path, inputGaussian);
-//     }
-    
     splat_count = inputGaussian.positions.size();
     random_generator.initialize(inputGaussian.img_list.size());
 }
-
-
-// void VulkanComputeExample::loadIntrinsics(std::string& dataFolder){
-//     DataLoader::loadIntrinsics(dataFolder, inputGaussian);
-// }
 
 
 void VulkanComputeExample::encodeInitBuffersValues2CommandBuffer()
@@ -223,6 +213,12 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(sort_buffers.sortKBufferEven);
     createGpu2CpuCopy(sort_buffers.sortVBufferEven);
     
+    createGpu2CpuCopy(splat_buffers.dL_dmap);
+    createGpu2CpuCopy(splat_buffers.dm_dmu1);
+    createGpu2CpuCopy(splat_buffers.dm_dsigma1_sq);
+    createGpu2CpuCopy(splat_buffers.dm_dsigma12);
+    createGpu2CpuCopy(splat_buffers.ssim_map);
+    
 }
 
 int cumsum_cpu(const vkgs::Buffer& buffer)
@@ -279,17 +275,14 @@ void VulkanComputeExample::printGpuBuffers()
     
     printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
     printGpuBuffer<float>("extr_mat", splat_buffers.extr_mat, 3, 4);
-    
     printGpuBuffer<uint32_t>("curPointsNum", splat_buffers.curPointsNum, 1, 1);
     
-    printGpuBuffer<float>("xyz_gradient_accum", splat_buffers.xyz_gradient_accum, 10, 1);
-    printGpuBuffer<uint32_t>("denom", splat_buffers.denom, 10, 1);
-    
-    printGpuBuffer<float>("sortKBufferEven", sort_buffers.sortKBufferEven, 10, 1);
-    printGpuBuffer<uint32_t>("sortVBufferEven", sort_buffers.sortVBufferEven, 10, 1);
-    
-    printGpuBuffer<float>("xyz_gradient_mean", splat_buffers.xyz_gradient_mean, 10, 1);
-    printGpuBuffer<uint32_t>("densify_idx", sort_buffers.densify_idx, 10, 1);
+    printGpuBuffer<float>("rfeat", splat_buffers.rfeat, 1, 480);
+    printGpuBuffer<float>("ssim_map", splat_buffers.ssim_map, 1, 480);
+    printGpuBuffer<float>("dL_dmap", splat_buffers.dL_dmap, 1, 480);
+    printGpuBuffer<float>("dm_dmu1", splat_buffers.dm_dmu1, 1, 480);
+    printGpuBuffer<float>("dm_dsigma1_sq", splat_buffers.dm_dsigma1_sq, 1, 480);
+    printGpuBuffer<float>("dm_dsigma12", splat_buffers.dm_dsigma12, 1, 480);
     
 }
 
@@ -358,7 +351,7 @@ void VulkanComputeExample::imageToBufferCmd()
     
     current_img_idx = random_generator.generate();
     
-//     current_img_idx = 0;
+    current_img_idx = 0;
     
     if (training_step >= low_resolution_steps)
     {
@@ -438,6 +431,12 @@ void VulkanComputeExample::zeroGradCmd()
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_duvd_int, 0, VK_WHOLE_SIZE, 0);
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
+    
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dmap, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dmu1, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma1_sq, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma12, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.ssim_map, 0, VK_WHOLE_SIZE, 0);
 //     TransComputeBarrierBlock();
 }
 
@@ -574,14 +573,21 @@ void VulkanComputeExample::backwardCmd()
     uint32_t X = 0;
     uint32_t Y = 0;
     
+    X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
+    Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
+    bindPipeline2CommandBuffer(pipe_ssim, FORWARD_PIPE, X, Y, 1, true);
+    
     /*********************  l2 loss ***********************/
-    queryCmdTimeStart("15. L2 loss");
-//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.psnr_sum, 0, VK_WHOLE_SIZE, 0);
+    queryCmdTimeStart("15. L1 loss");
     X = ((int)(current_scale * image_width) * (int)(current_scale * image_height) + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_loss, FORWARD_PIPE, X, 1, 1);
-    queryCmdTimeEnd("15. L2 loss");
+    queryCmdTimeEnd("15. L1 loss");
     /*********************  l2 loss ***********************/
 
+    X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
+    Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
+    bindPipeline2CommandBuffer(pipe_ssim, BACKWARD_PIPE, X, Y, 1, true);
+    
     // Calling the backward pipeline
 
     /*********************  Alpha blending backward ***********************/
@@ -882,9 +888,8 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     queryCmdTimeEnd("00. compute overall");
     
-//     createGpu2CpuCopys();
+    createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
-//     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
 }
 
@@ -1391,6 +1396,29 @@ void VulkanComputeExample::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
+    
+    splat_buffers.dm_dmu1 = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.dm_dsigma1_sq = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.dm_dsigma12 = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.ssim_map = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.dL_dmap = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    
+    
     // For image transfer
     splat_buffers.input_image_alpha_array = vkgs::Buffer(
         allocator, image_width * image_height * 4 * sizeof(uint8_t),
@@ -2299,6 +2327,63 @@ void VulkanComputeExample::setLossPipeline()
     );
 
     std::cout << "[setLossPipeline] Loss Pipeline set" << std::endl;
+}
+
+void VulkanComputeExample::setSSIMPipeline()
+{
+    const uint32_t bindingCount = 8;
+    createPipelineLayout(
+        pipe_ssim,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 8 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.rfeat,       //0
+        &splat_buffers.input_image_array,     //1
+        &splat_buffers.dm_dmu1,   //2
+        &splat_buffers.dm_dsigma1_sq,   //3
+        & splat_buffers.dm_dsigma12,            //4
+        &splat_buffers.ssim_map,      //5
+        & splat_buffers.dL_dmap,      //6
+        & splat_buffers.dL_drfeat,      //7
+    };
+
+    updateDescriptorSet(pipe_ssim.descriptorSet, splatBuffers);
+
+    pipe_ssim.pipelines.resize(2);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/ssim_forward.comp.spv");
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_ssim.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_ssim.pipelines[FORWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setSSIMPipeline] ssim pipeline set" << std::endl;
+
+    shaderCode = getPath("shader/computeshader/ssim_backward.comp.spv");
+
+    pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_ssim.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_ssim.pipelines[BACKWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setSSIMPipeline] ssim pipeline set" << std::endl;
 }
 
 void VulkanComputeExample::setComputeKeyPipeline()
@@ -4256,7 +4341,8 @@ bool VulkanComputeExample::prepare()
     setOptimizationPipeline();
     setExtrOptimizationPipeline();
     
-    setCalcMSEPipeline();
+//     setCalcMSEPipeline();
+    setSSIMPipeline();
     setLossPipeline();
     setImage2BufferPipeline();
     setBuffer2ImagePipeline();
@@ -4326,10 +4412,7 @@ void copyGpuBufferToVector(const vkgs::Buffer& buffer, std::vector<T>& destVecto
 
 void VulkanComputeExample::printLog(bool train)
 {
-
-//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.psnr_sum, 0, VK_WHOLE_SIZE, 0);
-//     TransComputeBarrierBlock();
-//     executeTransCommand();
+    
     if (training_step >= 500 && training_step % 100 == 0) {
         buildComputeCommandBuffer([this](){
             createGpu2CpuCopy(splat_buffers.curPointsNum);
@@ -4384,9 +4467,9 @@ void VulkanComputeExample::printLog(bool train)
 
     }
     queryEventTime();
-    if (training_step >= 0 && train && training_step >= 500){
-//     if (training_step >= 0){
-//         printGpuBuffers();
+//     if (training_step >= 0 && train && training_step >= 500){
+    if (training_step >= 0){
+        printGpuBuffers();
     }
 
 }

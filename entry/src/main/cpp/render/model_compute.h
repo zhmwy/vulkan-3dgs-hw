@@ -113,7 +113,7 @@ public:
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
 
-    int low_resolution_steps = 1000;
+    int low_resolution_steps = -1;
     int sh_degree = 1;     // 1, 4, 9, 16
     
     RandomGenerator random_generator;
@@ -221,7 +221,13 @@ public:
         vkgs::Buffer dL_dndc;
         vkgs::Buffer dL_dbackground;
         vkgs::Buffer dL_dshs_array;
-
+        
+        vkgs::Buffer dL_dmap;
+        vkgs::Buffer dm_dmu1;
+        vkgs::Buffer dm_dsigma1_sq;
+        vkgs::Buffer dm_dsigma12;
+        vkgs::Buffer ssim_map;
+        
         // activation patch buffers
         vkgs::Buffer opacity_act_array;
         vkgs::Buffer dL_dopacity_act_array;
@@ -309,6 +315,7 @@ public:
     Compute3DGS pipe_optimize_extr;
     
     Compute3DGS pipe_loss;
+    Compute3DGS pipe_ssim;
     Compute3DGS pipe_copy_img2buffer;
     Compute3DGS pipe_copy_buffer2img; 
     Compute3DGS pipe_buffer_fill;
@@ -438,6 +445,7 @@ public:
     void setCalcMSEPipeline();
     
     void setLossPipeline();
+    void setSSIMPipeline();
     void setComputeSHPipeline();
     void setComputeSHRenderPipeline();
     

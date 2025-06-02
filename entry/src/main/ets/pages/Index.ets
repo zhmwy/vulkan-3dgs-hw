@@ -44,7 +44,7 @@ struct Index {
     // this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/AVATAR/temp/" + this.currentImage.toString() + ".jpg")
     // this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/2025-05-28_10_43_25/temp/" + this.currentImage.toString() + ".jpg")
     // this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/2024_09_27_11_20_29/temp/" + this.currentImage.toString() + ".jpg")
-    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/lego/temp/" + this.currentImage.toString() + ".jpg")
+    this.pixelMap = nativeRender.getSandBoxPixelMap(filesDir, "/2025-05-28_10_38_29/temp/" + this.currentImage.toString() + ".jpg")
 
     this.currentImage = (this.currentImage + 1) % 1000
   }
@@ -65,7 +65,7 @@ struct Index {
               // this.train3DGS("plant_whitepalm_resize");
               // this.train3DGS("2025-05-28_10_43_25");
               // this.train3DGS("2024_09_27_11_20_29");
-              this.train3DGS("lego");
+              this.train3DGS("2025-05-28_10_38_29");
             }
           })
           .margin(10)
