@@ -40,7 +40,7 @@ using namespace std;
 using namespace Eigen;
 
 // napi_value FitSMPL(napi_env env, napi_callback_info info);
-void FitSMPL(std::string inputPath, std::vector<float>& head_bbox);
+void FitSMPL(std::string inputPath, std::vector<float>& head_bbox, std::vector<float>& body_bbox);
 int get_theta_from_skeleton(std::string path, std::vector<Eigen::Vector3d>& thetas);
 
 

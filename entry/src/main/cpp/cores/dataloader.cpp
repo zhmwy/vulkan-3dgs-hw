@@ -954,6 +954,7 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
     
     // Double extr_tmp to support adding face regions.
     data.extr_tmp.insert(data.extr_tmp.end(), data.extr_tmp.begin(), data.extr_tmp.end());
+    data.time_stamps.insert(data.time_stamps.end(), data.time_stamps.begin(), data.time_stamps.end());
     data.extr_tmp_test = data.extr_tmp;
     
     for(int i=0; i<faceCenters.size(); ++i){
@@ -1086,7 +1087,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         DataLoader::InputInitStruct::DataExtr extr = { qw / norm, qx / norm, qy / norm, qz / norm, tx, ty, tz };
         data.extr_tmp.push_back(extr);
         data.img_list.push_back(scenepath + "/images/" + imageName);
-        data.time_stamps.push_back(idx);
+        data.time_stamps.push_back(float(idx));
         ++idx;
 
         if (ext.size() == 0){
@@ -1098,7 +1099,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         std::getline(imagesFile, line);
     }
     for (auto& time : data.time_stamps) {
-        time /= data.time_stamps.size();
+        time /= float(data.time_stamps.size());
     }
 
     
@@ -1117,20 +1118,20 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
-//         bool is_human = HumanPreprocess(scenepath, data.head_bbox);
-        bool is_human = false;
+        bool is_human = HumanPreprocess(scenepath, data.head_bbox, data.body_bbox);
+//         bool is_human = false;
         std::string pointsFilePath = slampath + "/points3D.txt";
         load3DPoints(pointsFilePath, data);
         
         if (is_human) {
             std::string smplPath = scenepath + "/smpl.txt";
             load3DPoints(smplPath, data);
-            for(int i=0; i<data.head_bbox.size(); ++i){
-                LOGI("head bbox: %{public}f", data.head_bbox[i]);
+            for(int i=0; i<data.body_bbox.size(); ++i){
+                LOGI("body bbox: %{public}f", data.body_bbox[i]);
             }
             std::vector<cv::Point> faceCenters = projectHeadCenter(data);
             
-            GetSegments(scenepath);
+//             GetSegments(scenepath);
             createEnlargedFace(scenepath, data, faceCenters);
         }
     }

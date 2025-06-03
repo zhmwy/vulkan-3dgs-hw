@@ -317,7 +317,7 @@ void write_points3D(std::string& outputPath,
 }
 
 // Enhanced main function
-void FitSMPL(std::string inputPath, std::vector<float>& head_bbox) {
+void FitSMPL(std::string inputPath, std::vector<float>& head_bbox, std::vector<float>& body_bbox) {
     auto begin = clk::now();
     
     std::string outputPath = inputPath + "/smpl.txt";
@@ -391,7 +391,7 @@ void FitSMPL(std::string inputPath, std::vector<float>& head_bbox) {
     vertices.rowwise() += t;
     
     // Step 4: Calculate body bounding box
-    std::vector<float> body_bbox = calculate_body_bbox(detected_keypoints_all, validity);
+    body_bbox = calculate_body_bbox(detected_keypoints_all, validity);
     
     // Step 5: Write filtered vertices to output file
     write_points3D(outputPath, vertices, body_bbox);

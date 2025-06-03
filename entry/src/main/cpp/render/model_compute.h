@@ -112,7 +112,7 @@ public:
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 1000;
-    int flow_steps = 2000;
+    int flow_steps = 10;
     int sh_degree = 1;
     
     RandomGenerator random_generator;
@@ -175,6 +175,8 @@ public:
         vkgs::Buffer rot_flow_avg;
         vkgs::Buffer xyz_flow_exp_avg;
         vkgs::Buffer rot_flow_exp_avg;
+        vkgs::Buffer body_bbox;
+        vkgs::Buffer is_body_point;
         
         // alpha blending buffers
         vkgs::Buffer conic;
@@ -349,6 +351,8 @@ public:
     Compute3DGS pipe_hist_odd;
     Compute3DGS pipe_hist_offset;
     
+    Compute3DGS pipe_mask_body;
+    
     vks::Buffer vertexBuffer;
     vks::Buffer indexBuffer;
     uint32_t indexCount;
@@ -461,7 +465,7 @@ public:
     
     void setExtrProcessPipeline();
     void setExtrProcessRenderPipeline();
-    
+    void setMaskBodyPipeline();
     
     // 3dgs command buffer
     void forwardCmd();

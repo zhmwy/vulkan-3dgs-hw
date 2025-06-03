@@ -50,6 +50,7 @@ public:
         std::vector<std::vector<float>> intr_tmp;
 
         std::vector<float> head_bbox;
+        std::vector<float> body_bbox;
 
         std::vector<glm::vec3> cam_centers;
         glm::vec3 translate;

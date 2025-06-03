@@ -118,6 +118,7 @@ void VulkanComputeExample::encodeCpu2Gpu()
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rot_flow_params, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.is_body_point, 0, VK_WHOLE_SIZE, 0);
     TransComputeBarrierBlock();
     
     splat_buffers.xyz_array.FromCpu(
@@ -132,10 +133,10 @@ void VulkanComputeExample::encodeCpu2Gpu()
         compute.commandBuffer,
         inputGaussian.rotations.data()
     );
-     splat_buffers.opacity.FromCpu(
-         compute.commandBuffer,
-         inputGaussian.opacities.data()
-     );
+    splat_buffers.opacity.FromCpu(
+        compute.commandBuffer,
+        inputGaussian.opacities.data()
+    );
     splat_buffers.sh_coeff.FromCpu(
         compute.commandBuffer,
         inputGaussian.colors.data()
@@ -144,7 +145,12 @@ void VulkanComputeExample::encodeCpu2Gpu()
         compute.commandBuffer,
         inputGaussian.extr_tmp.data()
     );
-    
+    if(inputGaussian.body_bbox.size() == 6){
+        splat_buffers.body_bbox.FromCpu(
+            compute.commandBuffer,
+            inputGaussian.body_bbox.data()
+        );
+    }
     
     std::vector<int> curPointsNum(1);
     curPointsNum[0] = splat_count;
@@ -227,7 +233,12 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.dL_dextr_params);
     createGpu2CpuCopy(splat_buffers.intr_params_render);
     
-    
+    createGpu2CpuCopy(splat_buffers.time_stamp);
+    createGpu2CpuCopy(splat_buffers.is_body_point);
+    createGpu2CpuCopy(splat_buffers.dL_dxyz_flow);
+    createGpu2CpuCopy(splat_buffers.dL_drot_flow);
+    createGpu2CpuCopy(splat_buffers.xyz_flow_params);
+    createGpu2CpuCopy(splat_buffers.rot_flow_params);
     
 }
 
@@ -254,7 +265,7 @@ void VulkanComputeExample::printGpuBuffers()
 //     printGpuBuffer<float>("extr_mat", splat_buffers.extr_mat, 3, 4);
 //     printGpuBuffer<float>("extr_act", splat_buffers.extr_act, 1, 6);
 //    
-//     printGpuBuffer<float>("xyz_array", splat_buffers.xyz_array, 4, 3);
+    printGpuBuffer<float>("xyz_array", splat_buffers.xyz_array, 4, 3);
 //     printGpuBuffer<float>("scale_array", splat_buffers.scale_array, 4, 3);
 //    
 //     printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
@@ -264,8 +275,13 @@ void VulkanComputeExample::printGpuBuffers()
 //     printGpuBuffer<uint32_t>("radius", splat_buffers.radius, 4, 1);
 
     printGpuBuffer<uint32_t>("visible", splat_buffers.visible, 4, 1);
-    printGpuBuffer<float>("dL_duvd", splat_buffers.dL_duvd, 4, 3);
+    printGpuBuffer<float>("timestamp", splat_buffers.time_stamp, 1, 1);
     printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
+    printGpuBuffer<float>("dL_dxyz_flow", splat_buffers.dL_dxyz_flow, 4, 18);
+
+    printGpuBuffer<float>("xyz_flow_params", splat_buffers.xyz_flow_params, 4, 18);
+//     printGpuBuffer<float>("rot_flow_params", splat_buffers.rot_flow_params, 4, 24);
+    printGpuBuffer<int32_t>("is_body_point", splat_buffers.is_body_point, 4, 1);
 }
 
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
@@ -881,6 +897,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     bindPipeline2CommandBuffer(pipe_extr_process, FORWARD_PIPE, 1, 1, 1);
     if (training_step == flow_steps + 1) {
         initBaseCmd();
+        bindPipeline2CommandBuffer(pipe_mask_body, FORWARD_PIPE, X, 1, 1);
     }
 
     if (training_step > flow_steps){
@@ -921,7 +938,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     queryCmdTimeEnd("00. compute overall");
     
-//     createGpu2CpuCopys();
+    createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
@@ -1248,6 +1265,14 @@ void VulkanComputeExample::prepare3dgsBuffers()
     );
     splat_buffers.rot_flow_exp_avg = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.body_bbox = vkgs::Buffer(
+        allocator, 6 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.is_body_point = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * sizeof(int32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
@@ -1788,9 +1813,52 @@ void VulkanComputeExample::setProjectionPipeline()
     std::cout << "[setProjectionPipeline] Projection pipeline set" << std::endl;
 }
 
+void VulkanComputeExample::setMaskBodyPipeline(){
+    const uint32_t bindingCount = 5;
+    createPipelineLayout(
+        pipe_mask_body,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.xyz_array,       //0
+        &splat_buffers.is_body_point,    //1
+        &splat_buffers.body_bbox,      //2
+        &splat_buffers.curPointsNum,     //3
+        &splat_buffers.visible,     //4
+    };
+
+    updateDescriptorSet(pipe_mask_body.descriptorSet, splatBuffers);
+
+    pipe_mask_body.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/mask_body.comp.spv");
+#ifdef VULKAN_PC
+    shaderCode = "../../shaders/glsl/computeshader/mask_body.comp.spv";
+    std::cout << "[setFlowPipeline] shaderCode: " << shaderCode << std::endl;
+#endif
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_mask_body.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_mask_body.pipelines[FORWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setMaskBodyPipeline] Mask Body pipeline set" << std::endl;
+}
+
+
 void VulkanComputeExample::setFlowPipeline()
 {
-    const uint32_t bindingCount = 11;
+    const uint32_t bindingCount = 12;
     createPipelineLayout(
         pipe_flow,
         bindingCount,  // Number of descriptor set bindings
@@ -1810,6 +1878,7 @@ void VulkanComputeExample::setFlowPipeline()
         &splat_buffers.dL_drotate,      //8
         &splat_buffers.dL_dxyz_flow,         //9
         &splat_buffers.dL_drot_flow,      //10
+        &splat_buffers.is_body_point,       //11
     };
 
     updateDescriptorSet(pipe_flow.descriptorSet, splatBuffers);
@@ -4254,6 +4323,18 @@ void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs
         return;
     }
     
+//     if(varName == "is_body_point")
+//     {
+//         int count = 0;
+//         for(int i = 0; i < pointNum;i++){
+//             if(num[i] == 1){
+//                 ++count;
+//             }
+//         }
+//         LOGI("Body point Count is: %{public}d / %{public}d", count, pointNum);
+//         return;
+//     }
+    
     #ifdef VULKAN_HW
     for (int i = 0; i < pointNum; i++) {
         LOGW("%{public}d: ", i);
@@ -4442,7 +4523,7 @@ bool VulkanComputeExample::prepare()
     
     setKNNPipeline();
     setPrunePipeline();
-    
+    setMaskBodyPipeline();
 //     buildComputeCommandBuffer();
     LOGI("Prepare: Finished.");
     prepared = true;
@@ -4540,7 +4621,7 @@ void VulkanComputeExample::printLog(bool train)
     }
     queryEventTime();
     if (training_step >= 0 && train){
-//         printGpuBuffers();
+        printGpuBuffers();
     }
 
 }

@@ -15,4 +15,4 @@
 #include "head_mask/manageHeadMasks.h"
 
 napi_value HumanPreprocess_napi(napi_env env, napi_callback_info info);
-bool HumanPreprocess(std::string inputPath, std::vector<float>& head_bbox);
+bool HumanPreprocess(std::string inputPath, std::vector<float>& head_bbox, std::vector<float>& body_bbox);
