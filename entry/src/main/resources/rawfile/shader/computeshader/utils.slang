@@ -2,12 +2,12 @@
 #define BLOCK_X 16
 #define BLOCK_Y 16
 #define PIXELS_PER_TILE (BLOCK_X * BLOCK_Y)
-#define MAX_SPLAT_COUNT 400000
-#define DENSIFY_RATIO 0.1
 
 static const uint toAddNum = 500;
 static const float percent_dense = 0.01;
-// static const float scene_extent = 1.0;
+static const float scene_extent = 1.0;
+// static const float scene_extent = 5.202147674560547;
+// static const float scene_extent = 5.202147674560547 / 5;
 static const uint DD = 16; // the upper bound of D
 static const float min_opacity = 0.005;
 static const int max_screen_size = -1;

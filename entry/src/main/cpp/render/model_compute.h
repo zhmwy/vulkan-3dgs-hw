@@ -50,7 +50,7 @@
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
-#define SORT_SIZE 50
+#define SORT_SIZE 10    // must be equal to TILE_NUM_AVG_MAX!!!!!!!!
 
 #define LOAD_HEAD 0
 #define LOAD_EXTRA 1
@@ -114,7 +114,7 @@ public:
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 1000;
-    int sh_degree = 1;     // 1, 4, 9, 16
+    int sh_degree = 1;
     
     RandomGenerator random_generator;
     int current_img_idx = 0;
@@ -221,7 +221,7 @@ public:
         vkgs::Buffer dL_dndc;
         vkgs::Buffer dL_dbackground;
         vkgs::Buffer dL_dshs_array;
-        
+
         vkgs::Buffer dL_dmap;
         vkgs::Buffer dm_dmu1;
         vkgs::Buffer dm_dsigma1_sq;
@@ -326,12 +326,9 @@ public:
     Compute3DGS pipe_mean_grad;
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
-    Compute3DGS pipe_clone_3dgs;
-    Compute3DGS pipe_split_3dgs;
     Compute3DGS pipe_reset_opacity;
     Compute3DGS pipe_extr_process;
     Compute3DGS pipe_extr_process_render;
-    Compute3DGS pipe_calc_MSE;
     
     
     Compute3DGS pipe_knn;
@@ -432,9 +429,6 @@ public:
     void setClonePipeline();
     void setPrunePipeline();
     void setSplitPipeline();
-    void setClone3DGSPipeline();
-    void setSplit3DGSPipeline();
-    
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
@@ -442,7 +436,6 @@ public:
     void setIntToFloatGradientPipeline();
     void setOptimizationPipeline();
     void setExtrOptimizationPipeline();
-    void setCalcMSEPipeline();
     
     void setLossPipeline();
     void setSSIMPipeline();
@@ -572,7 +565,7 @@ public:
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
     
-    void renderRGB2Cpu(int i, std::string& dataFolder)
+    void renderRGB2Cpu(int i, std::string& dataFolder, int width=480, int height=640)
     {
         if (!prepared) {
             return;
@@ -580,25 +573,23 @@ public:
 
         buildComputeCommandBuffer([this]() {
             encodeGetImageBuffer();
-            createGpu2CpuCopy(splat_buffers.psnr_sum);
         });
+
         executeComputeCommand();
         
         const float* num= reinterpret_cast<const float*> (getArrayFromGpuBuffer(splat_buffers.rfeat));
         int point_num = splat_buffers.rfeat.size() / 3 / sizeof(float);
         
         // Create OpenCV Mat for the image (8-bit, 3 channels)
-        cv::Mat image(HEIGHT, WIDTH, CV_8UC3);
-    
-        // Convert from planar format (RRRGGGBBB) to interleaved format (BGR for OpenCV)
-        
+        cv::Mat image(height, width, CV_8UC3);
         cv::Mat gt = cv::imread(inputGaussian.img_list[i]);
         cv::resize(gt, gt, cv::Size(WIDTH, HEIGHT));
         float MSE[3] = {0,0,0};
         
-        for (int y = 0; y < HEIGHT; y++) {
-            for (int x = 0; x < WIDTH; x++) {
-                int pixelIndex = y * WIDTH + x;
+        // Convert from planar format (RRRGGGBBB) to interleaved format (BGR for OpenCV)
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pixelIndex = y * width + x;
                 
                 // Make sure we don't go out of bounds
                 if (pixelIndex < point_num) {
@@ -624,14 +615,11 @@ public:
                 }
             }
         }
-        
         calculatePSNR(MSE, WIDTH, HEIGHT);
-        
-        std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
         
         std::string save_dir_debug = dataFolder + "/temp";
         std::filesystem::create_directories(save_dir_debug);
-        std::string filename = save_dir_debug + "/" + imgname;
+        std::string filename = save_dir_debug + "/" + std::to_string(i) + ".jpg";
         LOGI("Saving rendered image to: %{public}s", filename.c_str());
         cv::imwrite(filename, image);
     }

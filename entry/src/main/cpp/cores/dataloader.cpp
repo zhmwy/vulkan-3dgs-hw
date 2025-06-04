@@ -349,8 +349,6 @@ void DataLoader::InputInitStruct::computePositionStats() {
     }
     variance = sum / static_cast<double>(positions.size());  // **求均值**
     
-//     this->mean = mean;
-//     this->variance = variance;
     
     std::cout << "Position Mean: (" << mean.x << ", " << mean.y << ", " << mean.z << ")" << std::endl;
     std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
@@ -1104,7 +1102,6 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         
         
         float norm = sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
-        norm = 1;
         DataLoader::InputInitStruct::DataExtr extr = { qw / norm, qx / norm, qy / norm, qz / norm, tx, ty, tz };
         data.extr_tmp.push_back(extr);
         data.img_list.push_back(scenepath + "/images/" + imageName);
