@@ -319,13 +319,16 @@ public:
     Compute3DGS pipe_copy_img2buffer;
     Compute3DGS pipe_copy_buffer2img; 
     Compute3DGS pipe_buffer_fill;
-    Compute3DGS pipe_reset_psnr;
     Compute3DGS pipe_sh;
     Compute3DGS pipe_sh_render;
+    
     Compute3DGS pipe_densification_stats;
     Compute3DGS pipe_mean_grad;
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
+    Compute3DGS pipe_clone_3dgs;
+    Compute3DGS pipe_split_3dgs;
+    
     Compute3DGS pipe_reset_opacity;
     Compute3DGS pipe_extr_process;
     Compute3DGS pipe_extr_process_render;
@@ -424,11 +427,15 @@ public:
     void setSortPipeline(); 
     void setComputeKeyPipeline();
     void setComputeTilePipeline();
+    
     void setDensificationStatsPipeline();
     void setMeanGradPipeline();
     void setClonePipeline();
     void setPrunePipeline();
     void setSplitPipeline();
+    void setClone3DGSPipeline();
+    void setSplit3DGSPipeline();
+    
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
