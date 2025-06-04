@@ -238,6 +238,7 @@ public:
         vkgs::Buffer denom;
         vkgs::Buffer curPointsNum;
         vkgs::Buffer xyz_gradient_mean;
+        vkgs::Buffer xyz_gradient_mean_int;
 
 
         vkgs::Buffer dL_duvd_int;
@@ -641,7 +642,7 @@ public:
     }
     #endif
     template<typename T>
-    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50, int length = 3);
+    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50, int length = 3, int offset = 0);
 private:
     VkPhysicalDeviceFeatures2 features_{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     VkPhysicalDeviceImagelessFramebufferFeatures imageless_framebuffer_feature_{

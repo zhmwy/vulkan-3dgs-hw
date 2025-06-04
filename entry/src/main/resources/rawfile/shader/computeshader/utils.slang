@@ -5,7 +5,7 @@
 
 static const uint toAddNum = 500;
 static const float percent_dense = 0.01;
-static const float scene_extent = 1.0;
+// static const float scene_extent = 1.0;
 // static const float scene_extent = 5.202147674560547;
 // static const float scene_extent = 5.202147674560547 / 5;
 static const uint DD = 16; // the upper bound of D
