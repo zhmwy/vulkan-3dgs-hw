@@ -53,7 +53,7 @@ void InterfaceImplVulkan::TrainVulkan() {
     GetProcessVulkan();
 
     try {
-        std::vector<int> max_steps = {1500, 500, 500};
+        std::vector<int> max_steps = {1499, 500, 500};
         
         // Main training loop
         for (int step = 0; step < max_steps[0]; ++step) {
@@ -68,11 +68,13 @@ void InterfaceImplVulkan::TrainVulkan() {
         
         if (_isTraining) {
             // Post-training operations
+            _renderer->total_psnr = 0;
+            
             for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
-
                 _renderer->renderImage(i);
                 _renderer->renderRGB2Cpu(i, _dataPath);
             }
+            
             LOGI("PSNR: %{public}f", _renderer->total_psnr / _renderer->inputGaussian.img_list.size());
             updateProgress(100.0f);
             GetProcessVulkan();

@@ -113,7 +113,7 @@ public:
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
 
-    int low_resolution_steps = 1000;
+    int low_resolution_steps = -1;
     int sh_degree = 1;
     
     RandomGenerator random_generator;
@@ -503,7 +503,7 @@ public:
     void updateUniformBuffers();
 
     virtual bool prepare();
-    void calculatePSNR(float* mse, int width, int height);
+    float calculatePSNR(float* mse, int width, int height);
     virtual void draw(){};
     virtual void printLog(bool train = true);
     void executeComputeCommand();
@@ -568,7 +568,7 @@ public:
             });
 
         executeComputeCommand();
-        printLog(false);
+//         printLog(false);
     }
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
@@ -623,12 +623,15 @@ public:
                 }
             }
         }
-        calculatePSNR(MSE, WIDTH, HEIGHT);
+        float psnr_each = calculatePSNR(MSE, WIDTH, HEIGHT);
         
+        std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
         std::string save_dir_debug = dataFolder + "/temp";
         std::filesystem::create_directories(save_dir_debug);
-        std::string filename = save_dir_debug + "/" + std::to_string(i) + ".jpg";
+        std::string filename = save_dir_debug + "/" + imgname;
         LOGI("Saving rendered image to: %{public}s", filename.c_str());
+        LOGI("PSNR: %{public}f", psnr_each);
+        
         cv::imwrite(filename, image);
     }
     #ifdef VULKAN_PC
