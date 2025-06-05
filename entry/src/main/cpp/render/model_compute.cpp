@@ -150,6 +150,10 @@ void VulkanComputeExample::encodeCpu2Gpu()
             compute.commandBuffer,
             inputGaussian.body_bbox.data()
         );
+        splat_buffers.max_movement.FromCpu(
+            compute.commandBuffer,
+            &inputGaussian.max_movement
+        );
     }
     
     std::vector<int> curPointsNum(1);
@@ -239,7 +243,8 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.dL_drot_flow);
     createGpu2CpuCopy(splat_buffers.xyz_flow_params);
     createGpu2CpuCopy(splat_buffers.rot_flow_params);
-    
+    createGpu2CpuCopy(splat_buffers.xyz_flow);
+    createGpu2CpuCopy(splat_buffers.rot_flow);
 }
 
 int cumsum_cpu(const vkgs::Buffer& buffer)
@@ -280,6 +285,9 @@ void VulkanComputeExample::printGpuBuffers()
     printGpuBuffer<float>("dL_dxyz_flow", splat_buffers.dL_dxyz_flow, 4, 18);
 
     printGpuBuffer<float>("xyz_flow_params", splat_buffers.xyz_flow_params, 4, 18);
+    printGpuBuffer<float>("xyz_flow", splat_buffers.xyz_flow, 4, 3);
+    printGpuBuffer<float>("rot_flow", splat_buffers.rot_flow, 4, 4);
+    
 //     printGpuBuffer<float>("rot_flow_params", splat_buffers.rot_flow_params, 4, 24);
     printGpuBuffer<int32_t>("is_body_point", splat_buffers.is_body_point, 4, 1);
 }
@@ -938,7 +946,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     queryCmdTimeEnd("00. compute overall");
     
-    createGpu2CpuCopys();
+//     createGpu2CpuCopys();
     createGpu2CpuCopy(splat_buffers.curPointsNum);
     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
@@ -1235,6 +1243,14 @@ void VulkanComputeExample::prepare3dgsBuffers()
         allocator, MAX_SPLAT_COUNT * 4 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    splat_buffers.xyz_flow = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.rot_flow = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
     splat_buffers.xyz_flow_params = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1275,7 +1291,10 @@ void VulkanComputeExample::prepare3dgsBuffers()
         allocator, MAX_SPLAT_COUNT * sizeof(int32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
-    
+    splat_buffers.max_movement = vkgs::Buffer(
+        allocator, sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
     splat_buffers.dL_dshs_array = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1858,7 +1877,7 @@ void VulkanComputeExample::setMaskBodyPipeline(){
 
 void VulkanComputeExample::setFlowPipeline()
 {
-    const uint32_t bindingCount = 12;
+    const uint32_t bindingCount = 15;
     createPipelineLayout(
         pipe_flow,
         bindingCount,  // Number of descriptor set bindings
@@ -1870,15 +1889,18 @@ void VulkanComputeExample::setFlowPipeline()
         &splat_buffers.time_stamp,         //0
         &splat_buffers.xyz_array,       //1
         &splat_buffers.rotate_array,    //2
-        &splat_buffers.xyz_flow_params,     //3
-        &splat_buffers.rot_flow_params,     //4
-        &splat_buffers.curPointsNum,     //5
-        &splat_buffers.visible,     //6
-        &splat_buffers.dL_dxyz,         //7
-        &splat_buffers.dL_drotate,      //8
-        &splat_buffers.dL_dxyz_flow,         //9
-        &splat_buffers.dL_drot_flow,      //10
-        &splat_buffers.is_body_point,       //11
+        &splat_buffers.xyz_flow,       //3
+        &splat_buffers.rot_flow,    //4
+        &splat_buffers.xyz_flow_params,     //5
+        &splat_buffers.rot_flow_params,     //6
+        &splat_buffers.curPointsNum,     //7
+        &splat_buffers.visible,     //8
+        &splat_buffers.dL_dxyz,         //9
+        &splat_buffers.dL_drotate,      //10
+        &splat_buffers.dL_dxyz_flow,         //11
+        &splat_buffers.dL_drot_flow,      //12
+        &splat_buffers.is_body_point,       //13
+        &splat_buffers.max_movement,       //14
     };
 
     updateDescriptorSet(pipe_flow.descriptorSet, splatBuffers);
@@ -4621,7 +4643,7 @@ void VulkanComputeExample::printLog(bool train)
     }
     queryEventTime();
     if (training_step >= 0 && train){
-        printGpuBuffers();
+//         printGpuBuffers();
     }
 
 }

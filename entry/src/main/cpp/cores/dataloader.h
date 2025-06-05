@@ -51,7 +51,8 @@ public:
 
         std::vector<float> head_bbox;
         std::vector<float> body_bbox;
-
+        float max_movement;
+        
         std::vector<glm::vec3> cam_centers;
         glm::vec3 translate;
         float radius;

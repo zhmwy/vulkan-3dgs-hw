@@ -1100,8 +1100,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     }
     for (auto& time : data.time_stamps) {
         time /= float(data.time_stamps.size());
+//         time -= 0.5;
     }
-
     
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
@@ -1129,6 +1129,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
             for(int i=0; i<data.body_bbox.size(); ++i){
                 LOGI("body bbox: %{public}f", data.body_bbox[i]);
             }
+            data.max_movement = (data.body_bbox[3] - data.body_bbox[2]) * 0.01;
             std::vector<cv::Point> faceCenters = projectHeadCenter(data);
             
 //             GetSegments(scenepath);

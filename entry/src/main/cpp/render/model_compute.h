@@ -112,7 +112,7 @@ public:
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 1000;
-    int flow_steps = 10;
+    int flow_steps = 2000;
     int sh_degree = 1;
     
     RandomGenerator random_generator;
@@ -169,6 +169,8 @@ public:
         vkgs::Buffer rot_base_array;
         vkgs::Buffer xyz_flow_params;     // [P, 16, 3, 3]
         vkgs::Buffer rot_flow_params;     // [P, 16, 4, 3]
+        vkgs::Buffer xyz_flow;     // [P, 16, 3, 3]
+        vkgs::Buffer rot_flow;     // [P, 16, 4, 3]
         vkgs::Buffer dL_dxyz_flow;
         vkgs::Buffer dL_drot_flow;
         vkgs::Buffer xyz_flow_avg;
@@ -177,6 +179,7 @@ public:
         vkgs::Buffer rot_flow_exp_avg;
         vkgs::Buffer body_bbox;
         vkgs::Buffer is_body_point;
+        vkgs::Buffer max_movement;
         
         // alpha blending buffers
         vkgs::Buffer conic;
