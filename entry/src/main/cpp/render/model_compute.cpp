@@ -287,13 +287,12 @@ void VulkanComputeExample::printGpuBuffers()
     
     printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
     printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
-
-    printGpuBuffer<uint32_t>("curPointsNum", splat_buffers.curPointsNum, 1, 1);
-//     printGpuBuffer<float>("rotate_array", splat_buffers.rotate_array, 20, 4, 0);
-    printGpuBuffer<float>("rotate_array", splat_buffers.rotate_array, 50, 4, 70000);
-//     printGpuBuffer<uint32_t>("sortVBufferEven", sort_buffers.sortVBufferEven, 1000, 1);
-    printKeyAndSortedIdx(sort_buffers.sortKBufferEven, sort_buffers.sortVBufferEven, splat_buffers.xyz_gradient_mean_int, 3500);
-
+    
+    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 3, 3);
+    printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 3, 1);
+    printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 3, 3);
+//     printGpuBuffer<float>("dL_dshs_array", splat_buffers.dL_dshs_array, 3, 48);
+    printGpuBuffer<float>("dL_drotate", splat_buffers.dL_drotate, 3, 4);
 }
 
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
@@ -605,7 +604,7 @@ void VulkanComputeExample::backwardCmd()
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
 
-    //     bindPipeline2CommandBuffer(pipe_blending, BACKWARD_PIPE, X, Y, 1);
+//     bindPipeline2CommandBuffer(pipe_blending, BACKWARD_PIPE, X, Y, 1);
     bindPipeline2CommandBuffer(pipe_blending_int, BACKWARD_PIPE, X, Y, 1);
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_int2float, BACKWARD_PIPE, X, 1, 1);
@@ -4351,56 +4350,58 @@ void VulkanComputeExample::printLog(bool train)
         }
     }
     
-    if (training_step >= 50000) {
+    if (training_step >= 500000) {
         buildComputeCommandBuffer([this](){
             createGpu2CpuCopys();
         });
         executeComputeCommand();
-        std::vector<float> positionData;
-        copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
-        inputGaussian.positions.clear();
-        for (int i = 0; i < splat_count; i++) {
-        inputGaussian.positions.emplace_back(
-                positionData[i * 3], 
-                positionData[i * 3 + 1], 
-                positionData[i * 3 + 2]
-            );
-        }
-        std::vector<float> scaleData;
-        copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
-        inputGaussian.scales.clear();
-        for (int i = 0; i < splat_count; i++) {
-            inputGaussian.scales.emplace_back(
-                scaleData[i * 3], 
-                scaleData[i * 3 + 1], 
-                scaleData[i * 3 + 2]
-            );
-        }
         
-        std::vector<float> rotationData;
-        copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
-        inputGaussian.rotations.clear();
-        for (int i = 0; i < splat_count; i++) {
-            inputGaussian.rotations.emplace_back(
-                rotationData[i * 4], 
-                rotationData[i * 4 + 1], 
-                rotationData[i * 4 + 2], 
-                rotationData[i * 4 + 3]
-            );
-        }
-        
-        std::vector<float> featureData;
-        copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
-        inputGaussian.colors.clear();
-        for (int i = 0; i < splat_count; i++) {
-            DataLoader::InputInitStruct::Data colorData;
-            for (int j = 0; j < 48; j++) {
-                colorData.values[j] = featureData[i * 48 + j];
+        if (training_step >= 50000){
+            std::vector<float> positionData;
+            copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
+            inputGaussian.positions.clear();
+            for (int i = 0; i < splat_count; i++) {
+            inputGaussian.positions.emplace_back(
+                    positionData[i * 3], 
+                    positionData[i * 3 + 1], 
+                    positionData[i * 3 + 2]
+                );
             }
-            inputGaussian.colors.push_back(colorData);
+            std::vector<float> scaleData;
+            copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
+            inputGaussian.scales.clear();
+            for (int i = 0; i < splat_count; i++) {
+                inputGaussian.scales.emplace_back(
+                    scaleData[i * 3], 
+                    scaleData[i * 3 + 1], 
+                    scaleData[i * 3 + 2]
+                );
+            }
+            
+            std::vector<float> rotationData;
+            copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
+            inputGaussian.rotations.clear();
+            for (int i = 0; i < splat_count; i++) {
+                inputGaussian.rotations.emplace_back(
+                    rotationData[i * 4], 
+                    rotationData[i * 4 + 1], 
+                    rotationData[i * 4 + 2], 
+                    rotationData[i * 4 + 3]
+                );
+            }
+            
+            std::vector<float> featureData;
+            copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
+            inputGaussian.colors.clear();
+            for (int i = 0; i < splat_count; i++) {
+                DataLoader::InputInitStruct::Data colorData;
+                for (int j = 0; j < 48; j++) {
+                    colorData.values[j] = featureData[i * 48 + j];
+                }
+                inputGaussian.colors.push_back(colorData);
+            }
+            copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
         }
-        
-        copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
     }
 
     
@@ -4431,7 +4432,7 @@ void VulkanComputeExample::printLog(bool train)
 
     }
     queryEventTime();
-    if ((training_step >= 500) && train){
+    if ((training_step >= 0) && train){
 //         printGpuBuffers();
     }
 
