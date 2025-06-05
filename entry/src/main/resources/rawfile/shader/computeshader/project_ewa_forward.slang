@@ -79,43 +79,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     if (idx.x >= curPointsNum[0])
         return;
 
-    // AllMemoryBarrierWithGroupSync();
-    // if (idx == 0) {
-    //     float w = extr_params[0];
-    //     float x = extr_params[1];
-    //     float y = extr_params[2];
-    //     float z = extr_params[3];
-
-    //     float norm_extr = sqrt(w * w + x * x + y * y + z * z);
-    //     w = w / norm_extr;
-    //     x = x / norm_extr;
-    //     y = y / norm_extr;
-    //     z = z / norm_extr;
-
-    //     extr[0] = 1 - 2 * (y * y + z * z);
-    //     extr[1] = 2 * (x * y - w * z);
-    //     extr[2] = 2 * (x * z + w * y);
-    //     extr[3] = extr_params[4];
-
-    //     extr[4] = 2 * (x * y + w * z);
-    //     extr[5] = 1 - 2 * (x * x + z * z);
-    //     extr[6] = 2 * (y * z - w * x);
-    //     extr[7] = extr_params[5];
-
-    //     extr[8] = 2 * (x * z - w * y);
-    //     extr[9] = 2 * (y * z + w * x);
-    //     extr[10] = 1 - 2 * (x * x + y * y);
-    //     extr[11] = extr_params[6];
-
-    //     extr_act[0] = w;
-    //     extr_act[1] = x;
-    //     extr_act[2] = y;
-    //     extr_act[3] = z;
-    //     extr_act[4] = norm_extr;
-    //     extr_act[5] = pow(norm_extr, 3);
-    // }
-    // AllMemoryBarrierWithGroupSync();
-
     if (visible_array[idx] == 0)
         return;
 
@@ -137,6 +100,10 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
     float3 scale_act_reg = exp(scale_reg);
     opacity_act_array[idx] = 1 / (1 + exp(-opacity_array[idx]));
+    if (opacity_act_array[idx] < min_opacity) {
+        visible_array[idx] = 0;
+        return;
+    }
 
     float norm_rotate = sqrt(rotate_reg[0] * rotate_reg[0] +
                              rotate_reg[1] * rotate_reg[1] +
