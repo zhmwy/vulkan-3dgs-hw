@@ -581,6 +581,7 @@ void VulkanComputeExample::backwardCmd()
     uint32_t X = 0;
     uint32_t Y = 0;
     
+    
     /*********************  l1 loss ***********************/
     queryCmdTimeStart("15. L1_loss");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
