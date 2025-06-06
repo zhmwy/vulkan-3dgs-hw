@@ -853,11 +853,11 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
 
-    if (training_step >= 500 && training_step % 100 == 0 && splat_count * 1.06 < MAX_SPLAT_COUNT)
+    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0 && splat_count * 1.06 < MAX_SPLAT_COUNT)
     {
         densifyCmd();
     }
-    if (training_step % 3000 == 0 && training_step > 1000)
+    if (training_step % 1000 == 0 && training_step > 3000)
     {
         bindPipeline2CommandBuffer(pipe_reset_opacity, FORWARD_PIPE, X, 1, 1);
     }
@@ -3273,7 +3273,8 @@ void VulkanComputeExample::setBufferFillPipeline()
 
     std::vector<vkgs::Buffer*> splatBuffers = {
         &splat_buffers.visible,                  //0
-        &splat_buffers.curPointsNum,                //1
+        &splat_buffers.curPointsNum                //1
+//         &splat_buffers.opacity
     };
 
     updateDescriptorSet(pipe_buffer_fill.descriptorSet, splatBuffers);
@@ -3766,7 +3767,7 @@ void VulkanComputeExample::bindPipeline2CommandBuffer(
         };
         vkCmdPushConstantsGS(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float) * 8, pushConstants.data());
     }else{
-        std::vector<uint32_t> pushConstants = { xyz_size, (unsigned int)(current_scale * image_width), (unsigned int)(current_scale * image_height), 0};
+        std::vector<uint32_t> pushConstants = { xyz_size, (unsigned int)(current_scale * image_width), (unsigned int)(current_scale * image_height), static_cast<uint32_t>(training_step)};
         vkCmdPushConstantsGS(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) * 4, pushConstants.data());
     }
 
@@ -4334,7 +4335,7 @@ void copyGpuBufferToVector(const vkgs::Buffer& buffer, std::vector<T>& destVecto
 
 void VulkanComputeExample::printLog(bool train)
 {
-    if (training_step >= 500 && training_step % 100 == 0) {
+    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0) {
         buildComputeCommandBuffer([this](){
             createGpu2CpuCopy(splat_buffers.curPointsNum);
         });

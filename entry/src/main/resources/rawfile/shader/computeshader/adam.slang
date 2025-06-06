@@ -41,8 +41,12 @@ static const float eps = 1e-15;    // Small constant to avoid division by zero
 // const float position_lr = 0.00016; // Learning rate
 static const float scale_lr = 0.005;           // Learning rate
 static const float rotate_lr = 0.001;   // Learning rate
-static const float opacity_lr = 0.05;  // Learning rate
-static const float learning_rate_features = 0.0025;
+// static const float opacity_lr = 0.05;  // Learning rate
+static const float opacity_lr = 0.02;  // Learning rate
+
+// static const float learning_rate_features = 0.0025;
+static const float learning_rate_features = 0.02;
+
 static const float learning_rate_features_rest = 0.0025 / 20;
 
 static const float extr_lr = 0.001;
