@@ -20,4 +20,4 @@ export const getSandBoxPixelMap: (sandboxPath: string, src: string) => image.Pix
 
 export const getContext: (a: number) => any;
 export const train3DGS: (resmgr: resourceManager.ResourceManager, folderPath: string) => Promise<number>;
-export const initTrainProgress: (cb: (progress: number) => void) => void;
+export const initTrainProgress: (resmgr: resourceManager.ResourceManager, cb: (progress: number) => void) => void;
