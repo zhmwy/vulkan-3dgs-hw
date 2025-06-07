@@ -854,7 +854,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
 
-    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0 && splat_count * 1.06 < MAX_SPLAT_COUNT)
+    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0)
     {
         densifyCmd();
     }
