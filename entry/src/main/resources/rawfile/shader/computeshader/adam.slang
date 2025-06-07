@@ -227,16 +227,18 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     if (visible[idx] == 0) return; // skip invisible points
 
     // update xyz_array
-    update_adam(
-        idx,
-        3,
-        dL_dxyz_array,
-        xyz_array,
-        xyz_array_exp_avg,
-        xyz_array_avg,
-        position_lr,
-        _training_step + 1
-    );
+    if (idx >= skybox_num) {
+        update_adam(
+            idx,
+            3,
+            dL_dxyz_array,
+            xyz_array,
+            xyz_array_exp_avg,
+            xyz_array_avg,
+            position_lr,
+            _training_step + 1
+        );
+    }
 
     // update scale_array
     update_adam(
