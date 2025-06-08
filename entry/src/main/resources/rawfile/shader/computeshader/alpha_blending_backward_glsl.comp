@@ -1,0 +1,306 @@
+#version 310 es
+// #extension GL_EXT_shader_atomic_float : require
+// #extension GL_KHR_shader_subgroup_basic : enable
+// #extension GL_KHR_shader_subgroup_arithmetic : require
+// #extension GL_ARB_gpu_shader_int64 : enable
+// #extension GL_NV_shader_atomic_int64 : enable
+// #extension GL_EXT_shader_atomic_int64 : enable
+
+#define BLOCK_X 16
+#define BLOCK_Y 16
+#define PIXELS_PER_TILE (BLOCK_X * BLOCK_Y)
+#define SHARE_CHUNK_SIZE 32
+
+// precision mediump float;
+
+const float SCALE = 1.0e8;
+
+const float SCALE_UVD = 1.0e13;
+const float SCALE_CONIC = 1.0e7;
+const float SCALE_OPACITY = 1.0e9;
+const float SCALE_FEATURE = 1.0e9;
+
+
+layout(local_size_x = BLOCK_X, local_size_y = BLOCK_Y, local_size_z = 1) in;
+
+layout (push_constant, std430) uniform PushConstants {
+    uint _xyz_size;
+    uint _W;
+    uint _H;
+    uint _temp;
+};
+
+layout(std430, binding = 0) buffer _uvd_array {
+    float uvd_array[];
+};
+
+layout(std430, binding = 1) buffer _conic_array {
+    float conic_array[];
+};
+
+layout(std430, binding = 2) buffer _opacity_array {
+    float opacity_array[];
+};
+
+layout(std430, binding = 3) buffer _feature_array {
+    float feature_array[];
+};
+
+layout(std430, binding = 4) buffer _sort_idx_array {
+    int sort_idx_array[];
+};
+
+layout(std430, binding = 5) buffer _tile_range_array {
+    ivec2 tile_range_array[];
+};
+
+layout(std430, binding = 6) buffer _background_array {
+    float background_array[];
+};
+
+layout(std430, binding = 8) buffer _final_T_array {
+    float final_T_array[];
+};
+
+layout(std430, binding = 9) buffer _ncontrib_array {
+    int ncontrib_array[];
+};
+
+layout(std430, binding = 10) buffer _dL_drfeat_array {
+    float dL_drfeat_array[];
+};
+
+layout(std430, binding = 11) buffer _dL_duvd_array {
+    int dL_duvd_array[];
+};
+
+layout(std430, binding = 12) buffer _dL_dconic_array {
+    int dL_dconic_array[];
+};
+
+layout(std430, binding = 13) buffer _dL_dopacity_array {
+    int dL_dopacity_array[];
+};
+
+layout(std430, binding = 14) buffer _dL_dfeature_array {
+    int dL_dfeature_array[];
+};
+
+layout(std430, binding = 15) buffer _dL_dndc_array {
+    int dL_dndc_array[];
+};
+
+layout(std430, binding = 16) buffer _dL_dbackground_array {
+    float dL_dbackground_array[];
+};
+
+shared int shared_idx[SHARE_CHUNK_SIZE];
+shared vec3 shared_uvd[SHARE_CHUNK_SIZE];
+shared vec3 shared_invcov[SHARE_CHUNK_SIZE];
+shared float shared_opacity[SHARE_CHUNK_SIZE];
+shared vec3 shared_feature[SHARE_CHUNK_SIZE];
+
+
+shared int shared_dL_duv[SHARE_CHUNK_SIZE * 2];
+shared int shared_dL_dconic[SHARE_CHUNK_SIZE * 3];
+shared int shared_dL_dopacity[SHARE_CHUNK_SIZE];
+shared int shared_dL_dfeature[SHARE_CHUNK_SIZE * 3];
+
+uint t2i(uint i, uint j, uint width) {
+    return i * width + j;
+}
+
+uint t2i(uint c, uint i, uint j, uint height, uint width) {
+    return c * height * width + i * width + j;
+}
+
+void main() {
+
+    uint dispatchThreadID_x = gl_GlobalInvocationID.x;
+    uint dispatchThreadID_y = gl_GlobalInvocationID.y;
+
+    // float oldvalueX1 = 1.0;
+    int W = int(_W);
+    int H = int(_H);
+    int gridDim_x = (W + BLOCK_X - 1) / BLOCK_X;
+
+    // index of tile
+    int tile_idx_x = int(dispatchThreadID_x) / BLOCK_X;
+    int tile_idx_y = int(dispatchThreadID_y) / BLOCK_Y;
+    int tile_idx = tile_idx_y * gridDim_x + tile_idx_x;
+
+    // index of shared gaussian in a chunk
+    int local_x = int(dispatchThreadID_x) % BLOCK_X;
+    int local_y = int(dispatchThreadID_y) % BLOCK_Y;
+    int item_idx = local_x + local_y * BLOCK_X;
+
+    // pixel col and row in the image
+    uvec2 p = uvec2(tile_idx_x * BLOCK_X + local_x, tile_idx_y * BLOCK_Y + local_y);
+
+    bool withinBounds = p.x < _W && p.y < _H;
+    // bool thread_active = withinBounds;
+
+    // Process gaussians in a tile in Chunks.
+    ivec2 gaussian_range = tile_range_array[tile_idx];
+    int gaussian_num = gaussian_range.y - gaussian_range.x;
+    int num_chunk = (gaussian_num + SHARE_CHUNK_SIZE - 1) / SHARE_CHUNK_SIZE;
+
+    vec3 dL_duvd_reg;
+    vec3 dL_dconic_reg;
+    float dL_dopacity_reg;
+
+    float final_trans = withinBounds ? final_T_array[t2i(p.y, p.x, _W)] : 0.0;
+    float trans = final_trans;
+    int remain_gaussian_num = gaussian_num;
+    int current_process_idx = gaussian_num;
+    int last_involved = withinBounds ? ncontrib_array[t2i(p.y, p.x, _W)] : 0;
+
+    int skipCount = gaussian_num - last_involved;
+
+    vec3 accum_feat_term = vec3(0.0);
+
+    for (int i = 0; i < num_chunk; i++, remain_gaussian_num -= SHARE_CHUNK_SIZE) {
+        barrier();
+
+        int num_loaded = i * SHARE_CHUNK_SIZE + item_idx;
+        if (gaussian_range.x + num_loaded < gaussian_range.y && item_idx < SHARE_CHUNK_SIZE) {
+            int gidx = sort_idx_array[gaussian_range.y - num_loaded - 1];
+            shared_idx[item_idx] = gidx;
+            shared_uvd[item_idx] = vec3(
+                uvd_array[3 * gidx],
+                uvd_array[3 * gidx + 1],
+                uvd_array[3 * gidx + 2]
+            );
+            shared_invcov[item_idx] = vec3(
+                conic_array[3 * gidx],
+                conic_array[3 * gidx + 1],
+                conic_array[3 * gidx + 2]
+            );
+            shared_opacity[item_idx] = opacity_array[gidx];
+            shared_feature[item_idx] = vec3(
+                feature_array[3 * gidx],
+                feature_array[3 * gidx + 1],
+                feature_array[3 * gidx + 2]
+            );
+
+            shared_dL_duv[item_idx * 2 + 0] = 0;
+            shared_dL_duv[item_idx * 2 + 1] = 0;
+
+            shared_dL_dconic[item_idx * 3 + 0] = 0;
+            shared_dL_dconic[item_idx * 3 + 1] = 0;
+            shared_dL_dconic[item_idx * 3 + 2] = 0;
+
+            shared_dL_dfeature[item_idx * 3 + 0] = 0;
+            shared_dL_dfeature[item_idx * 3 + 1] = 0;
+            shared_dL_dfeature[item_idx * 3 + 2] = 0;
+
+            shared_dL_dopacity[item_idx] = 0;
+        }
+        barrier();
+
+        int num_to_process = min(SHARE_CHUNK_SIZE, remain_gaussian_num);
+
+        int j = skipCount;
+        skipCount = max(0, skipCount - num_to_process);
+
+        for (; j < num_to_process; j++) {
+
+            //current_process_idx--;
+            //if (current_process_idx >= last_involved) {
+            //    continue;
+            //}
+
+            vec2 vec = vec2(shared_uvd[j].x - float(p.x), shared_uvd[j].y - float(p.y));
+
+            // squared Mahalanobis distance
+            vec3 shared_invcov_reg = shared_invcov[j];
+            float maha_distance = shared_invcov_reg.x * vec.x * vec.x
+                                 + shared_invcov_reg.y * vec.x * vec.y * 2.0
+                                 + shared_invcov_reg.z * vec.y * vec.y;
+
+            float power = -0.5f * maha_distance;
+            if (power > 0.0f) {
+                continue;
+            }
+
+            float G = exp(power);
+            float current_opacity = shared_opacity[j];
+            float alpha = min(0.99f, current_opacity * G);
+            if (alpha < 1.0f / 255.0f){
+                continue;
+            }
+
+            float tmp = 1.0 / (1.0 - alpha);
+            trans = trans * tmp;
+
+            vec3 dL_dalpha = vec3(0.0);
+            vec3 dL_dG = vec3(0.0);
+            vec2 dG_dvec = vec2(
+                -G * vec.x * shared_invcov_reg.x - G * vec.y * shared_invcov_reg.y,
+                -G * vec.y * shared_invcov_reg.z - G * vec.x * shared_invcov_reg.y
+            );
+
+            dL_duvd_reg = vec3(0.0);
+            dL_dconic_reg = vec3(0.0);
+            dL_dopacity_reg = 0.0;
+
+            // MTR
+            // from feature_array
+            vec3 current_feature = shared_feature[j];
+            vec3 dL_drfeat_reg = vec3(
+                dL_drfeat_array[t2i(uint(0), p.y, p.x, _H, _W)],
+                dL_drfeat_array[t2i(uint(1), p.y, p.x, _H, _W)],
+                dL_drfeat_array[t2i(uint(2), p.y, p.x, _H, _W)]
+            );
+            dL_dalpha = (current_feature * trans - accum_feat_term * tmp) * dL_drfeat_reg;
+            accum_feat_term += alpha * current_feature * trans;
+
+            dL_dG = current_opacity * dL_dalpha;
+
+            dL_duvd_reg.x += (dL_dG.x + dL_dG.y + dL_dG.z) * dG_dvec.x;
+            dL_duvd_reg.y += (dL_dG.x + dL_dG.y + dL_dG.z) * dG_dvec.y;
+
+            dL_dconic_reg.x += -0.5f * G * vec.x * vec.x * (dL_dG.x + dL_dG.y + dL_dG.z);
+            dL_dconic_reg.y += -G * vec.x * vec.y * (dL_dG.x + dL_dG.y + dL_dG.z);
+            dL_dconic_reg.z += -0.5f * G * vec.y * vec.y * (dL_dG.x + dL_dG.y + dL_dG.z);
+            dL_dopacity_reg += G * (dL_dalpha.x + dL_dalpha.y + dL_dalpha.z);
+
+            /////////////////////////////////
+
+            dL_drfeat_reg = alpha * trans * dL_drfeat_reg;
+
+            atomicAdd(shared_dL_dfeature[j * 3 + 0], int(dL_drfeat_reg.x * SCALE_FEATURE));
+            atomicAdd(shared_dL_dfeature[j * 3 + 1], int(dL_drfeat_reg.y * SCALE_FEATURE));
+            atomicAdd(shared_dL_dfeature[j * 3 + 2], int(dL_drfeat_reg.z * SCALE_FEATURE));
+
+            atomicAdd(shared_dL_dconic[j * 3 + 0], int(dL_dconic_reg.x * SCALE_CONIC));
+            atomicAdd(shared_dL_dconic[j * 3 + 1], int(dL_dconic_reg.y * SCALE_CONIC));
+            atomicAdd(shared_dL_dconic[j * 3 + 2], int(dL_dconic_reg.z * SCALE_CONIC));
+
+            atomicAdd(shared_dL_duv[j * 2 + 0], int(dL_duvd_reg.x * SCALE_UVD));
+            atomicAdd(shared_dL_duv[j * 2 + 1], int(dL_duvd_reg.y * SCALE_UVD));
+
+            atomicAdd(shared_dL_dopacity[j], int(dL_dopacity_reg * SCALE_OPACITY));
+        }
+
+        barrier();
+        if (gaussian_range.x + num_loaded < gaussian_range.y && item_idx < SHARE_CHUNK_SIZE) {
+            int gidx = shared_idx[item_idx];
+
+            atomicAdd(dL_dfeature_array[gidx * 3 + 0], shared_dL_dfeature[item_idx * 3 + 0]);
+            atomicAdd(dL_dfeature_array[gidx * 3 + 1], shared_dL_dfeature[item_idx * 3 + 1]);
+            atomicAdd(dL_dfeature_array[gidx * 3 + 2], shared_dL_dfeature[item_idx * 3 + 2]);
+
+            atomicAdd(dL_dconic_array[gidx * 3 + 0], shared_dL_dconic[item_idx * 3 + 0]);
+            atomicAdd(dL_dconic_array[gidx * 3 + 1], shared_dL_dconic[item_idx * 3 + 1]);
+            atomicAdd(dL_dconic_array[gidx * 3 + 2], shared_dL_dconic[item_idx * 3 + 2]);
+
+            atomicAdd(dL_duvd_array[gidx * 3 + 0], shared_dL_duv[item_idx * 2 + 0]);
+            atomicAdd(dL_duvd_array[gidx * 3 + 1], shared_dL_duv[item_idx * 2 + 1]);
+
+            atomicAdd(dL_dopacity_array[gidx], shared_dL_dopacity[item_idx]);
+        }
+        barrier();
+    }
+
+}

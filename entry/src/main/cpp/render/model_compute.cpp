@@ -765,7 +765,6 @@ void VulkanComputeExample::updRenderCmd()
             inputGaussian.intr_tmp[0].data()
         );
     }
-
     TransComputeBarrierBlock();
 }
 
@@ -773,7 +772,7 @@ void VulkanComputeExample::updRenderCmd(int index)
 {
     if (index >= inputGaussian.extr_tmp_test.size())
         return;
-
+        
     VkBufferCopy region = {};
     region.srcOffset = 7 * (index) * sizeof(float);
     region.dstOffset = 0;
