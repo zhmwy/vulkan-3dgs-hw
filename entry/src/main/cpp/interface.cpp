@@ -76,6 +76,8 @@ void InterfaceImplVulkan::TrainVulkan() {
             }
             
             LOGI("PSNR: %{public}f", _renderer->total_psnr / _renderer->inputGaussian.img_list.size());
+            LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
+            
             updateProgress(100.0f);
             GetProcessVulkan();
         }

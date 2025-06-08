@@ -854,7 +854,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
 
-    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0)
+    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0 && splat_count * 1.11 < MAX_SPLAT_COUNT)
     {
         densifyCmd();
     }
@@ -4293,8 +4293,9 @@ bool VulkanComputeExample::prepare()
     return prepared;
 }
 
-float VulkanComputeExample::calculatePSNR(float* mse, int width, int height) {
-    const int64_t totalPixels = static_cast<int64_t>(width) * height;
+float VulkanComputeExample::calculatePSNR(float* mse, int width, int height, float& psnr_total) {
+    
+    int totalPixels = width * height;
 
     // 防止 MSE 为零，避免除以零错误
     float psnr_each = 0;
@@ -4318,7 +4319,8 @@ float VulkanComputeExample::calculatePSNR(float* mse, int width, int height) {
 //         LOGI("PSNR per image: %{public}f: ", (psnr[0] + psnr[1] + psnr[2]) / 3.0);
         psnr_each = ((psnr[0] + psnr[1] + psnr[2]) / 3.0);
     }
-    total_psnr += psnr_each;
+    psnr_total += psnr_each;
+    
     return psnr_each;
 }
 

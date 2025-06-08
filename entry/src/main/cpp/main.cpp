@@ -183,13 +183,22 @@ void CallJsProgressTrain(napi_env env, napi_value js_cb, void* context, void* da
 
 // Threadsafe function initialization remains unchanged
 napi_value InitProgress(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
+    size_t argc = 2;
+    napi_value argv[2];
+    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    
     napi_value resource_name;
     napi_status status = napi_create_string_utf8(env, "Progress", NAPI_AUTO_LENGTH, &resource_name);
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
 
-    status = napi_create_threadsafe_function(env, args[0], nullptr, resource_name,
+    NativeResourceManager* resourceMgr = OH_ResourceManager_InitNativeResourceManager(env, argv[0]);
+    // Initialize file operations
+    FileOperator::GetInstance()->set_defaultDir(basepath);
+    FileOperator::GetInstance()->InitEnv(env);
+    FileOperator::GetInstance()->mgr_ = resourceMgr;
+    FileOperator::GetInstance()->CopyRawDir("");
+    
+    status = napi_create_threadsafe_function(env, argv[1], nullptr, resource_name,
         0, 1, nullptr, nullptr, nullptr, CallJsProgressTrain, &g_progress_cb_train);
 
     if (status != napi_ok) {
@@ -239,12 +248,6 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
     size_t pathLength;
     napi_get_value_string_utf8(env, argv[1], dataPath, sizeof(dataPath), &pathLength);
     std::string dataFolder(dataPath, pathLength);
-
-    // Initialize file operations
-    FileOperator::GetInstance()->set_defaultDir(basepath);
-    FileOperator::GetInstance()->InitEnv(env);
-    FileOperator::GetInstance()->mgr_ = resourceMgr;
-    FileOperator::GetInstance()->CopyRawDir("");
 
     // Create interface instance
     InterfaceImplVulkan* impl = static_cast<InterfaceImplVulkan*>(createInstanceVulkan());

@@ -81,7 +81,7 @@ public:
     VulkanComputeExample();
     ~VulkanComputeExample();
     void DestoryBuffer(vkgs::Buffer buffer);
-    void DestoryBuffers();
+    void DestoryBuffers();  
 
     #ifdef VULKAN_PC
     uint32_t screenWidth;
@@ -102,7 +102,7 @@ public:
     std::vector<float> intr_render_tmp;
 
     // Predefine 3DGS hyperparameters
-    int MAX_SPLAT_COUNT = 410000;
+    int MAX_SPLAT_COUNT = 300000;
     static const int MAX_TIME_QUERY_NUM = 100;
     static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;
@@ -113,7 +113,7 @@ public:
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
 
-    int low_resolution_steps = -1;
+    int low_resolution_steps = 500;
     int sh_degree = 1;
     
     RandomGenerator random_generator;
@@ -352,6 +352,8 @@ public:
     std::vector<std::string> filterNames;
     
     float total_psnr = 0;
+    float total_psnr_mask = 0;
+    int total_psnr_mask_num = 0;
     int total_sort_point_count = 0;
     double max_avg_splat_tile_num = 0;
     float current_scale=1.0;
@@ -503,7 +505,7 @@ public:
     void updateUniformBuffers();
 
     virtual bool prepare();
-    float calculatePSNR(float* mse, int width, int height);
+    float calculatePSNR(float* mse, int width, int height, float& psnr_total);
     virtual void draw(){};
     virtual void printLog(bool train = true);
     void executeComputeCommand();
@@ -593,6 +595,19 @@ public:
         cv::Mat gt = cv::imread(inputGaussian.img_list[i]);
         cv::resize(gt, gt, cv::Size(WIDTH, HEIGHT));
         float MSE[3] = {0,0,0};
+        float MSE_mask[3] = {0,0,0};
+        int mask_pixel = 0;
+        
+        std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
+        std::string mask_path = dataFolder + "/segmented/" + imgname;
+        cv::Mat mask = cv::imread(mask_path, 0);
+        bool hasmask = true;
+        if (mask.rows == 0 || mask.cols == 0) {
+            hasmask = false;
+        }
+        if (hasmask){
+            cv::resize(mask, mask, cv::Size(WIDTH, HEIGHT));
+        }
         
         // Convert from planar format (RRRGGGBBB) to interleaved format (BGR for OpenCV)
         for (int y = 0; y < height; y++) {
@@ -613,6 +628,16 @@ public:
                     MSE[1] += (g - g_gt) * (g - g_gt);
                     MSE[2] += (b - b_gt) * (b - b_gt);
                     
+                    if (hasmask){
+                        if (mask.at<uchar>(y, x) > 128){
+                            MSE_mask[0] += (r - r_gt) * (r - r_gt);
+                            MSE_mask[1] += (g - g_gt) * (g - g_gt);
+                            MSE_mask[2] += (b - b_gt) * (b - b_gt);
+                            mask_pixel++;
+                        }
+                    }
+
+                    
                     // Convert float values [0,1] to uchar [0,255]
                     uchar r_uchar = static_cast<uchar>(std::min(std::max(r * 255.0f, 0.0f), 255.0f));
                     uchar g_uchar = static_cast<uchar>(std::min(std::max(g * 255.0f, 0.0f), 255.0f));
@@ -623,14 +648,18 @@ public:
                 }
             }
         }
-        float psnr_each = calculatePSNR(MSE, WIDTH, HEIGHT);
+        float psnr_each = calculatePSNR(MSE, WIDTH, HEIGHT, this->total_psnr);
+        float psnr_mask = 0;
+        if (hasmask && mask_pixel > 0){
+            psnr_mask = calculatePSNR(MSE_mask, WIDTH, HEIGHT, this->total_psnr_mask);
+            total_psnr_mask_num++;
+        }
         
-        std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
         std::string save_dir_debug = dataFolder + "/temp";
         std::filesystem::create_directories(save_dir_debug);
         std::string filename = save_dir_debug + "/" + imgname;
         LOGI("Saving rendered image to: %{public}s", filename.c_str());
-        LOGI("PSNR: %{public}f", psnr_each);
+        LOGI("PSNR: %{public}f;   PSNR_mask: %{public}f", psnr_each, psnr_mask);
         
         cv::imwrite(filename, image);
     }
