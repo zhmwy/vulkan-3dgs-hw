@@ -45,15 +45,6 @@ add_library(3dgs SHARED
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
     cores/tinyply.cpp
-#    cores/video2images.cpp
-    human/head_mask/manageHeadMasks.cpp human/human.cpp
-    human/keypoints/keypointsv2.cpp human/keypoints/HIAIModelManager.cpp human/keypoints/utils.cpp
-    human/triangulation/triangulation.cpp
-    human/SMPL/src/fit_smplv2.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
-    human/SMPL/src/smpl/BlendShape.cpp human/SMPL/src/smpl/JointRegression.cpp human/SMPL/src/smpl/WorldTransformation.cpp
-    human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp
-    human/SMPL/src/smpl/smpl_male.cpp
-    human/segmentation/segment.cpp human/segmentation/utils.cpp
 )
 
 
@@ -123,10 +114,6 @@ target_link_libraries(3dgs PUBLIC
 # Human Part
 
 #target_link_libraries(3dgs PUBLIC ${NATIVERENDER_ROOT_PATH}/../../../libs/${OHOS_ARCH}/libsmpl.so)
-target_include_directories(3dgs PUBLIC human/SMPL/include)
-target_include_directories(3dgs PUBLIC human/segmentation)
-FIND_LIBRARY(hiai_foundation-lib hiai_foundation)
-
 target_link_libraries(3dgs PUBLIC libace_napi.z.so
                                    libhilog_ndk.z.so
                                    libohfileio.so
@@ -134,7 +121,6 @@ target_link_libraries(3dgs PUBLIC libace_napi.z.so
                                    libneural_network_core.so
                                    libneural_network_runtime.so
 #                                   mindspore_lite_ndk
-                                   ${hiai_foundation-lib}
                                    libpixelmap_ndk.z.so
                                    libimage_source_ndk.z.so)
 # OpenCV相关
@@ -154,35 +140,6 @@ target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OH
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_stitching.so.408
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_video.so.408
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_videoio.so.408)
-
-#Eigen和Ceres-solver相关
-target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/lib/libceres.a)
-target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/lib/libgflags_nothreads.a
-                                    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/lib/libgflags.a)
-target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/lib/libGKlib.a)
-
-target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgmock_main.a
-                                    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgmock.a
-                                    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgtest_main.a
-                                    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/lib/libgtest.a)
-
-target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/lib/libmetis.a)
-#target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/glog/libglog.so.1)
-
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ceres-solver/${OHOS_ARCH}/include)
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/eigen/${OHOS_ARCH}/include/eigen3)
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gflags/${OHOS_ARCH}/include)
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/GKlib/${OHOS_ARCH}/include)
-#target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/glog/${OHOS_ARCH}/include)
-
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock
-                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock/internal
-                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gmock/internal/custom
-                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest
-                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest/internal
-                                        ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/googletest/${OHOS_ARCH}/include/gtest/internal/custom)
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/METIS/${OHOS_ARCH}/include)
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json/${OHOS_ARCH}/include)
 
 
 add_library(

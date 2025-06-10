@@ -1,11 +1,11 @@
 #include "dataloader.h"
 #include <fstream>
+#include <unordered_set>
 #include <vector>
 #include <string>
 #include <regex>
 #include <dirent.h>
 
-#include "human/human.h"
 
 int extractNumberKtx(const std::string& str) {
     std::regex re("r_(\\d+)\\.ktx");
@@ -884,123 +884,6 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
     pointsFile.close();
 }
 
-
-
-std::vector<cv::Point> DataLoader::projectHeadCenter(DataLoader::InputInitStruct& data)
-{
-    // Calculate the center of the 3D bounding box
-    float center_x = (data.head_bbox[0] + data.head_bbox[1]) / 2.0f;
-    float center_y = (data.head_bbox[2] + data.head_bbox[3]) / 2.0f;
-    float center_z = (data.head_bbox[4] + data.head_bbox[5]) / 2.0f;
-    
-    // Create a 3D point for the center in homogeneous coordinates
-    Eigen::Vector4f point_3d(center_x, center_y, center_z, 1.0f);
-    
-    // Vector to store results
-    std::vector<cv::Point> projected_points;
-    projected_points.reserve(data.extr_tmp.size());
-    
-    // For each camera pose
-    for (size_t i = 0; i < data.extr_tmp.size(); ++i) {
-        // Get the current extrinsics
-        const InputInitStruct::DataExtr extr = data.extr_tmp[i];
-        
-        // Get the corresponding intrinsics (either shared or per-camera)
-        const std::vector<float> intr = (data.intr_tmp.size() == 1) ? data.intr_tmp[0] : data.intr_tmp[i];
-        if (intr.size() != 4) {
-            throw std::invalid_argument("Intrinsics must have 4 elements (fx, fy, cx, cy)");
-        }
-        
-        // Extract quaternion components and translation vector
-        float qw = extr.values[0];
-        float qx = extr.values[1];
-        float qy = extr.values[2];
-        float qz = extr.values[3];
-        float tx = extr.values[4];
-        float ty = extr.values[5];
-        float tz = extr.values[6];
-        
-        // Convert quaternion to rotation matrix
-        Eigen::Quaternionf q(qw, qx, qy, qz);
-        Eigen::Matrix3f R = q.normalized().toRotationMatrix();
-        
-        // Create transformation matrix (extrinsic matrix)
-        Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
-        T.block<3, 3>(0, 0) = R;
-        T.block<3, 1>(0, 3) = Eigen::Vector3f(tx, ty, tz);
-        
-        // Transform 3D point from world to camera coordinates
-        Eigen::Vector4f point_camera = T * point_3d;
-        
-        // Check if the point is in front of the camera
-        if (point_camera[2] <= 0) {
-            // Point is behind the camera, store an invalid point
-            projected_points.push_back(cv::Point(-1, -1));
-            continue;
-        }
-        
-        // Project 3D point to 2D image coordinates
-        float fx = intr[0];
-        float fy = intr[1];
-        float cx = intr[2];
-        float cy = intr[3];
-        
-        float x_2d = (fx * point_camera[0] / point_camera[2]) + cx;
-        float y_2d = (fy * point_camera[1] / point_camera[2]) + cy; 
-        LOGI("x_2d: %{public}f, y_2d: %{public}f", x_2d, y_2d);
-        // Store the projected 2D point
-        projected_points.push_back(cv::Point(x_2d, y_2d));
-    }
-    
-    return projected_points;
-}
-
-void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, std::vector<cv::Point>& faceCenters){
-           
-    std::filesystem::create_directories(scenepath + "/human");
-    std::filesystem::create_directories(scenepath + "/human/images");
-    
-    // Copy intr_tmp multiple times to support adding face regions. 
-    if (data.intr_tmp.size() == 1 && data.extr_tmp.size() > 1) {
-        // Get the number of extrinsics
-        size_t N = data.extr_tmp.size();
-        
-        // Use the resize function with a copy of the first element
-        std::vector<float> first_intrinsic = data.intr_tmp[0];
-        data.intr_tmp.resize(N, first_intrinsic);
-    }
-    
-    // Double extr_tmp to support adding face regions.
-    data.extr_tmp.insert(data.extr_tmp.end(), data.extr_tmp.begin(), data.extr_tmp.end());
-    data.extr_tmp_test = data.extr_tmp;
-    
-    for(int i=0; i<faceCenters.size(); ++i){
-        // Find the position of "images"
-        std::string path = data.img_list[i];
-        size_t pos = path.find("images");
-                
-        // Check if "images" was found
-//         if (pos != std::string::npos) {
-//             path.replace(pos, 6, "images_orig");
-//         }
-        pos = path.find_last_of('/');
-        std::string basename = path.substr(pos + 1);
-                
-//         LOGI("Reading from %{public}s", path.c_str());
-        cv::Mat orig_img = cv::imread(path);
-        float scale_factor = orig_img.size[0] / 640;
-        cv::Point topLeft;
-        cv::Mat cropped_img = cropImage(orig_img, faceCenters[i] * scale_factor, cv::Size(480, 640), topLeft); //Size是width, height的顺序
-        cv::imwrite(scenepath + "/human/images/" + basename, cropped_img);
-        data.img_list.push_back(scenepath + "/human/images/" + basename);
-        
-        std::vector<float> intr = data.intr_tmp[0];
-        std::vector<float> new_intr = calculateNewIntrinsics(intr[0], intr[1], intr[2], intr[3], topLeft, cv::Size(480, 640), scale_factor);
-        LOGI("fx:%{public}f fy:%{public}f cx:%{public}f cy:%{public}f", new_intr[0], new_intr[1], new_intr[2], new_intr[3]);
-        data.intr_tmp.push_back(new_intr);
-    }
-}
-
 // calculate robust min/max
 void computeRobustBounds(
     const std::vector<glm::vec3>& pts,
@@ -1236,22 +1119,6 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
-//         bool is_human = HumanPreprocess(scenepath, data.head_bbox);
-        bool is_human = false;
-        std::string pointsFilePath = slampath + "/points3D.txt";
-        load3DPoints(pointsFilePath, data);
-        
-        if (is_human) {
-            std::string smplPath = scenepath + "/smpl.txt";
-            load3DPoints(smplPath, data);
-            for(int i=0; i<data.head_bbox.size(); ++i){
-                LOGI("head bbox: %{public}f", data.head_bbox[i]);
-            }
-            std::vector<cv::Point> faceCenters = projectHeadCenter(data);
-            
-            GetSegments(scenepath);
-            createEnlargedFace(scenepath, data, faceCenters);
-        }
     }
     else{
         resumed = true;

@@ -15,7 +15,6 @@
 #include "render/plugin_render.h"
 #include "render/vulkanRender.h"
 #include "queue"
-#include "human/head_mask/manageHeadMasks.h"
 #include <sys/time.h>
 
 using ms = std::chrono::milliseconds;

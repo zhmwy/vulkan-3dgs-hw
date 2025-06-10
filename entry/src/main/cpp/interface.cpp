@@ -3,7 +3,6 @@
 #include "file/file_operator.h"
 #include "render/plugin_render.h"
 #include "render/vulkanRender.h"
-#include "human/head_mask/manageHeadMasks.h"
 
 #include <multimedia/image_framework/image_source_mdk.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
