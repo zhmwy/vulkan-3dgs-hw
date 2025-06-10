@@ -26,7 +26,6 @@ add_library(3dgs SHARED
 #    napi_init.cpp
     render/vulkanRender.cpp
     manager/plugin_manager.cpp
-
     vulkanbase/VulkanOhos.cpp
     vulkanbase/VulkanBuffer.cpp
     vulkanbase/VulkanDevice.cpp
@@ -37,9 +36,6 @@ add_library(3dgs SHARED
     vulkanbase/VulkanTexture.cpp
     file/file_operator.cpp
     file/file.cpp
-    # render/model_3d_sponza.cpp
-#    render/vulkan_obj_model.cpp
-#    render/vulkan_obj_mesh.cpp
     render/model_compute.cpp
     cores/buffer.cpp
     cores/cpu_buffer.cpp
@@ -52,7 +48,6 @@ target_include_directories(3dgs PUBLIC
         3rdParty
         3rdParty/glm
         3rdParty/
-#        3rdParty/vulkan_radix_sort
         vulkanbase
 )
 
@@ -88,17 +83,6 @@ find_library(
     uv
 )
 
-
-#add_subdirectory(${NATIVERENDER_ROOT_PATH}/3rdParty/kompute/ ${CMAKE_CURRENT_BINARY_DIR}/kompute)
-#add_subdirectory(3rdParty/vulkan_radix_sort)
-add_library(libassimp SHARED IMPORTED)
-set_target_properties(
-    libassimp
-    PROPERTIES
-    IMPORTED_LOCATION
-    ${CMAKE_CURRENT_SOURCE_DIR}/libs/arm64-v8a/libassimp.so
-)
-
 find_library(
     # Sets the name of the path variable.
     xengine-lib
@@ -108,7 +92,7 @@ find_library(
 )
 
 target_link_libraries(3dgs PUBLIC
- ${hilog-lib} ${libace-lib} ${libnapi-lib} ${libuv-lib} libnative_window.so libc++.a librawfile.z.so libassimp ${xengine-lib})
+ ${hilog-lib} ${libace-lib} ${libnapi-lib} ${libuv-lib} libnative_window.so libc++.a librawfile.z.so ${xengine-lib})
 
 
 # Human Part
