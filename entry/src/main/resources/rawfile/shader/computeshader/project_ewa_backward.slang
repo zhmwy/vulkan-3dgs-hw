@@ -37,7 +37,7 @@ float3x3 unit_quaternion_to_rotmatrix(float4 rotate) {
 [[vk::binding(13)]] RWStructuredBuffer<float> dL_dcov2d_array;
 [[vk::binding(14)]] RWStructuredBuffer<float> dL_dxyz_array;
 [[vk::binding(15)]] RWStructuredBuffer<float> dL_dscale_array;
-[[vk::binding(16)]] RWStructuredBuffer<float4> dL_drotate_array;
+[[vk::binding(16)]] RWStructuredBuffer<float> dL_drotate_array;
 [[vk::binding(17)]] RWByteAddressBuffer dL_dintr_params;
 [[vk::binding(18)]] RWByteAddressBuffer dL_dextr_params;
 
@@ -437,22 +437,26 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
                    (-rotate_reg[0] * rotate_reg[1] / norm_rotate3) * dL_dqx_act +
                    (-rotate_reg[0] * rotate_reg[2] / norm_rotate3) * dL_dqy_act +
                    (-rotate_reg[0] * rotate_reg[3] / norm_rotate3) * dL_dqz_act;
+
     float dL_dqx = (-rotate_reg[1] * rotate_reg[0] / norm_rotate3) * dL_dqw_act +
                    (1 / norm_rotate - rotate_reg[1] * rotate_reg[1] / norm_rotate3) * dL_dqx_act +
                    (-rotate_reg[1] * rotate_reg[2] / norm_rotate3) * dL_dqy_act +
                    (-rotate_reg[1] * rotate_reg[3] / norm_rotate3) * dL_dqz_act;
+
     float dL_dqy = (-rotate_reg[2] * rotate_reg[0] / norm_rotate3) * dL_dqw_act +
                    (-rotate_reg[2] * rotate_reg[1] / norm_rotate3) * dL_dqx_act +
                    (1 / norm_rotate - rotate_reg[2] * rotate_reg[2] / norm_rotate3) * dL_dqy_act +
                    (-rotate_reg[2] * rotate_reg[3] / norm_rotate3) * dL_dqz_act;
+
     float dL_dqz = (-rotate_reg[3] * rotate_reg[0] / norm_rotate3) * dL_dqw_act +
                    (-rotate_reg[3] * rotate_reg[1] / norm_rotate3) * dL_dqx_act +
                    (-rotate_reg[3] * rotate_reg[2] / norm_rotate3) * dL_dqy_act +
                    (1 / norm_rotate - rotate_reg[3] * rotate_reg[3] / norm_rotate3) * dL_dqz_act;
-    float4 dL_drotate_reg = {
-        dL_dqw, dL_dqx, dL_dqy, dL_dqz
-    };
-    dL_drotate_array[idx] = dL_drotate_reg;
+    
+    dL_drotate_array[4 * idx + 0] = dL_dqw_act;
+    dL_drotate_array[4 * idx + 1] = dL_dqx_act;
+    dL_drotate_array[4 * idx + 2] = dL_dqy_act;
+    dL_drotate_array[4 * idx + 3] = dL_dqz_act;
 
     dL_dopacity_array[idx] = dL_dopacity_act_array[idx] * opacity_act_array[idx] * (1 - opacity_act_array[idx]);
 }

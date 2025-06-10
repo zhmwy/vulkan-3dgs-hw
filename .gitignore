@@ -14,11 +14,9 @@ assets
 .clang*
 .idea
 
-*.slang
 
 entry/src/main/cpp/human/SMPL/src/smpl/smpl_male.cpp
-alpha_blending_backward_glsl.comp
-int_to_float_gradient.comp
+
 
 build-profile.json5
 entry/src/main/resources/rawfile/human_bie
@@ -26,4 +24,12 @@ entry/src/main/resources/rawfile/2024_09_27_11_20_29
 entry/src/main/resources/rawfile/AVATAR
 entry/src/main/resources/rawfile/small_dragon
 entry/src/main/resources/rawfile/phoenix
+entry/src/main/resources/rawfile/2025-05-28_10_38_29
+entry/src/main/resources/rawfile/2025-05-28_10_43_25
+entry/src/main/resources/rawfile/lego
+entry/src/main/resources/rawfile/chair
+entry/src/main/resources/rawfile/plant_whitepalm_resize
+entry/src/main/resources/rawfile/rabbit
+entry/src/main/resources/rawfile/fans
+
 

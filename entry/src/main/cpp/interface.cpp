@@ -13,7 +13,7 @@ std::condition_variable PluginRender::m_con;
 bool PluginRender::stop = false;
 std::unordered_map<std::string, PluginRender*> PluginRender::m_instance;
 OH_NativeXComponent_Callback PluginRender::m_callback;
-// napi_threadsafe_function g_progress_cb_train = nullptr;
+// napi_threadsafe_function g_progress_cb_train = nullptr;  
 VulkanRender* _renderer = NULL;
 
 InterfaceImplVulkan::InterfaceImplVulkan() : _progress(0.0f), _isInitialized(false), _isTraining(false), _g_progress_cb_train(nullptr) {}
@@ -53,7 +53,7 @@ void InterfaceImplVulkan::TrainVulkan() {
     GetProcessVulkan();
 
     try {
-        std::vector<int> max_steps = {1200, 500, 500};
+        std::vector<int> max_steps = {1499, 500, 500};
         
         // Main training loop
         for (int step = 0; step < max_steps[0]; ++step) {
@@ -68,11 +68,16 @@ void InterfaceImplVulkan::TrainVulkan() {
         
         if (_isTraining) {
             // Post-training operations
+            _renderer->total_psnr = 0;
+            
             for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
-
                 _renderer->renderImage(i);
                 _renderer->renderRGB2Cpu(i, _dataPath);
             }
+            
+            LOGI("PSNR: %{public}f", _renderer->total_psnr / _renderer->inputGaussian.img_list.size());
+            LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
+            
             updateProgress(100.0f);
             GetProcessVulkan();
         }

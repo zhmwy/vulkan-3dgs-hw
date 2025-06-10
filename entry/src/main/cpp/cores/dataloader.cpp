@@ -349,11 +349,31 @@ void DataLoader::InputInitStruct::computePositionStats() {
     }
     variance = sum / static_cast<double>(positions.size());  // **求均值**
     
-    this->mean = mean;
-    this->variance = variance;
     
     std::cout << "Position Mean: (" << mean.x << ", " << mean.y << ", " << mean.z << ")" << std::endl;
     std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
+}
+
+void DataLoader::InputInitStruct::getNerfppNorm() {
+    this->radius = -1.0;
+    glm::vec3 cam_centers = glm::vec3(0, 0, 0);
+    for (auto& extr : extr_tmp) {
+        glm::mat4 W2C = quat2matrix(extr);
+        glm::mat4 C2W = glm::inverse(W2C);
+        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        cam_centers += cam_center;
+    }
+    cam_centers /= extr_tmp.size();
+    
+    for (auto& extr : extr_tmp) {
+        glm::mat4 W2C = quat2matrix(extr);
+        glm::mat4 C2W = glm::inverse(W2C);
+        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        glm::vec3 dist = cam_centers - cam_center;
+        this->radius = std::max(this->radius, sqrt(dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]));
+    }
+    
+    this->radius *= 1.1;
 }
 
 void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data) {
@@ -776,7 +796,6 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
 }
 
 
-
 void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data){
     std::string extrName = fullDataPath + "/images.txt";
     std::string intrName = fullDataPath + "/cameras.txt";
@@ -814,7 +833,6 @@ void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::I
     }
     extrFile.close();
 }
-
 
 
 void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
@@ -984,6 +1002,124 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
     }
 }
 
+// calculate robust min/max
+void computeRobustBounds(
+    const std::vector<glm::vec3>& pts,
+    float percentile,
+    glm::vec3& out_min,
+    glm::vec3& out_max
+)
+{
+    size_t n = pts.size();
+    if (n == 0) 
+        return;
+    
+    std::vector<float> xs(n), ys(n), zs(n);
+    for (size_t i = 0; i < n; ++i) {
+        xs[i] = pts[i].x;
+        ys[i] = pts[i].y;
+        zs[i] = pts[i].z;
+    }
+    
+    auto getQuantile = [&](std::vector<float>& arr, float q) {
+        std::sort(arr.begin(), arr.end());
+        float idx = q * (arr.size() - 1);
+        size_t lo = static_cast<size_t>(std::floor(idx));
+        size_t hi = static_cast<size_t>(std::ceil(idx));
+        if (hi == lo) return arr[lo];
+        float t = idx - lo;
+        return arr[lo] * (1 - t) + arr[hi] * t;
+    };
+    
+    out_min.x = getQuantile(xs, percentile);
+    out_min.y = getQuantile(ys, percentile);
+    out_min.z = getQuantile(zs, percentile);
+
+    out_max.x = getQuantile(xs, 1.0f - percentile);
+    out_max.y = getQuantile(ys, 1.0f - percentile);
+    out_max.z = getQuantile(zs, 1.0f - percentile);
+    
+}
+
+// Fibonacci sphere sampling
+void generateFibonacciSphere(
+    int samples,
+    std::vector<glm::vec3>& out_points,
+    std::vector<glm::vec3>& out_normals
+)
+{
+    out_points.reserve(samples);
+    out_normals.reserve(samples);
+    const float goldenAngle = glm::pi<float>() * (3.0f - std::sqrt(5.0f));
+    for (int i = 0; i < samples; ++i) {
+        float t = float(i) / float(samples - 1);             // [0,1]
+        float y = 1.0f - 2.0f * t;                          // [-1,1]
+        float radius = std::sqrt(1.0f - y * y);
+        float theta = goldenAngle * i;
+        float x = std::cos(theta) * radius;
+        float z = std::sin(theta) * radius;
+        glm::vec3 dir(x, y, z);
+        out_points.push_back(dir);
+        glm::vec3 normal = -dir;                            // 指向中心
+        out_normals.push_back(glm::normalize(normal));
+    }
+}
+
+void prependSkyboxPoints(
+    DataLoader::InputInitStruct& data,
+    int sky_num_gs,
+    float percentile = 0.01f,
+    float radius_scale = 1.0f
+)
+{
+    const float C0 = 0.28209479177387814f;
+    // 1. calc min/max
+    glm::vec3 xyz_min, xyz_max;
+    computeRobustBounds(data.positions, percentile, xyz_min, xyz_max);
+    
+    // 2. calc direction and normal in shpere
+    std::vector<glm::vec3> dirs, norms;
+    generateFibonacciSphere(sky_num_gs, dirs, norms);
+
+    // 3. calc scaling and translation
+    glm::vec3 center = (xyz_min + xyz_max) * 0.5f;
+    glm::vec3 halfSize = (xyz_max - xyz_min) * 0.5f * radius_scale;
+    float whiteScaled = (1.0f - 0.5f) / C0;
+    
+    // 4. generate all the sky GS
+    std::vector<glm::vec3>       skyPositions;
+    std::vector<glm::vec3>       skyScales;
+    std::vector<glm::vec4>       skyRotations;
+    std::vector<float>           skyOpacities;
+    std::vector<DataLoader::InputInitStruct::Data> skyColors;
+
+    skyPositions.reserve(sky_num_gs);
+    skyScales.reserve(sky_num_gs);
+    skyRotations.reserve(sky_num_gs);
+    skyOpacities.reserve(sky_num_gs);
+    skyColors.reserve(sky_num_gs);
+
+    for (int i = 0; i < sky_num_gs; ++i) {
+        glm::vec3 pos = dirs[i] * halfSize + center;
+        skyPositions.push_back(pos);
+        
+        skyScales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
+        skyRotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+        skyOpacities.push_back(-2.197224617004395f);
+        
+        DataLoader::InputInitStruct::Data cd{};
+        cd.values[0] = whiteScaled;
+        cd.values[16] = whiteScaled;
+        cd.values[32] = whiteScaled;
+        skyColors.push_back(cd);
+    }
+    
+    data.positions.insert(data.positions.begin(), skyPositions.begin(), skyPositions.end());
+    data.scales.insert(data.scales.begin(), skyScales.begin(), skyScales.end());
+    data.rotations.insert(data.rotations.begin(), skyRotations.begin(), skyRotations.end());
+    data.opacities.insert(data.opacities.begin(), skyOpacities.begin(), skyOpacities.end());
+    data.colors.insert(data.colors.begin(), skyColors.begin(), skyColors.end());
+}
 
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height, int width)
 {
@@ -1036,15 +1172,6 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         cy *= ratioy;
         data.width = width;
         data.height = height;
-        
-//         if(data.height < data.width){
-//             int temp = data.height;
-//             data.height = data.width;
-//             data.width = temp;
-//             float temp2 = cy;
-//             cy = cx;
-//             cx = temp2;
-//         }
 
         assert(camera_type == "PINHOLE" || camera_type == "pinhole");
 
@@ -1140,7 +1267,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         resumed = true;
     }
     
-//     videoInfoFile.close();
+    prependSkyboxPoints(data, 10000, 0.01, 10.0);
+
     imagesFile.close();
     camerasFile.close();
 }

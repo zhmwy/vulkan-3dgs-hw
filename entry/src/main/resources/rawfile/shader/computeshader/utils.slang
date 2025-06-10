@@ -5,13 +5,18 @@
 
 static const uint toAddNum = 500;
 static const float percent_dense = 0.01;
-static const float scene_extent = 1.0;
+// static const float scene_extent = 1.0;
 // static const float scene_extent = 5.202147674560547;
 // static const float scene_extent = 5.202147674560547 / 5;
 static const uint DD = 16; // the upper bound of D
 static const float min_opacity = 0.005;
 static const int max_screen_size = -1;
+
 static const float pi = 3.1415926;
+static const float lambda_dssim = 0.2;
+static const float densify_grad_threshold = 0.0002;
+static const int skybox_num = 10000;
+
 
 uint t2i(uint i, uint j, uint width) {
     return i * width + j;

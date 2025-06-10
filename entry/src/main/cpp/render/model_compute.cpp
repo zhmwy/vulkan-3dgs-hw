@@ -9,18 +9,6 @@
 #include <stb_image_resize2.h>
 
 
-#define TILE_W (((int)(current_scale * image_width) + 15) / 16)
-#define TILE_H (((int)(current_scale * image_height) + 15) / 16)
-//#define TILE_NUM TILE_W * TILE_H
-#define TILE_NUM_AVG 100
-
-#define TILE_W_MAX (((int)(image_width) + 15) / 16)
-#define TILE_H_MAX (((int)(image_height) + 15) / 16)
-//#define TILE_NUM_AVG_MAX TILE_W_MAX * TILE_H_MAX
-#define TILE_NUM_AVG_MAX 100
-
-#define HEIGHT 640
-#define WIDTH  480
 
 
 /********************* For Unit Test ****************************/
@@ -48,25 +36,15 @@ void VulkanComputeExample::loadTestData(std::string& dataFolder, int flag)
 //         DataLoader::loadInputTo(dataFolder, inputGaussian);
         if(resumed) hasKNN = true;
         
-        inputGaussian.computePositionStats();
-        inputGaussian.normalizeData();
+        inputGaussian.getNerfppNorm();
+//         inputGaussian.computePositionStats();
+//         inputGaussian.normalizeData();
 
     }
-    
-    
-//     if(flag == LOAD_EXTRA){
-//         std::string extra_path = dataFolder + "/head/other_gaussians.ply";
-//         DataLoader::loadExtraGaussianData(extra_path, inputGaussian);
-//     }
     
     splat_count = inputGaussian.positions.size();
     random_generator.initialize(inputGaussian.img_list.size());
 }
-
-
-// void VulkanComputeExample::loadIntrinsics(std::string& dataFolder){
-//     DataLoader::loadIntrinsics(dataFolder, inputGaussian);
-// }
 
 
 void VulkanComputeExample::encodeInitBuffersValues2CommandBuffer()
@@ -199,10 +177,7 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.dL_dndc);             // Copy dL_dndc
     createGpu2CpuCopy(splat_buffers.dL_dbackground);      // Copy dL_dbackground
     createGpu2CpuCopy(splat_buffers.sh_coeff);
-    createGpu2CpuCopy(splat_buffers.curPointsNum);
-    createGpu2CpuCopy(sort_buffers.densify_idx);
-    createGpu2CpuCopy(splat_buffers.xyz_gradient_mean);
-    
+//     createGpu2CpuCopy(splat_buffers.curPointsNum);
     
     createGpu2CpuCopy(splat_buffers.extr_params_render);
     createGpu2CpuCopy(splat_buffers.intr_params);
@@ -245,6 +220,19 @@ void VulkanComputeExample::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.rot_flow_params);
     createGpu2CpuCopy(splat_buffers.xyz_flow);
     createGpu2CpuCopy(splat_buffers.rot_flow);
+    createGpu2CpuCopy(splat_buffers.dL_dmap);
+    createGpu2CpuCopy(splat_buffers.dm_dmu1);
+    createGpu2CpuCopy(splat_buffers.dm_dsigma1_sq);
+    createGpu2CpuCopy(splat_buffers.dm_dsigma12);
+    createGpu2CpuCopy(splat_buffers.ssim_map);
+    
+    createGpu2CpuCopy(splat_buffers.xyz_gradient_accum);
+    createGpu2CpuCopy(splat_buffers.denom);
+    createGpu2CpuCopy(sort_buffers.densify_idx);
+    createGpu2CpuCopy(splat_buffers.xyz_gradient_mean);
+    createGpu2CpuCopy(splat_buffers.xyz_gradient_mean_int);
+    createGpu2CpuCopy(sort_buffers.sortVBufferEven);
+    createGpu2CpuCopy(sort_buffers.sortKBufferEven);
 }
 
 int cumsum_cpu(const vkgs::Buffer& buffer)
@@ -260,12 +248,65 @@ int cumsum_cpu(const vkgs::Buffer& buffer)
     return sum;
 }
 
+void printKeyAndSortedIdx(vkgs::Buffer& sortKBufferEven, vkgs::Buffer& sorted_idx_array, vkgs::Buffer& unsortKBufferEven,int length)
+{
+    const vkgs::CpuBuffer &key_cpu_buffer = sortKBufferEven.cpu_buffer;
+    if (key_cpu_buffer.isInit == false) return;
+    int size = key_cpu_buffer.size() / sizeof(uint32_t);  // 根据元素大小计算数量
+    if (length > 0) {
+        size = std::min(size, length);
+    }
+    const uint32_t* Key = reinterpret_cast<const uint32_t*>(key_cpu_buffer.data());
+    
+    const vkgs::CpuBuffer &idx_cpu_buffer = sorted_idx_array.cpu_buffer;
+    if (idx_cpu_buffer.isInit == false) return;
+    size = idx_cpu_buffer.size() / sizeof(uint32_t);  // 根据元素大小计算数量
+    if (length > 0)
+        size = std::min(size, length);
+    const uint32_t* idx = reinterpret_cast<const uint32_t*>(idx_cpu_buffer.data());
+    
+    const vkgs::CpuBuffer &unkey_cpu_buffer = unsortKBufferEven.cpu_buffer;
+    const uint32_t* unKey = reinterpret_cast<const uint32_t*>(unkey_cpu_buffer.data());
+    
+    for (int i = 0; i < size; i++) {
+        LOGE("%{public}d: %{public}d, %{public}d %{public}d", i, Key[i], idx[i], unKey[idx[i]]);
+    }
+    
+}
+
+void printXYZDensify(vkgs::Buffer& xyz, int length)
+{
+    const vkgs::CpuBuffer &xyz_cpu_buffer = xyz.cpu_buffer;
+    if (xyz_cpu_buffer.isInit == false) return;
+
+    const float* xyz_cpu = reinterpret_cast<const float*>(xyz_cpu_buffer.data());
+    
+    for (int i = 0; i < length; i++) {
+        LOGE("%{public}d: %{public}f, %{public}f %{public}f", i + 100000, xyz_cpu[3 * (i + 100000)], xyz_cpu[3 * (i + 100000) + 1], xyz_cpu[3 * (i + 100000) + 2]);
+    }
+}
+
+
+void printGpuBufferMax(vkgs::Buffer buffer, int length)
+{
+    const vkgs::CpuBuffer &cpu_buffer = buffer.cpu_buffer;
+    if (cpu_buffer.isInit == false) return;
+    int size = cpu_buffer.size() / sizeof(uint32_t);  // 根据元素大小计算数量
+    size = std::min(size, length);
+    const uint32_t* num = reinterpret_cast<const uint32_t*>(cpu_buffer.data());
+    
+    uint32_t maxNum = 0;
+    for (int i = 0; i < length; i++) {
+        maxNum = std::max(maxNum, num[i]);
+    }
+    LOGW("max: %{public}d", maxNum);
+}
+
+
 void VulkanComputeExample::printGpuBuffers()
 {
     LOGW("Current image index: %{public}d, training step: %{public}d", current_img_idx, training_step);
     
-//     printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
-//     printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
 //     printGpuBuffer<uint32_t>("curPointsNum", splat_buffers.curPointsNum, 1, 1);
 //     printGpuBuffer<float>("extr_mat", splat_buffers.extr_mat, 3, 4);
 //     printGpuBuffer<float>("extr_act", splat_buffers.extr_act, 1, 6);
@@ -290,6 +331,15 @@ void VulkanComputeExample::printGpuBuffers()
     
 //     printGpuBuffer<float>("rot_flow_params", splat_buffers.rot_flow_params, 4, 24);
     printGpuBuffer<int32_t>("is_body_point", splat_buffers.is_body_point, 4, 1);
+
+    printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
+    printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
+    
+    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 3, 3);
+    printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 3, 1);
+    printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 3, 3);
+//     printGpuBuffer<float>("dL_dshs_array", splat_buffers.dL_dshs_array, 3, 48);
+    printGpuBuffer<float>("dL_drotate", splat_buffers.dL_drotate, 3, 4);
 }
 
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
@@ -298,6 +348,7 @@ void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
     uint32_t numRadixSortBlocksPerWorkgroup = 512;
     uint32_t invocationSize = (launch_size + numRadixSortBlocksPerWorkgroup - 1) / numRadixSortBlocksPerWorkgroup;
     invocationSize = (invocationSize + 511) / 512;
+
 
     for (uint32_t i = 0; i < 4; i++) {
 
@@ -493,6 +544,13 @@ void VulkanComputeExample::zeroGradCmd()
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_drot_flow, 0, VK_WHOLE_SIZE, 0);
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
+    
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dmap, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dmu1, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma1_sq, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma12, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.ssim_map, 0, VK_WHOLE_SIZE, 0);
+//     TransComputeBarrierBlock();
 }
 
 void VulkanComputeExample::forwardCmd()
@@ -523,7 +581,7 @@ void VulkanComputeExample::forwardCmd()
     radixSortCmd(0);
     ComputeShaderMemoryBarrierBlock();
 
-    X = (splat_count * SORT_SIZE + 256 - 1) / 256;
+    X = (splat_count * SORT_SIZE * 10 + 256 - 1) / 256;
     bindPipeline2CommandBuffer(pipe_compute_tile, FORWARD_PIPE, X, 1, 1);
 
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
@@ -544,14 +602,14 @@ void VulkanComputeExample::forwardCmdTime()
     uint32_t Y = 0;
     
     /********************* Inverse index gaussian point ***********************/
-    queryCmdTimeStart("07. forward inverse");
+    queryCmdTimeStart("07. forward_inverse");
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_inverse, FORWARD_PIPE, X, 1, 1);
-    queryCmdTimeEnd("07. forward inverse");
+    queryCmdTimeEnd("07. forward_inverse");
     /********************* Inverse index gaussian point ***********************/
 
     
-    queryCmdTimeStart("08. forward fill tile_range");
+    queryCmdTimeStart("08. forward_fill_tile_range");
     uint32_t grid_width = (int)(current_scale * image_width) / 16;
     grid_width = ((int)(current_scale * image_width) + 15) / 16;
     uint32_t grid_height = (int)(current_scale * image_height) / 16;
@@ -562,52 +620,41 @@ void VulkanComputeExample::forwardCmdTime()
         grid_width * grid_height * 2 * sizeof(int32_t), 0
     );
     TransComputeBarrierBlock();
-    queryCmdTimeEnd("08. forward fill tile_range");
+    queryCmdTimeEnd("08. forward_fill_tile_range");
     
-    queryCmdTimeStart("09. forward compute key");
+    queryCmdTimeStart("09. forward_compute_key");
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_compute_key, FORWARD_PIPE, X, 1, 1);
     ComputeTransBarrierBlock();
-    queryCmdTimeEnd("09. forward compute key");
+    queryCmdTimeEnd("09. forward_compute_key");
     
-    queryCmdTimeStart("10. forward copy index");
-//     VkBufferCopy copyRegionBB = {};
-//     copyRegionBB.srcOffset = 0; // Start at the beginning of the source buffer
-//     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
-//     copyRegionBB.size = splat_count * sizeof(uint32_t) * SORT_SIZE; // Size of data to copy
-//     vkCmdCopyBufferGS(
-//         compute.commandBuffer,
-//         sort_buffers.unsort_index,
-//         sort_buffers.sortVBufferEven,
-//         1,            // Number of regions to copy
-//         &copyRegionBB   // Pointer to the copy region
-//     );
-//     TransComputeBarrierBlock();
-    queryCmdTimeEnd("10. forward copy index");
+    queryCmdTimeStart("10. forward_copy_index");
+    queryCmdTimeEnd("10. forward_copy_index");
     
-    queryCmdTimeStart("11. forward sort");
+    queryCmdTimeStart("11. forward_sort");
     radixSortCmd(0);
     ComputeShaderMemoryBarrierBlock();
-    queryCmdTimeEnd("11. forward sort");
+    queryCmdTimeEnd("11. forward_sort");
     
-    queryCmdTimeStart("12. forward compute tile");
-    X = (splat_count * SORT_SIZE * 2 + 512 - 1) / 512;
+    queryCmdTimeStart("12. forward_compute_tile");
+    X = (splat_count * SORT_SIZE * 2 + 256 - 1) / 256;
+
     bindPipeline2CommandBuffer(pipe_compute_tile, FORWARD_PIPE, X, 1, 1);
-    queryCmdTimeEnd("12. forward compute tile");
+    queryCmdTimeEnd("12. forward_compute_tile");
     
     /*********************  Alpha blending ***********************/
-    queryCmdTimeStart("13. forward blend");
+    queryCmdTimeStart("13. forward_blend");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
     bindPipeline2CommandBuffer(pipe_blending, FORWARD_PIPE, X, Y, 1);
-    queryCmdTimeEnd("13. forward blend");
+    queryCmdTimeEnd("13. forward_blend");
     /*********************  Alpha blending ***********************/
 
-    queryCmdTimeStart("14. forward copy buffer2img");
+    queryCmdTimeStart("14. forward_copy_buffer2img");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
     bindPipeline2CommandBuffer(pipe_copy_buffer2img, 0, X, Y, 1);
-    queryCmdTimeEnd("14. forward copy buffer2img");
+    queryCmdTimeEnd("14. forward_copy_buffer2img");
 }
 
 void VulkanComputeExample::bufferToImageCmd()
@@ -639,47 +686,56 @@ void VulkanComputeExample::backwardCmd()
     uint32_t X = 0;
     uint32_t Y = 0;
     
-    /*********************  l2 loss ***********************/
-    queryCmdTimeStart("15. L2 loss");
-//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.psnr_sum, 0, VK_WHOLE_SIZE, 0);
+    
+    /*********************  l1 loss ***********************/
+    queryCmdTimeStart("15. L1_loss");
+    X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
+    Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
+    bindPipeline2CommandBuffer(pipe_ssim, FORWARD_PIPE, X, Y, 1, true);
+    
     X = ((int)(current_scale * image_width) * (int)(current_scale * image_height) + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_loss, FORWARD_PIPE, X, 1, 1);
-    queryCmdTimeEnd("15. L2 loss");
-    /*********************  l2 loss ***********************/
+    
+    X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
+    Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
+    bindPipeline2CommandBuffer(pipe_ssim, BACKWARD_PIPE, X, Y, 1, true);
+    
+    queryCmdTimeEnd("15. L1_loss");
+    /*********************  l1 loss ***********************/
 
     // Calling the backward pipeline
 
     /*********************  Alpha blending backward ***********************/
-    queryCmdTimeStart("16. Backward blending");
+    queryCmdTimeStart("16. Backward_blending");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
 
+//     bindPipeline2CommandBuffer(pipe_blending, BACKWARD_PIPE, X, Y, 1);
     bindPipeline2CommandBuffer(pipe_blending_int, BACKWARD_PIPE, X, Y, 1);
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_int2float, BACKWARD_PIPE, X, 1, 1);
-
-    queryCmdTimeEnd("16. Backward blending");
+    queryCmdTimeEnd("16. Backward_blending");
     /*********************  Alpha blending backward ***********************/
     
     /*********************  Compute SH backward ***********************/
-    queryCmdTimeStart("17. Backward SH");
+    queryCmdTimeStart("17. Backward_SH");
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_sh, BACKWARD_PIPE, X, 1, 1, true);
-    queryCmdTimeEnd("17. Backward SH");
+    queryCmdTimeEnd("17. Backward_SH");
     /*********************  Compute SH backward ***********************/
     
     /********************* Inverse index gaussian point backward ***********************/
-    queryCmdTimeStart("18. Backward inverse");
+    queryCmdTimeStart("18. Backward_inverse");
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_inverse, BACKWARD_PIPE, X, 1, 1);
-    queryCmdTimeEnd("18. Backward inverse");
+    queryCmdTimeEnd("18. Backward_inverse");
     /********************* Inverse index gaussian point backward ***********************/
 
     /*********************  Project EWA backward ***********************/
-    queryCmdTimeStart("19. Backward EWA");
+    queryCmdTimeStart("19. Backward_EWA");
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_project, BACKWARD_PIPE, X, 1, 1);
-    queryCmdTimeEnd("19. Backward EWA");
+    queryCmdTimeEnd("19. Backward_EWA");
     /*********************  Project EWA backward ***********************/
 }
  
@@ -688,6 +744,7 @@ void VulkanComputeExample::optimizeStepCmd()
     uint32_t X = 0;
     /*********************  Adam optimizer ***********************/
     X = (splat_count + 256 - 1) / 256; // Ceiling division
+
     if (training_step <= flow_steps) {
         bindPipeline2CommandBuffer(pipe_optimize, FORWARD_PIPE, X, 1, 1, true);
     }
@@ -709,40 +766,40 @@ void VulkanComputeExample::densifyCmd()
     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
     copyRegionBB.size = splat_count * sizeof(uint32_t); // Size of data to copy
     
-    vkCmdCopyBufferGS(
-        compute.commandBuffer,
-        splat_buffers.xyz_gradient_mean,
-        sort_buffers.sortKBufferEven,
-        1,            // Number of regions to copy
-        &copyRegionBB   // Pointer to the copy region
-    );
-    vkCmdCopyBufferGS(
-        compute.commandBuffer,
-        sort_buffers.densify_idx,
-        sort_buffers.sortVBufferEven,
-        1,            // Number of regions to copy
-        &copyRegionBB   // Pointer to the copy region
-    );
-    TransComputeBarrierBlock();
+//     vkCmdCopyBufferGS(
+//         compute.commandBuffer,
+//         splat_buffers.xyz_gradient_mean_int,
+//         sort_buffers.sortKBufferEven,
+//         1,            // Number of regions to copy
+//         &copyRegionBB   // Pointer to the copy region
+//     );
+//     vkCmdCopyBufferGS(
+//         compute.commandBuffer,
+//         sort_buffers.densify_idx,
+//         sort_buffers.sortVBufferEven,
+//         1,            // Number of regions to copy
+//         &copyRegionBB   // Pointer to the copy region
+//     );
+//     TransComputeBarrierBlock();
     
     radixSortCmd(splat_count);
     ComputeShaderMemoryBarrierBlock();
     
-    vkCmdCopyBufferGS(
-        compute.commandBuffer,
-        sort_buffers.sortKBufferEven,
-        splat_buffers.xyz_gradient_mean,
-        1,            // Number of regions to copy
-        &copyRegionBB   // Pointer to the copy region
-    );
-    vkCmdCopyBufferGS(
-        compute.commandBuffer,
-        sort_buffers.sortVBufferEven,
-        sort_buffers.densify_idx,
-        1,            // Number of regions to copy
-        &copyRegionBB   // Pointer to the copy region
-    );
-    TransComputeBarrierBlock();
+//     vkCmdCopyBufferGS(
+//         compute.commandBuffer,
+//         sort_buffers.sortKBufferEven,
+//         splat_buffers.xyz_gradient_mean_int,
+//         1,            // Number of regions to copy
+//         &copyRegionBB   // Pointer to the copy region
+//     );
+//     vkCmdCopyBufferGS(
+//         compute.commandBuffer,
+//         sort_buffers.sortVBufferEven,
+//         sort_buffers.densify_idx,
+//         1,            // Number of regions to copy
+//         &copyRegionBB   // Pointer to the copy region
+//     );
+//     TransComputeBarrierBlock();
     
 //     return;
     
@@ -752,7 +809,8 @@ void VulkanComputeExample::densifyCmd()
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_gradient_accum, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.denom, 0, VK_WHOLE_SIZE, 0);
-    //vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.curPointsNum, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.sortKBufferEven, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.sortVBufferEven, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.max_radii2D, 0, VK_WHOLE_SIZE, 0);
 }
 
@@ -816,7 +874,6 @@ void VulkanComputeExample::updRenderCmd()
             inputGaussian.intr_tmp[0].data()
         );
     }
-
     TransComputeBarrierBlock();
 }
 
@@ -824,20 +881,7 @@ void VulkanComputeExample::updRenderCmd(int index)
 {
     if (index >= inputGaussian.extr_tmp_test.size())
         return;
-    VkImageCopy copyRegionI2I = {};
-    copyRegionI2I.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegionI2I.srcSubresource.mipLevel = 0;
-    copyRegionI2I.srcSubresource.baseArrayLayer = 0;
-    copyRegionI2I.srcSubresource.layerCount = 1;
-    copyRegionI2I.srcOffset = { 0, 0, 0 };
-
-    copyRegionI2I.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegionI2I.dstSubresource.mipLevel = 0;
-    copyRegionI2I.dstSubresource.baseArrayLayer = 0;
-    copyRegionI2I.dstSubresource.layerCount = 1;
-    copyRegionI2I.dstOffset = { static_cast<int32_t>((unsigned int)(image_width * current_scale)), static_cast<int32_t>((unsigned int)(image_height * current_scale)), 1 };
-    copyRegionI2I.extent = { (unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1 };
-    
+        
     VkBufferCopy region = {};
     region.srcOffset = 7 * (index) * sizeof(float);
     region.dstOffset = 0;
@@ -882,26 +926,25 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
     else
         current_scale = low_resolotion_scale;
     
-    queryCmdTimeStart("00. compute overall");
+    queryCmdTimeStart("00. compute_overall");
 
-    queryCmdTimeStart("01. image to buffer");
+    queryCmdTimeStart("01. image_to_buffer");
     imageToBufferCmd();
-    queryCmdTimeEnd("01. image to buffer");
+    queryCmdTimeEnd("01. image_to_buffer");
 
-    queryCmdTimeStart("02. reset grad");
+    queryCmdTimeStart("02. reset_grad");
     zeroGradCmd();
-    queryCmdTimeEnd("02. reset grad");
+    queryCmdTimeEnd("02. reset_grad");
 
-    queryCmdTimeStart("03. forward fill visible point");
+    queryCmdTimeStart("03. forward_fill_visible_point");
     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
-    queryCmdTimeEnd("03. forward fill visible point");
+    queryCmdTimeEnd("03. forward_fill_visible_point");
     
-    queryCmdTimeStart("04. forward fill buffer");
+    queryCmdTimeStart("04. forward_fill_buffer");
     bindPipeline2CommandBuffer(pipe_buffer_fill, 0, X, 1, 1);
-//     bindPipeline2CommandBuffer(pipe_reset_psnr, FORWARD_PIPE, 1, 1, 1);
-    queryCmdTimeEnd("04. forward fill buffer");
+    queryCmdTimeEnd("04. forward_fill_buffer");
     
-    queryCmdTimeStart("05. forward EWA");
+    queryCmdTimeStart("05. forward_EWA");
     bindPipeline2CommandBuffer(pipe_extr_process, FORWARD_PIPE, 1, 1, 1);
     if (training_step == flow_steps + 1) {
         initBaseCmd();
@@ -913,14 +956,15 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
         bindPipeline2CommandBuffer(pipe_flow, FORWARD_PIPE, X, 1, 1);
     }
     bindPipeline2CommandBuffer(pipe_project, FORWARD_PIPE, X, 1, 1);
-    queryCmdTimeEnd("05. forward EWA");
+    queryCmdTimeEnd("05. forward_EWA");
     
-    queryCmdTimeStart("06. forward SH");
+    queryCmdTimeStart("06. forward_SH");
     bindPipeline2CommandBuffer(pipe_sh, FORWARD_PIPE, X, 1, 1, true);
-    queryCmdTimeEnd("06. forward SH");
+    queryCmdTimeEnd("06. forward_SH");
 
     forwardCmdTime();
     backwardCmd();
+
     if (training_step > flow_steps) {
         X = (splat_count + 256 - 1) / 256; // Ceiling division
         bindPipeline2CommandBuffer(pipe_flow, BACKWARD_PIPE, X, 1, 1);
@@ -935,20 +979,24 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
     bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
 
-    if (training_step >= 500 && training_step % 100 == 0 && splat_count * 1.06 < MAX_SPLAT_COUNT && training_step <= flow_steps)
+//     if (training_step >= 500 && training_step % 100 == 0 && splat_count * 1.06 < MAX_SPLAT_COUNT && training_step <= flow_steps)
+    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0 && splat_count * 1.11 < MAX_SPLAT_COUNT)
     {
         densifyCmd();
     }
-    if (training_step % 3000 == 0 && training_step > 1000)
+    if (training_step % 1000 == 0 && training_step > 3000)
     {
         bindPipeline2CommandBuffer(pipe_reset_opacity, FORWARD_PIPE, X, 1, 1);
     }
 
-    queryCmdTimeEnd("00. compute overall");
+    queryCmdTimeEnd("00. compute_overall");
     
-//     createGpu2CpuCopys();
-    createGpu2CpuCopy(splat_buffers.curPointsNum);
-    createGpu2CpuCopy(splat_buffers.psnr_sum);
+//     if (training_step >= 499) {
+//         createGpu2CpuCopys();
+//     }
+        
+//     createGpu2CpuCopy(splat_buffers.curPointsNum);
+//     createGpu2CpuCopy(splat_buffers.psnr_sum);
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
 }
 
@@ -1384,10 +1432,8 @@ void VulkanComputeExample::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
-    uint32_t grid_width = image_width / 16;
-    grid_width = (image_width + 15) / 16;
-    uint32_t grid_height = image_height / 16;
-    grid_height = (image_height + 15) / 16;
+    uint32_t grid_width = (image_width + 15) / 16;
+    uint32_t grid_height = (image_height + 15) / 16;
     splat_buffers.tile_range = vkgs::Buffer(
         allocator, grid_width * grid_height * 2 * sizeof(int32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1523,6 +1569,27 @@ void VulkanComputeExample::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
+    splat_buffers.dm_dmu1 = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.dm_dsigma1_sq = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.dm_dsigma12 = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.ssim_map = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.dL_dmap = vkgs::Buffer(
+        allocator, image_width * image_height * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    
     // For image transfer
     splat_buffers.input_image_alpha_array = vkgs::Buffer(
         allocator, image_width * image_height * 4 * sizeof(uint8_t),
@@ -1561,6 +1628,10 @@ void VulkanComputeExample::prepare3dgsBuffers()
     );
     splat_buffers.xyz_gradient_mean = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.xyz_gradient_mean_int = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     sort_buffers.densify_idx = vkgs::Buffer(
@@ -2625,6 +2696,63 @@ void VulkanComputeExample::setLossPipeline()
     std::cout << "[setLossPipeline] Loss Pipeline set" << std::endl;
 }
 
+void VulkanComputeExample::setSSIMPipeline()
+{
+    const uint32_t bindingCount = 8;
+    createPipelineLayout(
+        pipe_ssim,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 8 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.rfeat,       //0
+        &splat_buffers.input_image_array,     //1
+        &splat_buffers.dm_dmu1,   //2
+        &splat_buffers.dm_dsigma1_sq,   //3
+        & splat_buffers.dm_dsigma12,            //4
+        &splat_buffers.ssim_map,      //5
+        & splat_buffers.dL_dmap,      //6
+        & splat_buffers.dL_drfeat,      //7
+    };
+
+    updateDescriptorSet(pipe_ssim.descriptorSet, splatBuffers);
+
+    pipe_ssim.pipelines.resize(2);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/ssim_forward.comp.spv");
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_ssim.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_ssim.pipelines[FORWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setSSIMPipeline] ssim pipeline set" << std::endl;
+
+    shaderCode = getPath("shader/computeshader/ssim_backward.comp.spv");
+
+    pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_ssim.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_ssim.pipelines[BACKWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setSSIMPipeline] ssim pipeline set" << std::endl;
+}
+
 void VulkanComputeExample::setComputeKeyPipeline()
 {
     const uint32_t bindingCount = 10;
@@ -2768,7 +2896,7 @@ void VulkanComputeExample::setDensificationStatsPipeline()
 
 void VulkanComputeExample::setMeanGradPipeline()
 {
-    const uint32_t bindingCount = 5;
+    const uint32_t bindingCount = 6;
     createPipelineLayout(
         pipe_mean_grad,
         bindingCount,  // Number of descriptor set bindings
@@ -2781,7 +2909,10 @@ void VulkanComputeExample::setMeanGradPipeline()
         & splat_buffers.denom,                  //1
         & splat_buffers.curPointsNum,                         //2
         & splat_buffers.xyz_gradient_mean,     //3
-        & sort_buffers.densify_idx //4
+//         & sort_buffers.densify_idx, //4
+//         & splat_buffers.xyz_gradient_mean_int
+        & sort_buffers.sortVBufferEven,
+        & sort_buffers.sortKBufferEven
     };
 
     updateDescriptorSet(pipe_mean_grad.descriptorSet, splatBuffers);
@@ -2812,7 +2943,7 @@ void VulkanComputeExample::setMeanGradPipeline()
 
 void VulkanComputeExample::setClonePipeline()
 {
-    const uint32_t bindingCount = 7;
+    const uint32_t bindingCount = 8;
     createPipelineLayout(
         pipe_clone,
         bindingCount,  // Number of descriptor set bindings
@@ -2821,13 +2952,14 @@ void VulkanComputeExample::setClonePipeline()
     );
 
     std::vector<vkgs::Buffer*> splatBuffers = {
-         &sort_buffers.densify_idx,                           //0
-         &splat_buffers.xyz_array,                  //1
-         &splat_buffers.sh_coeff,                         //2
-         &splat_buffers.opacity,     //3
-         &splat_buffers.scale_array,                   //4
-         &splat_buffers.rotate_array,              //5
-         &splat_buffers.curPointsNum   //6
+        &sort_buffers.sortVBufferEven,                           //0
+        &splat_buffers.xyz_array,                  //1
+        &splat_buffers.sh_coeff,                         //2
+        &splat_buffers.opacity,     //3
+        &splat_buffers.scale_array,                   //4
+        &splat_buffers.rotate_array,              //5
+        &splat_buffers.curPointsNum,   //6
+        &splat_buffers.xyz_gradient_mean
     };
 
     updateDescriptorSet(pipe_clone.descriptorSet, splatBuffers);
@@ -2854,6 +2986,48 @@ void VulkanComputeExample::setClonePipeline()
     );
 
     std::cout << "[setClonePipeline] Compute tile pipeline set" << std::endl;
+}
+
+void VulkanComputeExample::setClone3DGSPipeline()
+{
+    const uint32_t bindingCount = 8;
+    createPipelineLayout(
+        pipe_clone_3dgs,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 8 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &sort_buffers.densify_idx,                           //0
+        &splat_buffers.xyz_array,                  //1
+        &splat_buffers.sh_coeff,                         //2
+        &splat_buffers.opacity,     //3
+        &splat_buffers.scale_array,                   //4
+        &splat_buffers.rotate_array,              //5
+        &splat_buffers.curPointsNum,   //6
+        &splat_buffers.xyz_gradient_mean
+    };
+
+    updateDescriptorSet(pipe_clone_3dgs.descriptorSet, splatBuffers);
+
+    pipe_clone_3dgs.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/densify_and_clone_3dgs.comp.spv");
+    
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_clone_3dgs.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_clone_3dgs.pipelines[FORWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setClone3DGSPipeline] Clone 3dgs pipeline set" << std::endl;
 }
 
 void VulkanComputeExample::setPrunePipeline()
@@ -2914,7 +3088,7 @@ void VulkanComputeExample::setPrunePipeline()
 
 void VulkanComputeExample::setSplitPipeline()
 {
-    const uint32_t bindingCount = 7;
+    const uint32_t bindingCount = 17;
     createPipelineLayout(
         pipe_split,
         bindingCount,  // Number of descriptor set bindings
@@ -2923,13 +3097,25 @@ void VulkanComputeExample::setSplitPipeline()
     );
 
     std::vector<vkgs::Buffer*> splatBuffers = {
-        &sort_buffers.densify_idx,                           //0
-        & splat_buffers.xyz_array,                  //1
-        & splat_buffers.sh_coeff,                         //2
-        & splat_buffers.opacity,     //3
+        &sort_buffers.sortVBufferEven,                           //0
+        &splat_buffers.xyz_array,                  //1
+        &splat_buffers.sh_coeff,                         //2
+        &splat_buffers.opacity,     //3
         &splat_buffers.scale_array,                   //4
-        & splat_buffers.rotate_array,              //5
-        & splat_buffers.curPointsNum   //6
+        &splat_buffers.rotate_array,              //5
+        &splat_buffers.curPointsNum,   //6
+        
+        &splat_buffers.xyz_array_exp_avg,
+        &splat_buffers.feature_array_exp_avg,
+        &splat_buffers.opacity_array_exp_avg,
+        &splat_buffers.scale_array_exp_avg,
+        &splat_buffers.rotate_array_exp_avg,
+        
+        &splat_buffers.xyz_array_avg,
+        &splat_buffers.feature_array_avg,
+        &splat_buffers.opacity_array_avg,
+        &splat_buffers.scale_array_avg,
+        &splat_buffers.rotate_array_avg
     };
 
     updateDescriptorSet(pipe_split.descriptorSet, splatBuffers);
@@ -2956,6 +3142,48 @@ void VulkanComputeExample::setSplitPipeline()
     );
 
     std::cout << "[setSplitPipeline] Compute tile pipeline set" << std::endl;
+}
+
+void VulkanComputeExample::setSplit3DGSPipeline()
+{
+    const uint32_t bindingCount = 8;
+    createPipelineLayout(
+        pipe_split_3dgs,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 8 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &sort_buffers.densify_idx,                           //0
+        & splat_buffers.xyz_array,                  //1
+        & splat_buffers.sh_coeff,                         //2
+        & splat_buffers.opacity,     //3
+        &splat_buffers.scale_array,                   //4
+        & splat_buffers.rotate_array,              //5
+        & splat_buffers.curPointsNum,   //6
+        &splat_buffers.xyz_gradient_mean
+    };
+
+    updateDescriptorSet(pipe_split_3dgs.descriptorSet, splatBuffers);
+
+    pipe_split_3dgs.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/densify_and_split_3dgs.comp.spv");
+    
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_split_3dgs.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_split_3dgs.pipelines[FORWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setSplit3DGSPipeline] Split 3dgs pipeline set" << std::endl;
 }
 
 void VulkanComputeExample::setResetOpacityPipeline()
@@ -3001,18 +3229,6 @@ void VulkanComputeExample::setResetOpacityPipeline()
 
 void VulkanComputeExample::setSortPipeline()
 {
-//     // create sorter
-//     VrdxSorterCreateInfo sorter_info = {};
-//     sorter_info.physicalDevice = physicalDevice;
-//     sorter_info.device = device;
-// //   sorter_info.pipelineCache = context_.pipeline_cache();
-//     vrdxCreateSorter(&sorter_info, &sort_buffers.sorter);
-//
-//     // preallocate sorter storage
-//     VrdxSorterStorageRequirements requirements;
-//     vrdxGetSorterKeyValueStorageRequirements(sort_buffers.sorter, MAX_SPLAT_COUNT * SORT_SIZE, &requirements);
-//     sort_buffers.sort_storage = vkgs::Buffer(allocator, requirements.size, requirements.usage);
-
     sort_buffers.splat_visible_point_count = vkgs::Buffer(
         allocator, 
         sizeof(uint32_t),
@@ -3025,23 +3241,7 @@ void VulkanComputeExample::setSortPipeline()
     sort_buffers.splat_visible_point_count_cpu = vkgs::CpuBuffer(
         allocator, sizeof(uint32_t)
     );
-
-//     sort_buffers.key = vkgs::Buffer(
-//         allocator, 
-//         MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
-//         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-//         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-//         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-//     );
-//
-//     sort_buffers.index = vkgs::Buffer(
-//         allocator, 
-//         MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
-//         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-//         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-//         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-//     );
-
+    
     sort_buffers.unsort_index = vkgs::Buffer(
         allocator, 
         MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
@@ -3058,7 +3258,7 @@ void VulkanComputeExample::setSortPipeline()
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT
     );
     
-    uint32_t numWorkgroups = (splat_count * SORT_SIZE / 512 + 511) / 512;
+    uint32_t numWorkgroups = (MAX_SPLAT_COUNT * SORT_SIZE / 512 + 511) / 512;
     uint32_t radixBin = 256; //2^8
     sort_buffers.sortHistBuffer = vkgs::Buffer(
         allocator, 
@@ -3494,7 +3694,8 @@ void VulkanComputeExample::setBufferFillPipeline()
 
     std::vector<vkgs::Buffer*> splatBuffers = {
         &splat_buffers.visible,                  //0
-        &splat_buffers.curPointsNum,                //1
+        &splat_buffers.curPointsNum                //1
+//         &splat_buffers.opacity
     };
 
     updateDescriptorSet(pipe_buffer_fill.descriptorSet, splatBuffers);
@@ -3521,46 +3722,6 @@ void VulkanComputeExample::setBufferFillPipeline()
     );
 
     std::cout << "[setBufferFillPipeline] Buffer Fill Pipeline set" << std::endl;
-}
-
-void VulkanComputeExample::setResetPSNRPipeline()
-{
-    const uint32_t bindingCount = 1;
-    createPipelineLayout(
-        pipe_reset_psnr,
-        bindingCount,  // Number of descriptor set bindings
-        true,
-        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
-    );
-
-    std::vector<vkgs::Buffer*> splatBuffers = {
-        &splat_buffers.psnr_sum
-    };
-
-    updateDescriptorSet(pipe_reset_psnr.descriptorSet, splatBuffers);
-
-    pipe_reset_psnr.pipelines.resize(1);
-
-    // Load SPIR-V shader code
-    std::string shaderCode = getPath("shader/computeshader/reset_psnr.comp.spv");
-
-#ifdef VULKAN_PC
-    shaderCode = "../../shaders/glsl/computeshader/reset_psnr.comp.spv";
-    std::cout << "[setBufferFillPipeline] shaderCode: " << shaderCode << std::endl;
-#endif
-
-    VkComputePipelineCreateInfo pipelineInfo = {};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
-    pipelineInfo.layout = pipe_reset_psnr.pipelineLayout;
-
-    VK_CHECK_RESULT(
-        vkCreateComputePipelinesGS(
-            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_reset_psnr.pipelines[0]
-        )
-    );
-
-    std::cout << "[setResetPSNRPipeline] Buffer Fill Pipeline set" << std::endl;
 }
 
 
@@ -4022,12 +4183,12 @@ void VulkanComputeExample::bindPipeline2CommandBuffer(
         float pos_lr = (start_lr - ((start_lr - end_lr) * (training_step / 30000)));
         
         std::vector<float> pushConstants = { static_cast<float>(xyz_size), static_cast<float>((int)(current_scale * image_width)), static_cast<float>((int)(current_scale * image_height)), 
-            pos_lr, static_cast<float>(sh_degree), static_cast<float>(current_img_idx), 
-            0, 0
+            pos_lr * inputGaussian.radius, static_cast<float>(sh_degree), inputGaussian.radius, static_cast<float>(training_step),
+            0
         };
         vkCmdPushConstantsGS(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float) * 8, pushConstants.data());
     }else{
-        std::vector<uint32_t> pushConstants = { xyz_size, (unsigned int)(current_scale * image_width), (unsigned int)(current_scale * image_height), 0};
+        std::vector<uint32_t> pushConstants = { xyz_size, (unsigned int)(current_scale * image_width), (unsigned int)(current_scale * image_height), static_cast<uint32_t>(training_step)};
         vkCmdPushConstantsGS(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) * 4, pushConstants.data());
     }
 
@@ -4322,7 +4483,7 @@ void VulkanComputeExample::prepareGraphics()
 }
 
 template <typename T>
-void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum, int length)
+void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum, int length, int offset)
 {
     
     const vkgs::CpuBuffer &cpu_buffer = buffer.cpu_buffer;
@@ -4340,7 +4501,21 @@ void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs
     if (varName == "tile_range"){
         
         for(int i = 0; i < pointNum;i++){
-            LOGW("%{public}d: %{public}d %{public}d", i, num[i * 2 + 0], num[i * 2 + 1]);
+            LOGW("%{public}d: %{public}d %{public}d", i + offset, num[(i + offset) * 2 + 0], num[(i + offset) * 2 + 1]);
+        }
+        return;
+    }
+    
+    if (varName == "sortKBufferEven") {
+        for (int i = 0; i < size; i++) {
+            LOGW("%{public}d: %{public}d, %{public}d", i + offset, num[i + offset], uint32_t(num[i + offset]) >> 19);
+        }
+        return;
+    }
+    
+    if (varName == "sorted_idx_array" || varName == "sortVBufferEven") {
+        for (int i = 0; i < size; i++) {
+            LOGW("%{public}d: %{public}d", i, num[i + offset]);
         }
         return;
     }
@@ -4359,21 +4534,21 @@ void VulkanComputeExample::printGpuBuffer(const std::string& varName, const vkgs
     
     #ifdef VULKAN_HW
     for (int i = 0; i < pointNum; i++) {
-        LOGW("%{public}d: ", i);
+        LOGW("%{public}d: ", i + offset);
         for (int j = 0; j < length; j++) {
             if constexpr (std::is_same<T, int32_t>::value)
-                LOGW("%{public}d ", num[i * length + j]);
+                LOGW("%{public}d ", num[(i + offset) * length + j]);
             else if constexpr (std::is_same<T, uint32_t>::value)
-                LOGW("%{public}d ", num[i * length + j]);
+                LOGW("%{public}d ", num[(i + offset) * length + j]);
             else if constexpr (std::is_same<T, uint8_t>::value)
-                LOGW("%{public}d ", unsigned(num[i * length + j]));
+                LOGW("%{public}d ", unsigned(num[(i + offset) * length + j]));
             
             else {
                 if (varName.substr(0, 2) == "dL" || varName == "xyz_gradient_accum" || varName == "xyz_gradient_mean") {
-                    LOGW("%{public}.16f ", num[i * length + j]);
+                    LOGW("%{public}.24f", num[(i + offset) * length + j]);
                 }
                 else
-                    LOGW("%{public}f ", num[i * length + j]);
+                    LOGW("%{public}f ", num[(i + offset) * length + j]);
             }
         }
     }
@@ -4528,6 +4703,7 @@ bool VulkanComputeExample::prepare()
     setExtrOptimizationPipeline();
     
     setLossPipeline();
+    setSSIMPipeline();
     setImage2BufferPipeline();
     setBuffer2ImagePipeline();
     setBufferFillPipeline();
@@ -4536,6 +4712,8 @@ bool VulkanComputeExample::prepare()
     setComputeSHRenderPipeline();
     setClonePipeline();
     setSplitPipeline();
+    setClone3DGSPipeline();
+    setSplit3DGSPipeline();
     setDensificationStatsPipeline();
     setMeanGradPipeline();
     setResetOpacityPipeline();
@@ -4552,12 +4730,14 @@ bool VulkanComputeExample::prepare()
     return prepared;
 }
 
-void VulkanComputeExample::calculatePSNR(float* mse, int width, int height) {
-    const int64_t totalPixels = static_cast<int64_t>(width) * height;
+float VulkanComputeExample::calculatePSNR(float* mse, int width, int height, float& psnr_total) {
+    
+    int totalPixels = width * height;
 
     // 防止 MSE 为零，避免除以零错误
+    float psnr_each = 0;
     if (mse[0] == 0 && mse[1] == 0 && mse[2] == 0) {
-        total_psnr = INFINITY; // PSNR 理论上为无穷大
+        psnr_each = INFINITY;
     }
     else
     {
@@ -4569,14 +4749,16 @@ void VulkanComputeExample::calculatePSNR(float* mse, int width, int height) {
         
         // PSNR 公式
         float psnr[3];
-        psnr[0] = 20.0 * std::log10(1.0 / meanSquaredError[0]);
-        psnr[1] = 20.0 * std::log10(1.0 / meanSquaredError[1]);
-        psnr[2] = 20.0 * std::log10(1.0 / meanSquaredError[2]);
+        psnr[0] = 10.0 * std::log10(1.0 / meanSquaredError[0]);
+        psnr[1] = 10.0 * std::log10(1.0 / meanSquaredError[1]);
+        psnr[2] = 10.0 * std::log10(1.0 / meanSquaredError[2]);
         
 //         LOGI("PSNR per image: %{public}f: ", (psnr[0] + psnr[1] + psnr[2]) / 3.0);
-        
-        total_psnr += ((psnr[0] + psnr[1] + psnr[2]) / 3.0);
+        psnr_each = ((psnr[0] + psnr[1] + psnr[2]) / 3.0);
     }
+    psnr_total += psnr_each;
+    
+    return psnr_each;
 }
 
 template<typename T>
@@ -4593,12 +4775,13 @@ void copyGpuBufferToVector(const vkgs::Buffer& buffer, std::vector<T>& destVecto
 
 void VulkanComputeExample::printLog(bool train)
 {
-
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.psnr_sum, 0, VK_WHOLE_SIZE, 0);
-    TransComputeBarrierBlock();
-    executeTransCommand();
-    if (training_step >= 1)
-    {
+    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0) {
+        buildComputeCommandBuffer([this](){
+            createGpu2CpuCopy(splat_buffers.curPointsNum);
+        });
+        TransComputeBarrierBlock();
+        executeTransCommand();
+        
         const vkgs::CpuBuffer& cpu_buffer = splat_buffers.curPointsNum.cpu_buffer;
         if (cpu_buffer.isInit && training_step > 0)
         {
@@ -4606,17 +4789,65 @@ void VulkanComputeExample::printLog(bool train)
             splat_count = num[0];
             //std::cout << splat_count << std::endl;
         }
-
-        const vkgs::CpuBuffer& cpu_buffer1 = splat_buffers.psnr_sum.cpu_buffer;
-        float psnr_sum[3];
-        if (cpu_buffer1.isInit)
-        {
-            const float* num = reinterpret_cast<const float*>(cpu_buffer1.data());
-            psnr_sum[0] = num[0];
-            psnr_sum[1] = num[1];
-            psnr_sum[2] = num[2];
-        }
+    }
+    
+    if (training_step >= 500000) {
+        buildComputeCommandBuffer([this](){
+            createGpu2CpuCopys();
+        });
+        executeComputeCommand();
         
+        if (training_step >= 50000){
+            std::vector<float> positionData;
+            copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
+            inputGaussian.positions.clear();
+            for (int i = 0; i < splat_count; i++) {
+            inputGaussian.positions.emplace_back(
+                    positionData[i * 3], 
+                    positionData[i * 3 + 1], 
+                    positionData[i * 3 + 2]
+                );
+            }
+            std::vector<float> scaleData;
+            copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
+            inputGaussian.scales.clear();
+            for (int i = 0; i < splat_count; i++) {
+                inputGaussian.scales.emplace_back(
+                    scaleData[i * 3], 
+                    scaleData[i * 3 + 1], 
+                    scaleData[i * 3 + 2]
+                );
+            }
+            
+            std::vector<float> rotationData;
+            copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
+            inputGaussian.rotations.clear();
+            for (int i = 0; i < splat_count; i++) {
+                inputGaussian.rotations.emplace_back(
+                    rotationData[i * 4], 
+                    rotationData[i * 4 + 1], 
+                    rotationData[i * 4 + 2], 
+                    rotationData[i * 4 + 3]
+                );
+            }
+            
+            std::vector<float> featureData;
+            copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
+            inputGaussian.colors.clear();
+            for (int i = 0; i < splat_count; i++) {
+                DataLoader::InputInitStruct::Data colorData;
+                for (int j = 0; j < 48; j++) {
+                    colorData.values[j] = featureData[i * 48 + j];
+                }
+                inputGaussian.colors.push_back(colorData);
+            }
+            copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
+        }
+    }
+
+    
+    if (training_step >= 1)
+    {
         const vkgs::CpuBuffer& cpu_buffer2 = sort_buffers.splat_visible_point_count.cpu_buffer;
         int sort_point_count = -1;
         if (cpu_buffer2.isInit)
@@ -4628,21 +4859,21 @@ void VulkanComputeExample::printLog(bool train)
 
         total_sort_point_count += sort_point_count;
         max_avg_splat_tile_num = std::max(max_avg_splat_tile_num, 1.0 * sort_point_count / splat_count);
-        calculatePSNR(psnr_sum, (int)(current_scale * image_width), (int)(current_scale * image_height));
+//         calculatePSNR(psnr_sum, (int)(current_scale * image_width), (int)(current_scale * image_height));
         if ((training_step + 1) % 100 == 0 && training_step != max_training_step)
         {
 
             LOGI("Training Step[%{public}d]: Point Num: [%{public}d], Average PSNR： [%{public}f], Mean Sort Point: [%{public}f], Max Avg Splat Tile: [%{public}f]",
                 training_step, splat_count, total_psnr / 100, total_sort_point_count / 100.0, max_avg_splat_tile_num);
 
-            total_psnr = 0;
+//             total_psnr = 0;
             total_sort_point_count = 0;
             max_avg_splat_tile_num = 0;
         }
 
     }
     queryEventTime();
-    if (training_step >= 0 && train){
+    if ((training_step >= 0) && train){
 //         printGpuBuffers();
     }
 

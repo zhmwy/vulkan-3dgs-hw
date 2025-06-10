@@ -50,11 +50,13 @@
 #define FORWARD_PIPE 0
 #define BACKWARD_PIPE 1
 
-#define SORT_SIZE 100    // must be equal to TILE_NUM_AVG_MAX!!!!!!!!
+#define SORT_SIZE 10    // must be equal to TILE_NUM_AVG_MAX!!!!!!!!
 
 #define LOAD_HEAD 0
 #define LOAD_EXTRA 1
 
+#define HEIGHT 640
+#define WIDTH  480
 
 #define VULKAN_HW
 // #define VULKAN_PC
@@ -79,7 +81,7 @@ public:
     VulkanComputeExample();
     ~VulkanComputeExample();
     void DestoryBuffer(vkgs::Buffer buffer);
-    void DestoryBuffers();
+    void DestoryBuffers();  
 
     #ifdef VULKAN_PC
     uint32_t screenWidth;
@@ -100,7 +102,7 @@ public:
     std::vector<float> intr_render_tmp;
 
     // Predefine 3DGS hyperparameters
-    int MAX_SPLAT_COUNT = 200000;
+    int MAX_SPLAT_COUNT = 300000;
     static const int MAX_TIME_QUERY_NUM = 100;
     static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;
@@ -110,9 +112,10 @@ public:
     int render_index = 0;
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
-
-    int low_resolution_steps = 1000;
+    
     int flow_steps = 2000;
+    int low_resolution_steps = 500;
+
     int sh_degree = 1;
     
     RandomGenerator random_generator;
@@ -240,6 +243,12 @@ public:
         vkgs::Buffer dL_dbackground;
         vkgs::Buffer dL_dshs_array;
 
+        vkgs::Buffer dL_dmap;
+        vkgs::Buffer dm_dmu1;
+        vkgs::Buffer dm_dsigma1_sq;
+        vkgs::Buffer dm_dsigma12;
+        vkgs::Buffer ssim_map;
+        
         // activation patch buffers
         vkgs::Buffer opacity_act_array;
         vkgs::Buffer dL_dopacity_act_array;
@@ -250,6 +259,7 @@ public:
         vkgs::Buffer denom;
         vkgs::Buffer curPointsNum;
         vkgs::Buffer xyz_gradient_mean;
+        vkgs::Buffer xyz_gradient_mean_int;
 
 
         vkgs::Buffer dL_duvd_int;
@@ -330,16 +340,20 @@ public:
     Compute3DGS pipe_optimize_extr;
     
     Compute3DGS pipe_loss;
+    Compute3DGS pipe_ssim;
     Compute3DGS pipe_copy_img2buffer;
     Compute3DGS pipe_copy_buffer2img; 
     Compute3DGS pipe_buffer_fill;
-    Compute3DGS pipe_reset_psnr;
     Compute3DGS pipe_sh;
     Compute3DGS pipe_sh_render;
+    
     Compute3DGS pipe_densification_stats;
     Compute3DGS pipe_mean_grad;
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
+    Compute3DGS pipe_clone_3dgs;
+    Compute3DGS pipe_split_3dgs;
+    
     Compute3DGS pipe_reset_opacity;
     Compute3DGS pipe_extr_process;
     Compute3DGS pipe_extr_process_render;
@@ -364,7 +378,9 @@ public:
     std::vector<std::string> filterNames;
     
     float total_psnr = 0;
-    long long total_sort_point_count = 0;
+    float total_psnr_mask = 0;
+    int total_psnr_mask_num = 0;
+    int total_sort_point_count = 0;
     double max_avg_splat_tile_num = 0;
     float current_scale=1.0;
 
@@ -441,11 +457,15 @@ public:
     void setSortPipeline(); 
     void setComputeKeyPipeline();
     void setComputeTilePipeline();
+    
     void setDensificationStatsPipeline();
     void setMeanGradPipeline();
     void setClonePipeline();
     void setPrunePipeline();
     void setSplitPipeline();
+    void setClone3DGSPipeline();
+    void setSplit3DGSPipeline();
+    
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
@@ -457,6 +477,7 @@ public:
     void setExtrOptimizationPipeline();
     
     void setLossPipeline();
+    void setSSIMPipeline();
     void setComputeSHPipeline();
     void setComputeSHRenderPipeline();
     
@@ -515,7 +536,7 @@ public:
     void updateUniformBuffers();
 
     virtual bool prepare();
-    void calculatePSNR(float* mse, int width, int height);
+    float calculatePSNR(float* mse, int width, int height, float& psnr_total);
     virtual void draw(){};
     virtual void printLog(bool train = true);
     void executeComputeCommand();
@@ -544,7 +565,7 @@ public:
         });
         
         executeComputeCommand();
-        printLog();
+        printLog(true);
 
         if (training_step < max_training_step){
             training_step++;
@@ -580,7 +601,7 @@ public:
             });
 
         executeComputeCommand();
-        printLog(false);
+//         printLog(false);
     }
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
@@ -593,7 +614,7 @@ public:
 
         buildComputeCommandBuffer([this]() {
             encodeGetImageBuffer();
-            });
+        });
 
         executeComputeCommand();
         
@@ -602,7 +623,23 @@ public:
         
         // Create OpenCV Mat for the image (8-bit, 3 channels)
         cv::Mat image(height, width, CV_8UC3);
-    
+        cv::Mat gt = cv::imread(inputGaussian.img_list[i]);
+        cv::resize(gt, gt, cv::Size(WIDTH, HEIGHT));
+        float MSE[3] = {0,0,0};
+        float MSE_mask[3] = {0,0,0};
+        int mask_pixel = 0;
+        
+        std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
+        std::string mask_path = dataFolder + "/segmented/" + imgname;
+        cv::Mat mask = cv::imread(mask_path, 0);
+        bool hasmask = true;
+        if (mask.rows == 0 || mask.cols == 0) {
+            hasmask = false;
+        }
+        if (hasmask){
+            cv::resize(mask, mask, cv::Size(WIDTH, HEIGHT));
+        }
+        
         // Convert from planar format (RRRGGGBBB) to interleaved format (BGR for OpenCV)
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -614,6 +651,24 @@ public:
                     float r = num[pixelIndex];                // R value
                     float g = num[point_num + pixelIndex];    // G value
                     float b = num[2 * point_num + pixelIndex]; // B value
+                    
+                    float r_gt = gt.at<cv::Vec3b>(y, x)[2] / 255.0;
+                    float g_gt = gt.at<cv::Vec3b>(y, x)[1] / 255.0;
+                    float b_gt = gt.at<cv::Vec3b>(y, x)[0] / 255.0;
+                    MSE[0] += (r - r_gt) * (r - r_gt);
+                    MSE[1] += (g - g_gt) * (g - g_gt);
+                    MSE[2] += (b - b_gt) * (b - b_gt);
+                    
+                    if (hasmask){
+                        if (mask.at<uchar>(y, x) > 128){
+                            MSE_mask[0] += (r - r_gt) * (r - r_gt);
+                            MSE_mask[1] += (g - g_gt) * (g - g_gt);
+                            MSE_mask[2] += (b - b_gt) * (b - b_gt);
+                            mask_pixel++;
+                        }
+                    }
+
+                    
                     // Convert float values [0,1] to uchar [0,255]
                     uchar r_uchar = static_cast<uchar>(std::min(std::max(r * 255.0f, 0.0f), 255.0f));
                     uchar g_uchar = static_cast<uchar>(std::min(std::max(g * 255.0f, 0.0f), 255.0f));
@@ -624,11 +679,19 @@ public:
                 }
             }
         }
+        float psnr_each = calculatePSNR(MSE, WIDTH, HEIGHT, this->total_psnr);
+        float psnr_mask = 0;
+        if (hasmask && mask_pixel > 0){
+            psnr_mask = calculatePSNR(MSE_mask, WIDTH, HEIGHT, this->total_psnr_mask);
+            total_psnr_mask_num++;
+        }
         
         std::string save_dir_debug = dataFolder + "/temp";
         std::filesystem::create_directories(save_dir_debug);
-        std::string filename = save_dir_debug + "/" + std::to_string(i) + ".jpg";
+        std::string filename = save_dir_debug + "/" + imgname;
         LOGI("Saving rendered image to: %{public}s", filename.c_str());
+        LOGI("PSNR: %{public}f;   PSNR_mask: %{public}f", psnr_each, psnr_mask);
+        
         cv::imwrite(filename, image);
     }
     #ifdef VULKAN_PC
@@ -642,7 +705,7 @@ public:
     }
     #endif
     template<typename T>
-    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50, int length = 3);
+    void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50, int length = 3, int offset = 0);
 private:
     VkPhysicalDeviceFeatures2 features_{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     VkPhysicalDeviceImagelessFramebufferFeatures imageless_framebuffer_feature_{
