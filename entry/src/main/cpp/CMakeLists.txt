@@ -83,6 +83,17 @@ find_library(
     uv
 )
 
+
+#add_subdirectory(${NATIVERENDER_ROOT_PATH}/3rdParty/kompute/ ${CMAKE_CURRENT_BINARY_DIR}/kompute)
+#add_subdirectory(3rdParty/vulkan_radix_sort)
+add_library(libassimp SHARED IMPORTED)
+set_target_properties(
+    libassimp
+    PROPERTIES
+    IMPORTED_LOCATION
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/arm64-v8a/libassimp.so
+)
+
 find_library(
     # Sets the name of the path variable.
     xengine-lib
@@ -92,7 +103,7 @@ find_library(
 )
 
 target_link_libraries(3dgs PUBLIC
- ${hilog-lib} ${libace-lib} ${libnapi-lib} ${libuv-lib} libnative_window.so libc++.a librawfile.z.so ${xengine-lib})
+ ${hilog-lib} ${libace-lib} ${libnapi-lib} ${libuv-lib} libnative_window.so libc++.a librawfile.z.so libassimp ${xengine-lib})
 
 
 # Human Part

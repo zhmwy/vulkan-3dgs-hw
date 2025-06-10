@@ -1068,6 +1068,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     if (!imagesFile.is_open()){
         throw std::runtime_error("Cannot open images.txt!");
     }
+    
+    int idx = 0;
     while (std::getline(imagesFile, line)) {
         if (line.empty() || line[0] == '#')
             continue;
@@ -1089,12 +1091,12 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         
         if(!std::filesystem::exists(scenepath + "/images/" + imageName))
             continue;
-        
-        
+            
         float norm = sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
         DataLoader::InputInitStruct::DataExtr extr = { qw / norm, qx / norm, qy / norm, qz / norm, tx, ty, tz };
         data.extr_tmp.push_back(extr);
         data.img_list.push_back(scenepath + "/images/" + imageName);
+        ++idx;
 
         if (ext.size() == 0){
             size_t dotPos = imageName.rfind('.');
@@ -1104,6 +1106,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         }
         std::getline(imagesFile, line);
     }
+    
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
 
@@ -1119,6 +1122,9 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
+
+        std::string pointsFilePath = slampath + "/points3D.txt";
+        load3DPoints(pointsFilePath, data);
     }
     else{
         resumed = true;
