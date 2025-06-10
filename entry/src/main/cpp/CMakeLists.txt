@@ -124,7 +124,7 @@ target_link_libraries(3dgs PUBLIC libace_napi.z.so
                                    libpixelmap_ndk.z.so
                                    libimage_source_ndk.z.so)
 # OpenCV相关
-target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/opencv/${OHOS_ARCH}/include/opencv4)
+target_include_directories(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/opencv/${OHOS_ARCH}/include/opencv4)
 target_link_libraries(3dgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_calib3d.so.408
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_core.so.408
                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/${OHOS_ARCH}/opencv/libopencv_dnn.so.408
