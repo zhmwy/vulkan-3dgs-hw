@@ -13,7 +13,9 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-const caseName: string = "human_bie";
+
+const caseName: string = "2025-06-04_19_40_24";
+
 
 @Entry
 @Component
