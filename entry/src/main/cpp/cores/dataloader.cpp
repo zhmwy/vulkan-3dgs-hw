@@ -1082,7 +1082,8 @@ void prependSkyboxPoints(
 
     // 3. calc scaling and translation
     glm::vec3 center = (xyz_min + xyz_max) * 0.5f;
-    glm::vec3 halfSize = (xyz_max - xyz_min) * 0.5f * radius_scale;
+    glm::vec3 halfSize = (xyz_max - xyz_min);
+    float r = std::max({halfSize[0], halfSize[1], halfSize[2]}) * 0.5f * radius_scale;
     float whiteScaled = (1.0f - 0.5f) / C0;
     
     // 4. generate all the sky GS
@@ -1099,7 +1100,7 @@ void prependSkyboxPoints(
     skyColors.reserve(sky_num_gs);
 
     for (int i = 0; i < sky_num_gs; ++i) {
-        glm::vec3 pos = dirs[i] * halfSize + center;
+        glm::vec3 pos = dirs[i] * r + center;
         skyPositions.push_back(pos);
         
         skyScales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));

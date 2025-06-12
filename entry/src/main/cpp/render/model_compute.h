@@ -21,17 +21,12 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 #include "file/file_operator.h"
-// #include "vulkan_obj_model.h"
-// #include "common/common.h"
 #include <chrono>
 #include <thread>
-
-// #include <vk_radix_sort.h>
 
 #include "cores/dataloader.h"
 #include "cores/random.h"
 #include "cores/timer.h"
-// #include "vulkanbase\VulkanOhos.h"
 #include "cores/dataloader.h"
 #include <assert.h>
 #include <cmath> // For log function
@@ -102,7 +97,7 @@ public:
     std::vector<float> intr_render_tmp;
 
     // Predefine 3DGS hyperparameters
-    int MAX_SPLAT_COUNT = 300000;
+    int MAX_SPLAT_COUNT = 400000;
     static const int MAX_TIME_QUERY_NUM = 100;
     static const int QUERY_TIME_RANGE = 500;
     int splat_count = 10000;
@@ -486,10 +481,7 @@ public:
     // Methods
     void prepreAllocator();
     void prepareStorageImage();
-    void resizeAndUploadTexture(vks::Texture2D& texture, const unsigned char* original_image_data, int width, int height, float scale, vks::VulkanDevice* vulkanDevice, VkQueue queue);
-    void resizeAndUploadTexture(vks::Texture2D& texture, const unsigned char* original_image_data, int width, int height, int new_width, int new_height, vks::VulkanDevice* vulkanDevice, VkQueue queue);
     
-    void loadAssets(float scale);
     void loadAssets(int origin_width, int origin_height, float scale);
     
     void buildCommandBuffers();
@@ -508,6 +500,8 @@ public:
     float calculatePSNR(float* mse, int width, int height, float& psnr_total);
     virtual void draw(){};
     virtual void printLog(bool train = true);
+    void pruneCPU(float min_opacity = 0.005);
+    
     void executeComputeCommand();
     void executeTransCommand();
 
