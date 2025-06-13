@@ -1267,7 +1267,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         resumed = true;
     }
     
-    prependSkyboxPoints(data, 10000, 0.01, 10.0);
+//     prependSkyboxPoints(data, 10000, 0.01, 10.0);
 
     imagesFile.close();
     camerasFile.close();

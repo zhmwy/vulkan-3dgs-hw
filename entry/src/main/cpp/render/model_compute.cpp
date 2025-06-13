@@ -328,11 +328,11 @@ void VulkanComputeExample::printGpuBuffers()
     printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
     printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
     
-    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 3, 3);
-    printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 3, 1);
-    printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 3, 3);
+    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
+    printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 4, 1);
+    printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 4, 3);
 //     printGpuBuffer<float>("dL_dshs_array", splat_buffers.dL_dshs_array, 3, 48);
-    printGpuBuffer<float>("dL_drotate", splat_buffers.dL_drotate, 3, 4);
+    printGpuBuffer<float>("dL_drotate", splat_buffers.dL_drotate, 4, 4);
 }
 
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
@@ -4638,7 +4638,7 @@ void VulkanComputeExample::printLog(bool train)
         }
     }
     
-    if (training_step >= 500000) {
+    if (training_step >= 0) {
         buildComputeCommandBuffer([this](){
             createGpu2CpuCopys();
         });
@@ -4721,7 +4721,7 @@ void VulkanComputeExample::printLog(bool train)
     }
     queryEventTime();
     if ((training_step >= 0) && train){
-//         printGpuBuffers();
+        printGpuBuffers();
     }
 
 }
