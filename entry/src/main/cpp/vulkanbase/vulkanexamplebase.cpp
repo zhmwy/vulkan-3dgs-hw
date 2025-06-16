@@ -561,7 +561,6 @@ void VulkanExampleBase::windowResize()
 	// Notify derived class
 	windowResized();
 	viewChanged();
-    camera.setPerspective(60.0f, (float)screenWidth / (float)screenHeight, m_zNear, m_zFar);
 	prepared = true;
 }
 

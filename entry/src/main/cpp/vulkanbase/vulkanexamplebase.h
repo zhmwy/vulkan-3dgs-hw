@@ -33,7 +33,6 @@
 #include "VulkanBuffer.h"
 #include "VulkanDevice.h"
 #include "VulkanTexture.h"
-#include "camera.hpp"
 #include "VulkanInitializers.hpp"
 #include "VulkanTools.h"
 
@@ -152,7 +151,6 @@ public:
 	float timerSpeed = 0.25f;
 	bool paused = false;
 
-	Camera camera;
 	std::string name = "XEngineExample";
 	uint32_t apiVersion = VK_API_VERSION_1_3;
 	NativeWindow* window = nullptr;

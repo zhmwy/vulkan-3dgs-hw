@@ -885,16 +885,11 @@ VulkanComputeExample::VulkanComputeExample() : VulkanExampleBase()
 #endif
 
     std::string title = "Compute shader image load/store";
-    camera.type = Camera::CameraType::lookat;
-    camera.setPosition(Base::Math::Vec3(0.0f, 0.0f, -2.0f));
-    camera.setRotation(Base::Math::Vec3(0.0f, 0.0f, 0.0f));
-    // camera.setPerspective(60.0f, (float)width * 0.5f / (float)height, 1.0f, 256.0f);
 
 # ifdef VULKAN_PC
     screenWidth = width;
     screenHeight = height;
 # endif
-    camera.setPerspective(60.0f, (float)screenWidth / (float)screenHeight, 1.0f, 256.0f);
 
     // Initialize Vulkan handles to VK_NULL_HANDLE
     graphics.descriptorSetLayout = VK_NULL_HANDLE;
@@ -4064,9 +4059,6 @@ void VulkanComputeExample::prepareUniformBuffers()
 
 void VulkanComputeExample::updateUniformBuffers()
 {
-    camera.setPerspective(60.0f, (float)screenWidth * 0.5f / (float)screenHeight, 1.0f, 256.0f);
-    graphics.uniformData.projection = camera.matrices.perspective;
-    graphics.uniformData.modelView = camera.matrices.view;
     memcpy(graphics.uniformBuffer.mapped, &graphics.uniformData, sizeof(Graphics::UniformData));
 }
 

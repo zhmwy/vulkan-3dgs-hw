@@ -27,9 +27,6 @@ void VulkanRender::draw()
 #endif
         cur_method = use_method;
     }
-    if (camera.updated) {
-        updateUniformBuffers();
-    }
 
     VulkanExampleBase::prepareFrame();
 

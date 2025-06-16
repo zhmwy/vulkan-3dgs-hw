@@ -26,6 +26,9 @@
 #include <chrono>
 #include <thread>
 
+#include "base/math/matrix.h"
+#include "base/math/matrix_util.h"
+
 // #include <vk_radix_sort.h>
 
 #include "cores/dataloader.h"
