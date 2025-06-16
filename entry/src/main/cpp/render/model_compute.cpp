@@ -3718,119 +3718,6 @@ void VulkanComputeExample::setBufferFillPipeline()
     std::cout << "[setBufferFillPipeline] Buffer Fill Pipeline set" << std::endl;
 }
 
-
-void VulkanComputeExample::prepareStorageImage()
-{
-    
-    // Create a random initial image
-    std::vector<float> currentImageData(textureColorMap.width * textureColorMap.height);
-    std::mt19937 rng(std::chrono::system_clock::now().time_since_epoch().count());
-    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-    for (auto& pixel : currentImageData) {
-        pixel = dist(rng);
-    }
-    const VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
-
-    VkFormatProperties formatProperties;
-    // Get device properties for the requested texture format
-    vkGetPhysicalDeviceFormatPropertiesGS(physicalDevice, format, &formatProperties);
-    // Check if requested image format supports image storage operations required for storing pixel from the compute shader
-    assert(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
-
-    // Prepare blit target texture
-    storageImage.width = textureColorMap.width;
-    storageImage.height = textureColorMap.height;
-
-    VkImageCreateInfo imageCreateInfo = vks::initializers::imageCreateInfo();
-    imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageCreateInfo.format = format;
-    imageCreateInfo.extent = { storageImage.width, storageImage.height, 1 };
-    imageCreateInfo.mipLevels = 1;
-    imageCreateInfo.arrayLayers = 1;
-    imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    // Image will be sampled in the fragment shader and used as storage target in the compute shader
-    imageCreateInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-    imageCreateInfo.flags = 0;
-    // If compute and graphics queue family indices differ, we create an image that can be shared between them
-    // This can result in worse performance than exclusive sharing mode, but save some synchronization to keep the sample simple
-    std::vector<uint32_t> queueFamilyIndices;
-    if (vulkanDevice->queueFamilyIndices.graphics != vulkanDevice->queueFamilyIndices.compute) {
-        queueFamilyIndices = {
-            vulkanDevice->queueFamilyIndices.graphics,
-            vulkanDevice->queueFamilyIndices.compute
-        };
-        imageCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-        imageCreateInfo.queueFamilyIndexCount = 2;
-        imageCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-    }
-    // VK_CHECK_RESULT(vkCreateImage(device, &imageCreateInfo, nullptr, &storageImage.image));
-
-    // VkMemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
-    // VkMemoryRequirements memReqs;
-    // vkGetImageMemoryRequirements(device, storageImage.image, &memReqs);
-    // memAllocInfo.allocationSize = memReqs.size;
-    // memAllocInfo.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    // VK_CHECK_RESULT(vkAllocateMemory(device, &memAllocInfo, nullptr, &storageImage.deviceMemory));
-    // VK_CHECK_RESULT(vkBindBindImageMemory(device, storageImage.image, storageImage.deviceMemory, 0));
-
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-    
-    VK_CHECK_RESULT(vmaCreateImage(allocator, &imageCreateInfo, &allocInfo, &storageImage.vkImage, &storageImageAllocation, nullptr));
-
-    // Transfer the image data to the buffers
-    // void* data;
-    size_t imageSize = textureColorMap.width * textureColorMap.height * sizeof(float);
-    // vkMapMemory(device, storageImage.deviceMemory, 0, imageSize, 0, &data);
-    // memcpy(data, currentImageData.data(), imageSize);
-    // vkUnmapMemory(device, storageImage.deviceMemory);
-    
-    void* mappedData;
-    vmaMapMemory(allocator, storageImageAllocation, &mappedData);
-    memcpy(mappedData, currentImageData.data(), imageSize);
-    vmaUnmapMemory(allocator, storageImageAllocation);
-    
-    // Transition image to the general layout, so we can use it as a storage image in the compute shader
-    VkCommandBuffer layoutCmd = vulkanDevice->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-    storageImage.vkImageLayout = VK_IMAGE_LAYOUT_GENERAL;
-    vks::tools::setImageLayout(layoutCmd, storageImage.vkImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, storageImage.vkImageLayout);
-    vulkanDevice->flushCommandBuffer(layoutCmd, queue, true);
-
-    // Create sampler
-    VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
-    sampler.magFilter = VK_FILTER_LINEAR;
-    sampler.minFilter = VK_FILTER_LINEAR;
-    sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    sampler.addressModeV = sampler.addressModeU;
-    sampler.addressModeW = sampler.addressModeU;
-    sampler.mipLodBias = 0.0f;
-    sampler.maxAnisotropy = 1.0f;
-    sampler.compareOp = VK_COMPARE_OP_NEVER;
-    sampler.minLod = 0.0f;
-    sampler.maxLod = 1.0f;
-    sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-    VK_CHECK_RESULT(vkCreateSamplerGS(device, &sampler, nullptr, &storageImage.vkSampler));
-
-    // Create image view
-    VkImageViewCreateInfo view = vks::initializers::imageViewCreateInfo();
-    view.image = VK_NULL_HANDLE;
-    view.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    view.format = format;
-    view.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-    view.image = storageImage.vkImage;
-    VK_CHECK_RESULT(vkCreateImageViewGS(device, &view, nullptr, &storageImage.vkImageView));
-
-    // Initialize a descriptor for later use
-    storageImage.vkDescriptor.imageLayout = storageImage.vkImageLayout;
-    storageImage.vkDescriptor.imageView = storageImage.vkImageView;
-    storageImage.vkDescriptor.sampler = storageImage.vkSampler;
-    storageImage.vkDevice = vulkanDevice;
-}
-
 void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float scale) {
     std::cout << "Loading assets..." << std::endl;
     
@@ -3934,82 +3821,6 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
         );
     }
     */
-}
-
-
-void VulkanComputeExample::buildCommandBuffers()
-{
-    VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-
-    VkClearValue clearValues[2];
-    clearValues[0].color = defaultClearColor;
-    clearValues[1].depthStencil = { 1.0f, 0 };
-
-    VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
-    renderPassBeginInfo.renderPass = renderPass;
-    renderPassBeginInfo.renderArea.offset.x = 0;
-    renderPassBeginInfo.renderArea.offset.y = 0;
-    renderPassBeginInfo.renderArea.extent.width = screenWidth;
-    renderPassBeginInfo.renderArea.extent.height = screenHeight;
-    renderPassBeginInfo.clearValueCount = 2;
-    renderPassBeginInfo.pClearValues = clearValues;
-
-    for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
-    {
-        renderPassBeginInfo.framebuffer = frameBuffers[i];
-
-        VK_CHECK_RESULT(vkBeginCommandBufferGS(drawCmdBuffers[i], &cmdBufInfo));
-
-        VkImageMemoryBarrier imageMemoryBarrier = {};
-        imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-        imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-        imageMemoryBarrier.image = storageImage.vkImage;
-        imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-        imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-        imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        vkCmdPipelineBarrierGS(
-            drawCmdBuffers[i],
-            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_FLAGS_NONE,
-            0, nullptr,
-            0, nullptr,
-            1, &imageMemoryBarrier);
-
-        vkCmdBeginRenderPassGS(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        VkViewport viewport = vks::initializers::viewport((float)screenWidth * 0.5f, (float)screenHeight, 0.0f, 1.0f);
-        vkCmdSetViewportGS(drawCmdBuffers[i], 0, 1, &viewport);
-
-        VkRect2D scissor = vks::initializers::rect2D(screenWidth, screenHeight, 0, 0);
-        vkCmdSetScissorGS(drawCmdBuffers[i], 0, 1, &scissor);
-
-        VkDeviceSize offsets[1] = { 0 };
-        vkCmdBindVertexBuffersGS(drawCmdBuffers[i], 0, 1, &vertexBuffer.buffer, offsets);
-        vkCmdBindIndexBufferGS(drawCmdBuffers[i], indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-        // Left (pre compute)
-        vkCmdBindDescriptorSetsGS(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipelineLayout, 0, 1, &graphics.descriptorSetPreCompute, 0, NULL);
-        vkCmdBindPipelineGS(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipeline);
-        vkCmdDrawIndexedGS(drawCmdBuffers[i], indexCount, 1, 0, 0, 0);
-
-        // Right (post compute)
-        vkCmdBindDescriptorSetsGS(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipelineLayout, 0, 1, &graphics.descriptorSetPostCompute, 0, NULL);
-        vkCmdBindPipelineGS(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics.pipeline);
-
-        viewport.x = (float)screenWidth / 2.0f;
-        vkCmdSetViewportGS(drawCmdBuffers[i], 0, 1, &viewport);
-        vkCmdDrawIndexedGS(drawCmdBuffers[i], indexCount, 1, 0, 0, 0);
-
-        vkCmdDrawGS(drawCmdBuffers[i], 3, 1, 0, 0);
-
-        vkCmdEndRenderPassGS(drawCmdBuffers[i]);
-
-        VK_CHECK_RESULT(vkEndCommandBufferGS(drawCmdBuffers[i]));
-    }
 }
 
 void VulkanComputeExample::bindPipeline2CommandBuffer(
@@ -4519,11 +4330,10 @@ bool VulkanComputeExample::prepare()
     loadAssets(WIDTH, HEIGHT, low_resolotion_scale);
     generateQuad();
     prepareUniformBuffers();
-    prepareStorageImage();
+    //prepareStorageImage();
     setupDescriptorPool();
     prepareGraphics();
     prepareCompute();
-    buildCommandBuffers();
 
     // 3dgs specific
     LOGI("Prepare: loading compute shaders");
