@@ -1,11 +1,3 @@
-/*
-* Vulkan texture loader
-*
-* Copyright(C) by Sascha Willems - www.saschawillems.de
-*
-* This code is licensed under the MIT license(MIT) (http://opensource.org/licenses/MIT)
-*/
-
 #pragma once
 
 #include <fstream>
@@ -26,40 +18,40 @@
 
 namespace vks
 {
-class Texture
+class TextureGS
 {
   public:
-	vks::VulkanDevice *   device;
-	VkImage               image;
-	VkImageLayout         imageLayout;
-	VkDeviceMemory        deviceMemory;
-	VkImageView           view;
+	VulkanDevice *        vkDevice;
+	VkImage               vkImage;
+	VkImageLayout         vkImageLayout;
+	VkDeviceMemory        vkDeviceMemory;
+	VkImageView           vkImageView;
 	uint32_t              width, height;
-	uint32_t              mipLevels;
-	uint32_t              layerCount;
-	VkDescriptorImageInfo descriptor;
-	VkSampler             sampler;
+	uint32_t              texMipLevels;
+	uint32_t              texLayerCount;
+	VkDescriptorImageInfo vkDescriptor;
+	VkSampler             vkSampler;
 
-	void      updateDescriptor();
-	void      destroy();
+	void      updateDescriptorGS();
+	void      destroyGS();
 
 };
 
-class Texture2D : public Texture
+class Texture2DGS : public TextureGS
 {
   public:
-	void fromBuffer(
-	    void *             buffer,
-	    VkDeviceSize       bufferSize,
-	    VkFormat           format,
+	void fromImageBuffer(
+	    void *             texBuffer,
+	    VkDeviceSize       texBufferSize,
+	    VkFormat           texFormat,
 	    uint32_t           texWidth,
 	    uint32_t           texHeight,
-	    vks::VulkanDevice *device,
-	    VkQueue            copyQueue,
-	    VkFilter           filter          = VK_FILTER_LINEAR,
-	    VkImageUsageFlags  imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
-	    VkImageLayout      imageLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	    VulkanDevice      *texDevice,
+	    VkQueue            texCopyQueue,
+	    VkFilter           texFilter          = VK_FILTER_LINEAR,
+	    VkImageUsageFlags  texImageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
+	    VkImageLayout      texImageLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 };
 
 
-}        // namespace vks
+} 

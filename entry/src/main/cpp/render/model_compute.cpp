@@ -359,8 +359,8 @@ void VulkanComputeExample::imageToBufferCmd()
     {
         vkCmdCopyImageToBufferGS(
             compute.commandBuffer,
-            inputGaussian.images[current_img_idx].image,
-            inputGaussian.images[current_img_idx].imageLayout,
+            inputGaussian.images[current_img_idx].vkImage,
+            inputGaussian.images[current_img_idx].vkImageLayout,
             splat_buffers.input_image_alpha_array,
             1,
             &copyRegionI
@@ -370,8 +370,8 @@ void VulkanComputeExample::imageToBufferCmd()
     {
         vkCmdCopyImageToBufferGS(
                 compute.commandBuffer,
-                inputGaussian.images_low_res[current_img_idx].image,
-                inputGaussian.images_low_res[current_img_idx].imageLayout,
+                inputGaussian.images_low_res[current_img_idx].vkImage,
+                inputGaussian.images_low_res[current_img_idx].vkImageLayout,
                 splat_buffers.input_image_alpha_array,
                 1,
                 &copyRegionI
@@ -561,8 +561,8 @@ void VulkanComputeExample::bufferToImageCmd()
     vkCmdCopyBufferToImageGS(
         compute.commandBuffer,
         splat_buffers.rfeat_alpha,
-        storageImage.image,
-        storageImage.imageLayout,
+        storageImage.vkImage,
+        storageImage.vkImageLayout,
         1,
         &copyRegionI
     );
@@ -725,10 +725,10 @@ void VulkanComputeExample::updRenderCmd()
         // TODO: problem?
         vkCmdCopyImageGS(
             compute.commandBuffer,
-            inputGaussian.images[6].image,
-            inputGaussian.images[6].imageLayout,
-            textureColorMap.image,
-            textureColorMap.imageLayout,
+            inputGaussian.images[6].vkImage,
+            inputGaussian.images[6].vkImageLayout,
+            textureColorMap.vkImage,
+            textureColorMap.vkImageLayout,
             1,
             &copyRegionI2I
         );
@@ -935,8 +935,8 @@ VulkanComputeExample::~VulkanComputeExample()
         vertexBuffer.destroy();
         indexBuffer.destroy();
 
-        textureColorMap.destroy();
-        storageImage.destroy();
+        textureColorMap.destroyGS();
+        storageImage.destroyGS();
         
 //         vmaDestroyImage(allocator, storageImage.image, storageImageAllocation);
 //         vmaDestroyAllocator(allocator);
@@ -3352,7 +3352,7 @@ void VulkanComputeExample::prepareStorageImage()
     allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
     
-    VK_CHECK_RESULT(vmaCreateImage(allocator, &imageCreateInfo, &allocInfo, &storageImage.image, &storageImageAllocation, nullptr));
+    VK_CHECK_RESULT(vmaCreateImage(allocator, &imageCreateInfo, &allocInfo, &storageImage.vkImage, &storageImageAllocation, nullptr));
 
     // Transfer the image data to the buffers
     // void* data;
@@ -3368,8 +3368,8 @@ void VulkanComputeExample::prepareStorageImage()
     
     // Transition image to the general layout, so we can use it as a storage image in the compute shader
     VkCommandBuffer layoutCmd = vulkanDevice->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-    storageImage.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-    vks::tools::setImageLayout(layoutCmd, storageImage.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, storageImage.imageLayout);
+    storageImage.vkImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    vks::tools::setImageLayout(layoutCmd, storageImage.vkImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, storageImage.vkImageLayout);
     vulkanDevice->flushCommandBuffer(layoutCmd, queue, true);
 
     // Create sampler
@@ -3386,7 +3386,7 @@ void VulkanComputeExample::prepareStorageImage()
     sampler.minLod = 0.0f;
     sampler.maxLod = 1.0f;
     sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-    VK_CHECK_RESULT(vkCreateSamplerGS(device, &sampler, nullptr, &storageImage.sampler));
+    VK_CHECK_RESULT(vkCreateSamplerGS(device, &sampler, nullptr, &storageImage.vkSampler));
 
     // Create image view
     VkImageViewCreateInfo view = vks::initializers::imageViewCreateInfo();
@@ -3394,14 +3394,14 @@ void VulkanComputeExample::prepareStorageImage()
     view.viewType = VK_IMAGE_VIEW_TYPE_2D;
     view.format = format;
     view.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-    view.image = storageImage.image;
-    VK_CHECK_RESULT(vkCreateImageViewGS(device, &view, nullptr, &storageImage.view));
+    view.image = storageImage.vkImage;
+    VK_CHECK_RESULT(vkCreateImageViewGS(device, &view, nullptr, &storageImage.vkImageView));
 
     // Initialize a descriptor for later use
-    storageImage.descriptor.imageLayout = storageImage.imageLayout;
-    storageImage.descriptor.imageView = storageImage.view;
-    storageImage.descriptor.sampler = storageImage.sampler;
-    storageImage.device = vulkanDevice;
+    storageImage.vkDescriptor.imageLayout = storageImage.vkImageLayout;
+    storageImage.vkDescriptor.imageView = storageImage.vkImageView;
+    storageImage.vkDescriptor.sampler = storageImage.vkSampler;
+    storageImage.vkDevice = vulkanDevice;
 }
 
 
@@ -3416,7 +3416,7 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
     }
     cv::resize(imgText, imgText, cv::Size(origin_width, origin_height));
     cv::cvtColor(imgText, imgText, cv::COLOR_BGR2RGBA);
-    textureColorMap.fromBuffer(
+    textureColorMap.fromImageBuffer(
         imgText.data,
         origin_width * origin_height * 4,
         VK_FORMAT_R8G8B8A8_UNORM,
@@ -3445,8 +3445,8 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
         cv::cvtColor(img, img, cv::COLOR_BGR2RGBA);
         cv::cvtColor(dsp_img, dsp_img, cv::COLOR_BGR2RGBA);
         
-        vks::Texture2D texture_original;
-        texture_original.fromBuffer(
+        vks::Texture2DGS texture_original;
+        texture_original.fromImageBuffer(
             img.data,
             origin_width * origin_height * 4,
             VK_FORMAT_R8G8B8A8_UNORM,
@@ -3455,8 +3455,8 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
             VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
         );
         
-        vks::Texture2D texture_resized;
-        texture_resized.fromBuffer(
+        vks::Texture2DGS texture_resized;
+        texture_resized.fromImageBuffer(
             dsp_img.data,
             dsp_width * dsp_height * 4,
             VK_FORMAT_R8G8B8A8_UNORM,
@@ -3538,7 +3538,7 @@ void VulkanComputeExample::buildCommandBuffers()
         imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
         imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-        imageMemoryBarrier.image = storageImage.image;
+        imageMemoryBarrier.image = storageImage.vkImage;
         imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
         imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
         imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -3830,14 +3830,14 @@ void VulkanComputeExample::prepareGraphics()
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPreCompute));
     std::vector<VkWriteDescriptorSet> baseImageWriteDescriptorSets = {
         vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
-        vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textureColorMap.descriptor)
+        vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textureColorMap.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(baseImageWriteDescriptorSets.size()), baseImageWriteDescriptorSets.data(), 0, nullptr);
 
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPostCompute));
     std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
         vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
-        vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &storageImage.descriptor)
+        vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &storageImage.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
@@ -3986,8 +3986,8 @@ void VulkanComputeExample::prepareCompute()
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &compute.descriptorSet));
 
     std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
-        vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.descriptor),
-        vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.descriptor)
+        vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.vkDescriptor),
+        vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, nullptr);
 

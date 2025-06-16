@@ -257,9 +257,9 @@ public:
     bool hasKNN = false;
     
     // Input image
-    vks::Texture2D textureColorMap;
+    vks::Texture2DGS textureColorMap;
     // Storage image that the compute shader uses to apply the filter effect to
-    vks::Texture2D storageImage;
+    vks::Texture2DGS storageImage;
     VmaAllocation storageImageAllocation;
 
     // Resources for the graphics part of the example
