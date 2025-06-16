@@ -113,7 +113,7 @@ VkPipelineShaderStageCreateInfo VulkanExampleBase::loadShader(std::string fileNa
 	VkPipelineShaderStageCreateInfo shaderStage = {};
 	shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStage.stage = stage;
-	shaderStage.module = vks::tools::loadShader(fileName.c_str(), device);
+	shaderStage.module = vks::tools::loadSpvShader(fileName.c_str(), device);
 	shaderStage.pName = "main";
 	assert(shaderStage.module != VK_NULL_HANDLE);
 	if (isBase) {
@@ -315,7 +315,7 @@ bool VulkanExampleBase::initVulkan()
 //     // Get a compute queue from the device
 //     vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices.compute, 0, &compute_queue);
     // Find a suitable depth format
-	VkBool32 validDepthFormat = vks::tools::getSupportedDepthFormat(physicalDevice, &depthFormat);
+	VkBool32 validDepthFormat = vks::tools::supportedDepthFormat(physicalDevice, &depthFormat);
 	// assert(validDepthFormat);
 
 	swapChain.connect(instance, physicalDevice, device);

@@ -1,12 +1,3 @@
-/*
-* Vulkan Example - Compute shader image processing
-*
-* This sample uses a compute shader to apply different filters to an image
-*
-* Copyright (C) 2016-2023 by Sascha Willems - www.saschawillems.de
-*
-* This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
-*/
 #pragma once
 
 #ifndef VULKANEXAMPLE_H
@@ -488,11 +479,8 @@ public:
     
     // Methods
     void prepreAllocator();
-    void prepareStorageImage();
 
     void loadAssets(int origin_width, int origin_height, float scale);
-    
-    void buildCommandBuffers();
     
     virtual void encodePipeline2CommandBuffer();
     void buildComputeCommandBuffer(std::function<void()> func);
