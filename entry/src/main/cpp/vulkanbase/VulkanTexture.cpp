@@ -1,55 +1,34 @@
-/*
-* Vulkan texture loader
-*
-* Copyright(C) by Sascha Willems - www.saschawillems.de
-*
-* This code is licensed under the MIT license(MIT) (http://opensource.org/licenses/MIT)
-*/
 
 #include <VulkanTexture.h>
 
 namespace vks
 {
-	void Texture::updateDescriptor()
+	void TextureGS::updateDescriptorGS()
 	{
-		descriptor.sampler = sampler;
-		descriptor.imageView = view;
-		descriptor.imageLayout = imageLayout;
+		vkDescriptor.sampler = vkSampler;
+		vkDescriptor.imageView = vkImageView;
+		vkDescriptor.imageLayout = vkImageLayout;
 	}
 
-	void Texture::destroy()
+	void TextureGS::destroyGS()
 	{
-		vkDestroyImageViewGS(device->logicalDevice, view, nullptr);
-		vkDestroyImageGS(device->logicalDevice, image, nullptr);
-		if (sampler)
+		vkDestroyImageViewGS(vkDevice->logicalDevice, vkImageView, nullptr);
+		vkDestroyImageGS(vkDevice->logicalDevice, vkImage, nullptr);
+		if (vkSampler)
 		{
-			vkDestroySamplerGS(device->logicalDevice, sampler, nullptr);
+			vkDestroySamplerGS(vkDevice->logicalDevice, vkSampler, nullptr);
 		}
-		vkFreeMemoryGS(device->logicalDevice, deviceMemory, nullptr);
+		vkFreeMemoryGS(vkDevice->logicalDevice, vkDeviceMemory, nullptr);
 	}
 
-	/**
-	* Creates a 2D texture from a buffer
-	*
-	* @param buffer Buffer containing texture data to upload
-	* @param bufferSize Size of the buffer in machine units
-	* @param width Width of the texture to create
-	* @param height Height of the texture to create
-	* @param format Vulkan format of the image data stored in the file
-	* @param device Vulkan device to create the texture on
-	* @param copyQueue Queue used for the texture staging copy commands (must support transfer)
-	* @param (Optional) filter Texture filtering for the sampler (defaults to VK_FILTER_LINEAR)
-	* @param (Optional) imageUsageFlags Usage flags for the texture's image (defaults to VK_IMAGE_USAGE_SAMPLED_BIT)
-	* @param (Optional) imageLayout Usage layout for the texture (defaults VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	*/
-	void Texture2D::fromBuffer(void* buffer, VkDeviceSize bufferSize, VkFormat format, uint32_t texWidth, uint32_t texHeight, vks::VulkanDevice *device, VkQueue copyQueue, VkFilter filter, VkImageUsageFlags imageUsageFlags, VkImageLayout imageLayout)
+	void Texture2DGS::fromImageBuffer(void* buffer, VkDeviceSize bufferSize, VkFormat format, uint32_t texWidth, uint32_t texHeight, vks::VulkanDevice *device, VkQueue copyQueue, VkFilter filter, VkImageUsageFlags imageUsageFlags, VkImageLayout imageLayout)
 	{
 		assert(buffer);
 
-		this->device = device;
+		this->vkDevice = device;
 		width = texWidth;
 		height = texHeight;
-		mipLevels = 1;
+		texMipLevels = 1;
 
 		VkMemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
 		VkMemoryRequirements memReqs;
@@ -99,7 +78,7 @@ namespace vks
 		VkImageCreateInfo imageCreateInfo = vks::initializers::imageCreateInfo();
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 		imageCreateInfo.format = format;
-		imageCreateInfo.mipLevels = mipLevels;
+		imageCreateInfo.mipLevels = texMipLevels;
 		imageCreateInfo.arrayLayers = 1;
 		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -112,27 +91,27 @@ namespace vks
 		{
 			imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		}
-		VK_CHECK_RESULT(vkCreateImageGS(device->logicalDevice, &imageCreateInfo, nullptr, &image));
+		VK_CHECK_RESULT(vkCreateImageGS(device->logicalDevice, &imageCreateInfo, nullptr, &vkImage));
 
-		vkGetImageMemoryRequirementsGS(device->logicalDevice, image, &memReqs);
+		vkGetImageMemoryRequirementsGS(device->logicalDevice, vkImage, &memReqs);
 
 		memAllocInfo.allocationSize = memReqs.size;
 
 		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		VK_CHECK_RESULT(vkAllocateMemoryGS(device->logicalDevice, &memAllocInfo, nullptr, &deviceMemory));
-		VK_CHECK_RESULT(vkBindImageMemoryGS(device->logicalDevice, image, deviceMemory, 0));
+		VK_CHECK_RESULT(vkAllocateMemoryGS(device->logicalDevice, &memAllocInfo, nullptr, &vkDeviceMemory));
+		VK_CHECK_RESULT(vkBindImageMemoryGS(device->logicalDevice, vkImage, vkDeviceMemory, 0));
 
 		VkImageSubresourceRange subresourceRange = {};
 		subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		subresourceRange.baseMipLevel = 0;
-		subresourceRange.levelCount = mipLevels;
+		subresourceRange.levelCount = texMipLevels;
 		subresourceRange.layerCount = 1;
 
 		// Image barrier for optimal image (target)
 		// Optimal image will be used as destination for the copy
 		vks::tools::setImageLayout(
 			copyCmd,
-			image,
+			vkImage,
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			subresourceRange);
@@ -141,17 +120,17 @@ namespace vks
 		vkCmdCopyBufferToImageGS(
 			copyCmd,
 			stagingBuffer,
-			image,
+			vkImage,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1,
 			&bufferCopyRegion
 		);
 
 		// Change texture image layout to shader read after all mip levels have been copied
-		this->imageLayout = imageLayout;
+		this->vkImageLayout = imageLayout;
 		vks::tools::setImageLayout(
 			copyCmd,
-			image,
+			vkImage,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			imageLayout,
 			subresourceRange);
@@ -176,7 +155,7 @@ namespace vks
 		samplerCreateInfo.minLod = 0.0f;
 		samplerCreateInfo.maxLod = 0.0f;
 		samplerCreateInfo.maxAnisotropy = 1.0f;
-		VK_CHECK_RESULT(vkCreateSamplerGS(device->logicalDevice, &samplerCreateInfo, nullptr, &sampler));
+		VK_CHECK_RESULT(vkCreateSamplerGS(device->logicalDevice, &samplerCreateInfo, nullptr, &vkSampler));
 
 		// Create image view
 		VkImageViewCreateInfo viewCreateInfo = {};
@@ -186,11 +165,11 @@ namespace vks
 		viewCreateInfo.format = format;
 		viewCreateInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 		viewCreateInfo.subresourceRange.levelCount = 1;
-		viewCreateInfo.image = image;
-		VK_CHECK_RESULT(vkCreateImageViewGS(device->logicalDevice, &viewCreateInfo, nullptr, &view));
+		viewCreateInfo.image = vkImage;
+		VK_CHECK_RESULT(vkCreateImageViewGS(device->logicalDevice, &viewCreateInfo, nullptr, &vkImageView));
 
 		// Update descriptor image info member that can be used for setting up descriptor sets
-		updateDescriptor();
+		updateDescriptorGS();
 	}
 
 
