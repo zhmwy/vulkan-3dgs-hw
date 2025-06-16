@@ -1,4 +1,6 @@
 #include "dataloader.h"
+#include "base/math/matrix.h"
+#include "base/math/matrix_util.h"
 #include <fstream>
 #include <unordered_set>
 #include <vector>
@@ -58,21 +60,18 @@ DataLoader::PlyDataStruct DataLoader::load_input_data(const std::string& filepat
     size_t numVertices = x->count;
 
     for (size_t i = 0; i < numVertices; ++i) {
-        // glm::vec3
         data.xyz.emplace_back(
             reinterpret_cast<float*>(x->buffer.get())[i],
             reinterpret_cast<float*>(y->buffer.get())[i],
             reinterpret_cast<float*>(z->buffer.get())[i]
         );
 
-        // glm::vec3
         data.scale.emplace_back(
             reinterpret_cast<float*>(scale_x->buffer.get())[i],
             reinterpret_cast<float*>(scale_y->buffer.get())[i],
             reinterpret_cast<float*>(scale_z->buffer.get())[i]
         );
 
-        // glm::vec4 
         data.rotate.emplace_back(
             reinterpret_cast<float*>(rotate_0->buffer.get())[i],
             reinterpret_cast<float*>(rotate_1->buffer.get())[i],
@@ -205,7 +204,7 @@ void getFilesInDirectory(std::string path, std::string ext, std::vector<std::str
 }
 
 struct Vec3Hash {
-    size_t operator()(const glm::vec3& v) const {
+    size_t operator()(const Base::Math::Vec3& v) const {
         std::hash<float> floatHasher;
         size_t h1 = floatHasher(v.x);
         size_t h2 = floatHasher(v.y);
@@ -215,13 +214,13 @@ struct Vec3Hash {
 };
 
 struct Vec3Equal {
-    bool operator()(const glm::vec3& v1, const glm::vec3& v2) const {
+    bool operator()(const Base::Math::Vec3& v1, const Base::Math::Vec3& v2) const {
         return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z;
     }
 };
 
-glm::mat4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
-    glm::mat4 W2C(1.0f);
+Base::Math::Mat4X4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
+    Base::Math::Mat4X4 W2C(1.0f);
     double w = extr.values[0], x = extr.values[1], y = extr.values[2], z = extr.values[3];
     double tx = extr.values[4], ty = extr.values[5], tz = extr.values[6];
     
@@ -243,7 +242,7 @@ glm::mat4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
     return W2C;
 }
 
-
+/*
 void DataLoader::InputInitStruct::normalizeData() {
     if (positions.empty()) {
         std::cerr << "Error: No data available for normalization!" << std::endl;
@@ -295,20 +294,20 @@ void DataLoader::InputInitStruct::normalizeData() {
         extr.values[5] = W2C[1][3];
         extr.values[6] = W2C[2][3];
     }
-}
+}*/
 
 void DataLoader::InputInitStruct::denormalizeExtr() {
-    float stddev = glm::sqrt(variance) + 1e-6f;
+    float stddev = sqrt(variance) + 1e-6f;
     for (auto& extr: extr_tmp) {
-        glm::mat4 W2C = quat2matrix(extr);
-        glm::mat4 C2W = glm::inverse(W2C);
-        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        Base::Math::Mat4X4 W2C = quat2matrix(extr);
+        Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
+        Base::Math::Vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
         
-        glm::vec3 normalized_center = cam_center * stddev + mean;
+        Base::Math::Vec3 normalized_center = cam_center * stddev + Base::Math::Vec3(mean[0], mean[1], mean[2]);
         C2W[0][3] = normalized_center.x;
         C2W[1][3] = normalized_center.y;
         C2W[2][3] = normalized_center.z;
-        W2C = glm::inverse(C2W);
+        W2C = Base::Math::Inverse(C2W);
         
         extr.values[4] = W2C[0][3];
         extr.values[5] = W2C[1][3];
@@ -320,16 +319,18 @@ void DataLoader::InputInitStruct::denormalizePoints() {
     if (positions.empty()) {
         return;
     }
-    float stddev = glm::sqrt(variance) + 1e-6f;
+    float stddev = sqrt(variance) + 1e-6f;
     
     for (auto& pos : positions) {
-        pos = pos * stddev + mean;
+        pos = pos * stddev + Base::Math::Vec3(mean[0], mean[1], mean[2]);
     }
+    
+    float logdev = log(stddev);
     for (auto& scale : scales) {
-        scale = scale + glm::log(stddev);
+        scale = scale + Base::Math::Vec3(logdev, logdev, logdev);
     }
 }
-
+/*
 void DataLoader::InputInitStruct::computePositionStats() {
     if (positions.empty()) {
         std::cerr << "Error: No position data available!" << std::endl;
@@ -352,24 +353,24 @@ void DataLoader::InputInitStruct::computePositionStats() {
     
     std::cout << "Position Mean: (" << mean.x << ", " << mean.y << ", " << mean.z << ")" << std::endl;
     std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
-}
+}*/
 
 void DataLoader::InputInitStruct::getNerfppNorm() {
     this->radius = -1.0;
-    glm::vec3 cam_centers = glm::vec3(0, 0, 0);
+    Base::Math::Vec3 cam_centers = Base::Math::Vec3(0, 0, 0);
     for (auto& extr : extr_tmp) {
-        glm::mat4 W2C = quat2matrix(extr);
-        glm::mat4 C2W = glm::inverse(W2C);
-        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        Base::Math::Mat4X4 W2C = quat2matrix(extr);
+        Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
+        Base::Math::Vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
         cam_centers += cam_center;
     }
     cam_centers /= extr_tmp.size();
     
     for (auto& extr : extr_tmp) {
-        glm::mat4 W2C = quat2matrix(extr);
-        glm::mat4 C2W = glm::inverse(W2C);
-        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
-        glm::vec3 dist = cam_centers - cam_center;
+    	Base::Math::Mat4X4 W2C = quat2matrix(extr);
+        Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
+        Base::Math::Vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
+        Base::Math::Vec3 dist = cam_centers - cam_center;
         this->radius = std::max(this->radius, sqrt(dist[0] * dist[0] + dist[1] * dist[1] + dist[2] * dist[2]));
     }
     
@@ -438,7 +439,7 @@ void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::In
     data.colors.reserve(numVertices);
     
     for (size_t i = 0; i < numVertices; ++i) {
-        glm::vec3 pos(
+        Base::Math::Vec3 pos(
             reinterpret_cast<float*>(x->buffer.get())[i],
             reinterpret_cast<float*>(y->buffer.get())[i],
             reinterpret_cast<float*>(z->buffer.get())[i]
@@ -535,21 +536,21 @@ void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::In
     size_t numVertices = x->count;
     
     for (size_t i = 0; i < numVertices; ++i) {
-        glm::vec3 pos(
+        Base::Math::Vec3 pos(
             reinterpret_cast<float*>(x->buffer.get())[i],
             reinterpret_cast<float*>(y->buffer.get())[i],
             reinterpret_cast<float*>(z->buffer.get())[i]
         );
         data.positions.push_back(pos);
 
-        glm::vec3 scale(
+        Base::Math::Vec3 scale(
             reinterpret_cast<float*>(scale_x->buffer.get())[i],
             reinterpret_cast<float*>(scale_y->buffer.get())[i],
             reinterpret_cast<float*>(scale_z->buffer.get())[i]
         );
         data.scales.push_back(scale);
 
-        glm::vec4 rotate(
+        Base::Math::Vec4 rotate(
             reinterpret_cast<float*>(rotate_0->buffer.get())[i],
             reinterpret_cast<float*>(rotate_1->buffer.get())[i],
             reinterpret_cast<float*>(rotate_2->buffer.get())[i],
@@ -611,7 +612,7 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         std::vector<float> other_positions, other_scales, other_rotations, other_opacities, other_colors, other_f_rest;
 
         size_t numPoints = data.positions.size();
-        float stddev = glm::sqrt(data.variance) + 1e-6f;
+        float stddev = sqrt(data.variance) + 1e-6f;
 
         head_positions.reserve(numPoints * 3);
         head_scales.reserve(numPoints * 3);
@@ -628,21 +629,21 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         other_f_rest.reserve(numPoints * 45);
 
         for (size_t i = 0; i < numPoints; ++i) {
-            glm::vec3 pos = data.positions[i];
+            Base::Math::Vec3 pos = data.positions[i];
 //             glm::vec3 orig_pos = data.positions[i] * stddev + data.mean;
             
             bool inside = (pos.x >= x_min && pos.x <= x_max) &&
                           (pos.y >= y_min && pos.y <= y_max) &&
                           (pos.z >= z_min && pos.z <= z_max);
             LOGI("x: %{public}f, y: %{public}f, z: %{public}f", pos.x, pos.y, pos.z);
-            glm::vec3 scale = (i < data.scales.size()) ? data.scales[i] : glm::vec3(1.0f);
-            glm::vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : glm::vec4(0, 0, 0, 1);
+            Base::Math::Vec3 scale = (i < data.scales.size()) ? data.scales[i] : Base::Math::Vec3(1.0f, 1.0f, 1.0f);
+            Base::Math::Vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : Base::Math::Vec4(0, 0, 0, 1);
             float opacity = (i < data.opacities.size()) ? data.opacities[i] : 1.0f;
-            glm::vec3 color(1.0f, 1.0f, 1.0f);
+            Base::Math::Vec3 color(1.0f, 1.0f, 1.0f);
             std::vector<float> f_rest_values;
 
             if (i < data.colors.size()) {
-                color = glm::vec3(
+                color = Base::Math::Vec3(
                     data.colors[i].values[0 * 16],
                     data.colors[i].values[1 * 16],
                     data.colors[i].values[2 * 16]
@@ -748,16 +749,16 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         std::vector<float> normals(numPoints * 3, 0.0);
         
         for (size_t i = 0; i < numPoints; ++i) {
-            glm::vec3 pos = data.positions[i];
-            glm::vec3 scale = (i < data.scales.size()) ? data.scales[i]  : glm::vec3(1.0f);
-            glm::vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : glm::vec4(0, 0, 0, 1);
+            Base::Math::Vec3 pos = data.positions[i];
+            Base::Math::Vec3 scale = (i < data.scales.size()) ? data.scales[i]  : Base::Math::Vec3(1.0f, 1.0f, 1.0f);
+            Base::Math::Vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : Base::Math::Vec4(0, 0, 0, 1);
             
             float opacity = (i < data.opacities.size()) ? data.opacities[i] : 1.0f;
-            glm::vec3 color(1.0f, 1.0f, 1.0f);
+            Base::Math::Vec3 color(1.0f, 1.0f, 1.0f);
             std::vector<float> f_rest_values;
 
             if (i < data.colors.size()) {
-                color = glm::vec3(
+                color = Base::Math::Vec3(
                     data.colors[i].values[0 * 16],
                     data.colors[i].values[1 * 16],
                     data.colors[i].values[2 * 16]
@@ -841,7 +842,7 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
         LOGE("Failed to open %{public}s file.", pointsFilePath.c_str());
     }
     std::string line;
-    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
+    std::unordered_set<Base::Math::Vec3, Vec3Hash, Vec3Equal> uniquePoints;
     float C0 = 0.28209479177387814;
     while (std::getline(pointsFile, line)) {
         if (line.empty()) continue;
@@ -854,7 +855,7 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
             continue; // Skip invalid lines.
         }
 
-        glm::vec3 pos(x, y, z);
+        Base::Math::Vec3 pos(x, y, z);
         // Check for duplicate points
         if (uniquePoints.find(pos) != uniquePoints.end()) {
             continue;
@@ -865,8 +866,8 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
         data.positions.push_back(pos);
         
         // Default attributes (scales, rotations, opacities) to zeros.
-        data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-        data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+        data.scales.push_back(Base::Math::Vec3(-4.5f, -4.5f, -4.5f));
+        data.rotations.push_back(Base::Math::Vec4(1.0f, 0.0f, 0.0f, 0.0f));
 
         data.opacities.push_back(-2.197225f);
         
@@ -886,10 +887,10 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
 
 // calculate robust min/max
 void computeRobustBounds(
-    const std::vector<glm::vec3>& pts,
+    const std::vector<Base::Math::Vec3>& pts,
     float percentile,
-    glm::vec3& out_min,
-    glm::vec3& out_max
+    Base::Math::Vec3& out_min,
+    Base::Math::Vec3& out_max
 )
 {
     size_t n = pts.size();
@@ -926,13 +927,13 @@ void computeRobustBounds(
 // Fibonacci sphere sampling
 void generateFibonacciSphere(
     int samples,
-    std::vector<glm::vec3>& out_points,
-    std::vector<glm::vec3>& out_normals
+    std::vector<Base::Math::Vec3>& out_points,
+    std::vector<Base::Math::Vec3>& out_normals
 )
 {
     out_points.reserve(samples);
     out_normals.reserve(samples);
-    const float goldenAngle = glm::pi<float>() * (3.0f - std::sqrt(5.0f));
+    const float goldenAngle = M_PI * (3.0f - std::sqrt(5.0f));
     for (int i = 0; i < samples; ++i) {
         float t = float(i) / float(samples - 1);             // [0,1]
         float y = 1.0f - 2.0f * t;                          // [-1,1]
@@ -940,10 +941,10 @@ void generateFibonacciSphere(
         float theta = goldenAngle * i;
         float x = std::cos(theta) * radius;
         float z = std::sin(theta) * radius;
-        glm::vec3 dir(x, y, z);
+        Base::Math::Vec3 dir(x, y, z);
         out_points.push_back(dir);
-        glm::vec3 normal = -dir;                            // 指向中心
-        out_normals.push_back(glm::normalize(normal));
+        Base::Math::Vec3 normal = -dir;                            // 指向中心
+        out_normals.push_back(Base::Math::Normalize(normal));
     }
 }
 
@@ -956,22 +957,22 @@ void prependSkyboxPoints(
 {
     const float C0 = 0.28209479177387814f;
     // 1. calc min/max
-    glm::vec3 xyz_min, xyz_max;
+    Base::Math::Vec3 xyz_min, xyz_max;
     computeRobustBounds(data.positions, percentile, xyz_min, xyz_max);
     
     // 2. calc direction and normal in shpere
-    std::vector<glm::vec3> dirs, norms;
+    std::vector<Base::Math::Vec3> dirs, norms;
     generateFibonacciSphere(sky_num_gs, dirs, norms);
 
     // 3. calc scaling and translation
-    glm::vec3 center = (xyz_min + xyz_max) * 0.5f;
-    glm::vec3 halfSize = (xyz_max - xyz_min) * 0.5f * radius_scale;
+    Base::Math::Vec3 center = (xyz_min + xyz_max) * 0.5f;
+    Base::Math::Vec3 halfSize = (xyz_max - xyz_min) * 0.5f * radius_scale;
     float whiteScaled = (1.0f - 0.5f) / C0;
     
     // 4. generate all the sky GS
-    std::vector<glm::vec3>       skyPositions;
-    std::vector<glm::vec3>       skyScales;
-    std::vector<glm::vec4>       skyRotations;
+    std::vector<Base::Math::Vec3>       skyPositions;
+    std::vector<Base::Math::Vec3>       skyScales;
+    std::vector<Base::Math::Vec4>       skyRotations;
     std::vector<float>           skyOpacities;
     std::vector<DataLoader::InputInitStruct::Data> skyColors;
 
@@ -982,11 +983,11 @@ void prependSkyboxPoints(
     skyColors.reserve(sky_num_gs);
 
     for (int i = 0; i < sky_num_gs; ++i) {
-        glm::vec3 pos = dirs[i] * halfSize + center;
+        Base::Math::Vec3 pos = dirs[i] * halfSize + center;
         skyPositions.push_back(pos);
         
-        skyScales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-        skyRotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+        skyScales.push_back(Base::Math::Vec3(-4.5f, -4.5f, -4.5f));
+        skyRotations.push_back(Base::Math::Vec4(1.0f, 0.0f, 0.0f, 0.0f));
         skyOpacities.push_back(-2.197224617004395f);
         
         DataLoader::InputInitStruct::Data cd{};
@@ -1150,7 +1151,7 @@ void DataLoader::loadInputTo(const std::string _scenepath, DataLoader::InputInit
     // 1. Load points and color data from points3D.txt
     std::ifstream pointsFile(pointsDenseFilePath, std::ios::binary);
     std::string line;
-    std::unordered_set<glm::vec3, Vec3Hash, Vec3Equal> uniquePoints;
+    std::unordered_set<Base::Math::Vec3, Vec3Hash, Vec3Equal> uniquePoints;
     if(!pointsFile.is_open()){
         pointsFile.close();
         pointsFile.open(pointsFilePath);
@@ -1170,7 +1171,7 @@ void DataLoader::loadInputTo(const std::string _scenepath, DataLoader::InputInit
                 continue; // Skip invalid lines.
             }
     
-            glm::vec3 pos(x, y, z);
+            Base::Math::Vec3 pos(x, y, z);
             // Check for duplicate points
             if (uniquePoints.find(pos) != uniquePoints.end()) {
                 continue;
@@ -1181,8 +1182,8 @@ void DataLoader::loadInputTo(const std::string _scenepath, DataLoader::InputInit
             data.positions.push_back(pos);
     
             // Default attributes (scales, rotations, opacities) to zeros.
-            data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-            data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            data.scales.push_back(Base::Math::Vec3(-4.5f, -4.5f, -4.5f));
+            data.rotations.push_back(Base::Math::Vec4(1.0f, 0.0f, 0.0f, 0.0f));
             data.opacities.push_back(-2.197224617004395);
     
             // Process the color data.
@@ -1218,7 +1219,7 @@ void DataLoader::loadInputTo(const std::string _scenepath, DataLoader::InputInit
         
         float C0 = 0.28209479177387814;
         for (size_t i = 0; i < numVertices; ++i) {
-            glm::vec3 pos(
+            Base::Math::Vec3 pos(
                 reinterpret_cast<float*>(x->buffer.get())[i],
                 reinterpret_cast<float*>(y->buffer.get())[i],
                 reinterpret_cast<float*>(z->buffer.get())[i]
@@ -1232,8 +1233,8 @@ void DataLoader::loadInputTo(const std::string _scenepath, DataLoader::InputInit
             
             data.positions.push_back(pos);
     
-            data.scales.push_back(glm::vec3(-4.5f, -4.5f, -4.5f));
-            data.rotations.push_back(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            data.scales.push_back(Base::Math::Vec3(-4.5f, -4.5f, -4.5f));
+            data.rotations.push_back(Base::Math::Vec4(1.0f, 0.0f, 0.0f, 0.0f));
             data.opacities.push_back(-2.197224617004395);
             
             DataLoader::InputInitStruct::Data colorData = {};

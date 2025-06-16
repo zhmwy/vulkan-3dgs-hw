@@ -886,8 +886,8 @@ VulkanComputeExample::VulkanComputeExample() : VulkanExampleBase()
 
     std::string title = "Compute shader image load/store";
     camera.type = Camera::CameraType::lookat;
-    camera.setPosition(glm::vec3(0.0f, 0.0f, -2.0f));
-    camera.setRotation(glm::vec3(0.0f));
+    camera.setPosition(Base::Math::Vec3(0.0f, 0.0f, -2.0f));
+    camera.setRotation(Base::Math::Vec3(0.0f, 0.0f, 0.0f));
     // camera.setPerspective(60.0f, (float)width * 0.5f / (float)height, 1.0f, 256.0f);
 
 # ifdef VULKAN_PC

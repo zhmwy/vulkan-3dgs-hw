@@ -269,8 +269,8 @@ public:
         VkSemaphore semaphore;                        // Execution dependency between compute & graphic submission
         // Used to pass data to the graphics shaders
         struct UniformData {
-            glm::mat4 projection;
-            glm::mat4 modelView;
+            Base::Math::Mat4X4 projection;
+            Base::Math::Mat4X4 modelView;
         } uniformData;
         vks::Buffer uniformBuffer;
     } graphics;

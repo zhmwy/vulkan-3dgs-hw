@@ -2,14 +2,13 @@
 #include <iostream>
 #include <vector>
 #include "tinyply.h"
-#define GLM_FORCE_PRECISION_HIGH     // 高精度
-#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES  // 确保默认对齐方式
-#include <glm/glm.hpp>
 #include "vulkanexamplebase.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
 #include "file/file_operator.h"
+
+#include "base/math/vector.h"
 
 
 using namespace tinyply;
@@ -20,15 +19,15 @@ class DataLoader
 public:
     // PlyDataLoader Test
     struct PlyDataStruct {
-        std::vector<glm::vec3> xyz;
-        std::vector<glm::vec3> scale;
-        std::vector<glm::vec4> rotate;
+        std::vector<Base::Math::Vec3> xyz;
+        std::vector<Base::Math::Vec3> scale;
+        std::vector<Base::Math::Vec4> rotate;
     };
     
     struct InputInitStruct {
-        std::vector<glm::vec3> positions;      // 3D positions (x, y, z)
-        std::vector<glm::vec3> scales;         // Scaling factors (scale_x, scale_y, scale_z)
-        std::vector<glm::vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
+        std::vector<Base::Math::Vec3> positions;      // 3D positions (x, y, z)
+        std::vector<Base::Math::Vec3> scales;         // Scaling factors (scale_x, scale_y, scale_z)
+        std::vector<Base::Math::Vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
         std::vector<float> opacities;          // Opacity
 
         struct Data {
@@ -50,18 +49,18 @@ public:
 
         std::vector<float> head_bbox;
 
-        std::vector<glm::vec3> cam_centers;
-        glm::vec3 translate;
+        std::vector<Base::Math::Vec3> cam_centers;
+        Base::Math::Vec3 translate;
         float radius = 1.0;
-        glm::vec3 mean = glm::vec3(0.0, 0.0, 0.0);
+        Base::Math::Vec3 mean = Base::Math::Vec3(0.0, 0.0, 0.0);
         float variance = 1.0;
 
         std::string basepath = "/data/storage/el1/base/files";
         
         int width, height;
         
-        void normalizeData();
-        void computePositionStats();
+        //void normalizeData();
+        //void computePositionStats();
         void getNerfppNorm();
         
         void denormalizeExtr();
