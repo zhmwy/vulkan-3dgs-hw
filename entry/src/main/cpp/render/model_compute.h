@@ -83,14 +83,9 @@ public:
     int max_training_step = 10000;
     
     float low_resolotion_scale = 0.25;
-<<<<<<< HEAD
-    
+
     int flow_steps = 1300;
     int low_resolution_steps = 1000;
-
-=======
-    int low_resolution_steps = 500;
->>>>>>> b18dd9d (remove unuse variable from VulkanComputeGS)
     int sh_degree = 1;
     
     RandomGenerator random_generator;
@@ -244,12 +239,6 @@ public:
     
     // Input image
     vkbase::Texture2DGS textureColorMap;
-<<<<<<< HEAD
-    VmaAllocation storageImageAllocation;
-
-=======
-    
->>>>>>> b18dd9d (remove unuse variable from VulkanComputeGS)
     VkSemaphore syncSemaphore;
 
     // Resources for the compute part of the example
@@ -279,7 +268,7 @@ public:
         std::vector<VkPipeline> pipelines;
     };
     Compute3DGS pipe_project, pipe_project_render;
-    Compute3DGS pipe_flow;
+    Compute3DGS pipe_flow, pipe_mask_body;
     Compute3DGS pipe_compute_key;
     Compute3DGS pipe_compute_tile;
     Compute3DGS pipe_inverse;
@@ -461,21 +450,6 @@ public:
     
     virtual void getEnabledFeatures() override;
     virtual void getEnabledExtensionsGS() override;
-<<<<<<< HEAD
-    
-    virtual void render()
-    {
-        if (!prepared) {
-            return;
-        }
-        buildComputeCommandBuffer([this]() { 
-            encodePipeline2CommandBuffer(); 
-        });
-        
-        executeComputeCommand();
-//         printLog(true);
-=======
->>>>>>> b18dd9d (remove unuse variable from VulkanComputeGS)
 
     virtual void render();
     int selected_image_index = 0;

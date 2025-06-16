@@ -389,7 +389,7 @@ void VulkanComputeGS::copyExtrCmd()
     TransComputeBarrierBlock();
 }
 
-void VulkanComputeExample::initBaseCmd()
+void VulkanComputeGS::initBaseCmd()
 {
     VkBufferCopy region = {};
     region.srcOffset = 0;
@@ -413,7 +413,7 @@ void VulkanComputeExample::initBaseCmd()
     TransComputeBarrierBlock();
 }
 
-void VulkanComputeExample::copyBaseCmd()
+void VulkanComputeGS::copyBaseCmd()
 {
     VkBufferCopy region = {};
     region.srcOffset = 0;
@@ -1775,8 +1775,7 @@ void VulkanComputeGS::setProjectionPipeline()
     std::cout << "[setProjectionPipeline] Projection pipeline set" << std::endl;
 }
 
-<<<<<<< HEAD
-void VulkanComputeExample::setMaskBodyPipeline(){
+void VulkanComputeGS::setMaskBodyPipeline(){
     const uint32_t bindingCount = 5;
     createPipelineLayout(
         pipe_mask_body,
@@ -1819,7 +1818,7 @@ void VulkanComputeExample::setMaskBodyPipeline(){
 }
 
 
-void VulkanComputeExample::setFlowPipeline()
+void VulkanComputeGS::setFlowPipeline()
 {
     const uint32_t bindingCount = 15;
     createPipelineLayout(
@@ -1889,10 +1888,7 @@ void VulkanComputeExample::setFlowPipeline()
     std::cout << "[setProjectionPipeline] Projection pipeline set" << std::endl;
 }
 
-void VulkanComputeExample::setKNNPipeline()
-=======
 void VulkanComputeGS::setKNNPipeline()
->>>>>>> c2869e0 (remove graphics queue & rename VulkanComputeExample to VulkanComputeGS)
 {
     const uint32_t bindingCount = 24;
     createPipelineLayout(
@@ -2371,7 +2367,7 @@ void VulkanComputeGS::setOptimizationPipeline()
     std::cout << "[setOptimizationPipeline] Optimizition Pipeline set" << std::endl;
 }
 
-void VulkanComputeExample::setPostFlowOptimPipeline()
+void VulkanComputeGS::setPostFlowOptimPipeline()
 {
     const uint32_t bindingCount = 26;
     createPipelineLayout(
@@ -2439,7 +2435,7 @@ void VulkanComputeExample::setPostFlowOptimPipeline()
     std::cout << "[setPostFlowOptimizitionPipeline] Post-Flow Optimizition Pipeline set" << std::endl;
 }
 
-void VulkanComputeExample::setOptimizeFlowPipeline()
+void VulkanComputeGS::setOptimizeFlowPipeline()
 {
     const uint32_t bindingCount = 10;
     createPipelineLayout(
@@ -4172,7 +4168,7 @@ void VulkanComputeGS::printLog(bool train)
         }
     }
     
-    if (training_step >= 0) {
+    if (training_step >= 5000) {
         buildComputeCommandBuffer([this](){
             createGpu2CpuCopys();
         });
@@ -4254,7 +4250,7 @@ void VulkanComputeGS::printLog(bool train)
 
     }
     queryEventTime();
-    if ((training_step >= 0) && train){
+    if ((training_step >= 5000) && train){
         printGpuBuffers();
     }
 
@@ -4312,27 +4308,6 @@ void VulkanComputeGS::executeTransCommand()
     
 }
 
-<<<<<<< HEAD
-void VulkanComputeExample::saveGaussians(std::string dataPath, bool save_head){
-    if(training_step > flow_steps){
-        buildComputeCommandBuffer([this]() { 
-            createGpu2CpuCopy(splat_buffers.xyz_base_array);
-            createGpu2CpuCopy(splat_buffers.scale_array);
-            createGpu2CpuCopy(splat_buffers.rot_base_array);
-            createGpu2CpuCopy(splat_buffers.sh_coeff);
-            createGpu2CpuCopy(splat_buffers.opacity);
-        });
-    }
-    else{
-        buildComputeCommandBuffer([this]() { 
-            createGpu2CpuCopy(splat_buffers.xyz_array);
-            createGpu2CpuCopy(splat_buffers.scale_array);
-            createGpu2CpuCopy(splat_buffers.rotate_array);
-            createGpu2CpuCopy(splat_buffers.sh_coeff);
-            createGpu2CpuCopy(splat_buffers.opacity);
-        });
-    }
-=======
 void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     
     buildComputeCommandBuffer([this]() { 
@@ -4342,7 +4317,6 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
         createGpu2CpuCopy(splat_buffers.sh_coeff);
         createGpu2CpuCopy(splat_buffers.opacity);
     });
->>>>>>> c2869e0 (remove graphics queue & rename VulkanComputeExample to VulkanComputeGS)
     executeTransCommand();
     
     LOGI("Saving start!");
