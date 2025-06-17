@@ -70,15 +70,6 @@ void VulkanExampleBase::renderFrame() {}
 
 void VulkanExampleBase::createCommandBuffers()
 {
-	drawCmdBuffers.resize(swapChain.imageCount);
-
-	VkCommandBufferAllocateInfo cmdBufAllocateInfo =
-		vks::initializers::commandBufferAllocateInfo(
-			cmdPool,
-			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-			static_cast<uint32_t>(drawCmdBuffers.size()));
-
-	VK_CHECK_RESULT(vkAllocateCommandBuffersGS(device, &cmdBufAllocateInfo, drawCmdBuffers.data()));
 }
 
 void VulkanExampleBase::destroyCommandBuffers()
@@ -95,9 +86,7 @@ void VulkanExampleBase::createPipelineCache()
 
 bool VulkanExampleBase::prepare()
 {
-// 	initSwapchain();
 	createCommandPool();
-// 	setupSwapChain();
 // 	createCommandBuffers();
 	createSynchronizationPrimitives();
 	setupDepthStencil();
@@ -158,36 +147,10 @@ void VulkanExampleBase::renderLoop()
 
 void VulkanExampleBase::prepareFrame()
 {
-	// Acquire the next image from the swap chain
-	VkResult result = swapChain.acquireNextImage(semaphores.presentComplete, &currentBuffer);
-	// Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
-	if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
-		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            LOGI("VulkanExampleBase submitFrame windowResize");
-            windowResize();
-		}
-		return;
-	}
-	else {
-		VK_CHECK_RESULT(result);
-	}
 }
 
 void VulkanExampleBase::submitFrame()
 {
-	VkResult result = swapChain.queuePresent(queue, currentBuffer, semaphores.renderComplete);
-    if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR))) {
-		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-			// Swap chain is no longer compatible with the surface and needs to be recreated
-            LOGI("VulkanExampleBase submitFrame windowResize");
-            windowResize();
-			return;
-		} else {
-			VK_CHECK_RESULT(result);
-		}
-	}
-    
-	VK_CHECK_RESULT(vkQueueWaitIdleGS(queue));
 }
 
 VulkanExampleBase::VulkanExampleBase()
@@ -203,7 +166,6 @@ VulkanExampleBase::VulkanExampleBase()
 VulkanExampleBase::~VulkanExampleBase()
 {
 	// Clean up Vulkan resources
-	swapChain.cleanup();
 	if (descriptorPool != VK_NULL_HANDLE)
 	{
 		vkDestroyDescriptorPoolGS(device, descriptorPool, nullptr);
@@ -318,8 +280,6 @@ bool VulkanExampleBase::initVulkan()
 	VkBool32 validDepthFormat = vks::tools::supportedDepthFormat(physicalDevice, &depthFormat);
 	// assert(validDepthFormat);
 
-	swapChain.connect(instance, physicalDevice, device);
-
 	// Create synchronization objects
 	VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
 	// Create a semaphore used to synchronize image presentation
@@ -365,7 +325,7 @@ void VulkanExampleBase::createCommandPool()
                LOGI("VulkanExampleBase::createCommandPool");
 	VkCommandPoolCreateInfo cmdPoolInfo = {};
 	cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmdPoolInfo.queueFamilyIndex = swapChain.queueNodeIndex;
+//	cmdPoolInfo.queueFamilyIndex = swapChain.queueNodeIndex;
 	cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	VK_CHECK_RESULT(vkCreateCommandPoolGS(device, &cmdPoolInfo, nullptr, &cmdPool));
 }
@@ -431,12 +391,12 @@ void VulkanExampleBase::setupFrameBuffer()
 	frameBufferCreateInfo.layers = 1;
 
 	// Create frame buffers for every swap chain image
-	frameBuffers.resize(swapChain.imageCount);
-	for (uint32_t i = 0; i < frameBuffers.size(); i++)
-	{
-        attachments[0] = swapChain.buffers[i].view;
-        VK_CHECK_RESULT(vkCreateFramebufferGS(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
-    }
+//	frameBuffers.resize(swapChain.imageCount);
+//	for (uint32_t i = 0; i < frameBuffers.size(); i++)
+//	{
+//        attachments[0] = swapChain.buffers[i].view;
+//        VK_CHECK_RESULT(vkCreateFramebufferGS(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
+//    }
     LOGI("VulkanExampleBase::setupFrameBuffer end");
 }
 
@@ -448,7 +408,7 @@ void VulkanExampleBase::setupRenderPass()
    LOGI("VulkanExampleBase::setupRenderPass");
 	std::array<VkAttachmentDescription, 2> attachments = {};
 	// Color attachment
-	attachments[0].format = swapChain.colorFormat;
+//	attachments[0].format = swapChain.colorFormat;
 	attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
 	attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -516,75 +476,7 @@ void VulkanExampleBase::setupRenderPass()
 	VK_CHECK_RESULT(vkCreateRenderPassGS(device, &renderPassInfo, nullptr, &renderPass));
 }
 
-void VulkanExampleBase::windowResize()
-{
-    LOGI("VulkanExampleBase::windowResize");
-	if (!prepared)
-	{
-		return;
-	}
-	prepared = false;
-	resized = true;
 
-	// Ensure all operations on the device have been finished before destroying resources
-	vkDeviceWaitIdleGS(device);
-
-	// Recreate swap chain
-	screenWidth = destWidth;
-	screenHeight = destHeight;
-	setupSwapChain();
-
-	// Recreate the frame buffers
-	vkDestroyImageViewGS(device, depthStencil.view, nullptr);
-	vkDestroyImageGS(device, depthStencil.image, nullptr);
-	vkFreeMemoryGS(device, depthStencil.mem, nullptr);
-	setupDepthStencil();
-	for (uint32_t i = 0; i < frameBuffers.size(); i++) {
-		vkDestroyFramebufferGS(device, frameBuffers[i], nullptr);
-	}
-	setupFrameBuffer();
-
-	// Command buffers need to be recreated as they may store
-	// references to the recreated frame buffer
-	destroyCommandBuffers();
-	createCommandBuffers();
-	buildCommandBuffers();
-
-	// SRS - Recreate fences in case number of swapchain images has changed on resize
-	for (auto& fence : waitFences) {
-		vkDestroyFenceGS(device, fence, nullptr);
-	}
-	createSynchronizationPrimitives();
-
-	vkDeviceWaitIdleGS(device);
-
-	// Notify derived class
-	windowResized();
-	viewChanged();
-	prepared = true;
-}
-
-
-void VulkanExampleBase::windowResized() {}
-
-void VulkanExampleBase::initSwapchain()
-{
-     LOGI("VulkanExampleBase::initSwapchain");
-	swapChain.initSurface(window);
-}
-
-void VulkanExampleBase::setupSwapChain()
-{
-    LOGI("VulkanExampleBase::setupSwapChain w:%{public}lu, d:%{public}lu", screenWidth, screenHeight);
-	swapChain.create(&screenWidth, &screenHeight);
-	if (initDeferredSize == false) {
-		 highResWidth = screenWidth * noUpscale;
-		 highResHeight = screenHeight * noUpscale;
-		 lowResWidth = screenWidth * useUpScale;
-		 lowResHeight = screenHeight * useUpScale;
-		 initDeferredSize = true;
-	}
-}
 
 std::string VulkanExampleBase::getPath(std::string path) 
 {
