@@ -31,7 +31,7 @@ add_library(3dgs SHARED
     vulkanbase/VulkanDevice.cpp
     vulkanbase/vulkanexamplebase.cpp
     vulkanbase/VulkanInitializers.hpp
-    vulkanbase/VulkanSwapChain.cpp
+#    vulkanbase/VulkanSwapChain.cpp
     vulkanbase/VulkanTools.cpp
     vulkanbase/VulkanTexture.cpp
     file/file_operator.cpp
