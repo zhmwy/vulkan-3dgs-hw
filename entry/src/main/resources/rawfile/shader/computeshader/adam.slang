@@ -61,6 +61,7 @@ cbuffer PushConstants
     float D;
     float extent;
     float _training_step;
+    float _flow_steps;
 };
 
 // Function to perform Adam optimizer updates for float3 data stored in separate float arrays

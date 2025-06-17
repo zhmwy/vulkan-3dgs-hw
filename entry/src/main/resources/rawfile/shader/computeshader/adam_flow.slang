@@ -36,8 +36,9 @@ cbuffer PushConstants
     float height;
     float position_lr;
     float D;
-    float current_img_idx;
-    float extr_lr;
+    float extent;
+    float _training_step;
+    float _flow_steps;
 };
 
 void update_adam(
@@ -48,8 +49,10 @@ void update_adam(
     RWStructuredBuffer<float> m_array,     // First-order moment array (read-write)
     RWStructuredBuffer<float> v_array,     // Second-order moment array (read-write)
     float learning_rate,                   // Learning rate for Adam optimizer
+    float training_step
 )
 {
+
     // Loop through each dimension of the vector
     for (uint i = 0; i < vec_length; ++i) {
         uint offset = idx * vec_length + i;
@@ -64,16 +67,23 @@ void update_adam(
 
         // Update second-order moment (moving average of squared gradients)
         v = beta2 * v + (1.0 - beta2) * grad * grad;
+        
+        m_array[offset] = m;
+        v_array[offset] = v;
+
+        float bais_correction1 = 1 - pow(beta1, training_step);
+        float bais_correction2 = 1 - pow(beta2, training_step);
+
+        float step = -learning_rate / bais_correction1 * m / (sqrt(v / bais_correction2) + eps);
 
         // Compute the step size using Adam formula
-        float step = -learning_rate * m / (sqrt(v) + eps);
+        // float step = -learning_rate * m / (sqrt(v) + eps);
 
         // Update the parameter
         param_array[offset] += step;
 
         // Write back the updated first-order and second-order moments
-        m_array[offset] = m;
-        v_array[offset] = v;
+
     }
 }
 
@@ -86,6 +96,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     const int xyz_size = int(curPointsNum[0]);
     const uint width = uint(width);
     const uint height = uint(height);
+    const uint flow_steps = uint(_flow_steps);
 
     uint idx = dispatchThreadID.x;
     if (idx >= xyz_size) return;
@@ -100,7 +111,8 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         xyz_flow_params,
         xyz_flow_exp_avg,
         xyz_flow_avg,
-        position_lr
+        position_lr,
+        _training_step - flow_steps
     );
    
     // update rotate_flow_param
@@ -111,6 +123,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         rot_flow_params,
         rot_flow_exp_avg,
         rot_flow_avg,
-        rotate_lr
+        rotate_lr,
+        _training_step - flow_steps
     );
 }

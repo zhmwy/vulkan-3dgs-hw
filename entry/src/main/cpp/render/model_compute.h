@@ -113,8 +113,8 @@ public:
     bool upd_cmd_buffer = true;
     float low_resolotion_scale = 0.25;
     
-    int flow_steps = 2000;
-    int low_resolution_steps = 500;
+    int flow_steps = 1300;
+    int low_resolution_steps = 1000;
 
     int sh_degree = 1;
     
@@ -562,7 +562,7 @@ public:
         });
         
         executeComputeCommand();
-        printLog(true);
+//         printLog(true);
 
         if (training_step < max_training_step){
             training_step++;

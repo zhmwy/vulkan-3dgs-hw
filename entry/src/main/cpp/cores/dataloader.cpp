@@ -1227,7 +1227,6 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     }
     for (auto& time : data.time_stamps) {
         time /= float(data.time_stamps.size());
-//         time -= 0.5;
     }
     
     data.extr_tmp_test = data.extr_tmp;
@@ -1246,6 +1245,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
         bool is_human = HumanPreprocess(scenepath, data.head_bbox, data.body_bbox);
+        
+//         data.body_bbox = std::vector<float>{-10, 10, -10, 10, -10, 10};
 //         bool is_human = false;
         std::string pointsFilePath = slampath + "/points3D.txt";
         load3DPoints(pointsFilePath, data);
@@ -1256,6 +1257,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
             for(int i=0; i<data.body_bbox.size(); ++i){
                 LOGI("body bbox: %{public}f", data.body_bbox[i]);
             }
+            
             data.max_movement = (data.body_bbox[3] - data.body_bbox[2]) * 0.01;
             std::vector<cv::Point> faceCenters = projectHeadCenter(data);
             
@@ -1267,7 +1269,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         resumed = true;
     }
     
-//     prependSkyboxPoints(data, 10000, 0.01, 10.0);
+    prependSkyboxPoints(data, 10000, 0.01, 10.0);
 
     imagesFile.close();
     camerasFile.close();

@@ -71,6 +71,10 @@ void VulkanComputeExample::encoderenderSelectedImage()
     
     bindPipeline2CommandBuffer(pipe_extr_process_render, FORWARD_PIPE, 1, 1, 1);
     bindPipeline2CommandBuffer(pipe_buffer_fill, 0, X, 1, 1);
+    if(training_step > flow_steps){
+        copyBaseCmd();
+        bindPipeline2CommandBuffer(pipe_flow, FORWARD_PIPE, X, 1, 1);
+    }
     bindPipeline2CommandBuffer(pipe_project_render, FORWARD_PIPE, X, 1, 1);
     bindPipeline2CommandBuffer(pipe_sh_render, FORWARD_PIPE, X, 1, 1, true);
     forwardCmd();
@@ -318,9 +322,9 @@ void VulkanComputeExample::printGpuBuffers()
     printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
     printGpuBuffer<float>("dL_dxyz_flow", splat_buffers.dL_dxyz_flow, 4, 18);
 
-    printGpuBuffer<float>("xyz_flow_params", splat_buffers.xyz_flow_params, 4, 18);
-    printGpuBuffer<float>("xyz_flow", splat_buffers.xyz_flow, 4, 3);
-    printGpuBuffer<float>("rot_flow", splat_buffers.rot_flow, 4, 4);
+//     printGpuBuffer<float>("xyz_flow_params", splat_buffers.xyz_flow_params, 4, 18);
+//     printGpuBuffer<float>("xyz_flow", splat_buffers.xyz_flow, 4, 3);
+//     printGpuBuffer<float>("rot_flow", splat_buffers.rot_flow, 4, 4);
     
 //     printGpuBuffer<float>("rot_flow_params", splat_buffers.rot_flow_params, 4, 24);
     printGpuBuffer<int32_t>("is_body_point", splat_buffers.is_body_point, 4, 1);
@@ -328,11 +332,11 @@ void VulkanComputeExample::printGpuBuffers()
     printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
     printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
     
-    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
-    printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 4, 1);
-    printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 4, 3);
+//     printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
+//     printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 4, 1);
+//     printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 4, 3);
 //     printGpuBuffer<float>("dL_dshs_array", splat_buffers.dL_dshs_array, 3, 48);
-    printGpuBuffer<float>("dL_drotate", splat_buffers.dL_drotate, 4, 4);
+//     printGpuBuffer<float>("dL_drotate", splat_buffers.dL_drotate, 4, 4);
 }
 
 void VulkanComputeExample::radixSortCmd(uint32_t numInstances)
@@ -447,7 +451,6 @@ void VulkanComputeExample::imageToBufferCmd()
     copyRegionI.imageExtent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1 };
     
     current_img_idx = random_generator.generate();
-
 //     current_img_idx = 0;
     
     if (training_step >= low_resolution_steps)
@@ -899,6 +902,10 @@ void VulkanComputeExample::updRenderCmd(int index)
             inputGaussian.intr_tmp[0].data()
         );
     }
+    splat_buffers.time_stamp.FromCpu(
+        compute.commandBuffer,
+        &inputGaussian.time_stamps[index]
+    );
     ComputeMemoryBarrierBlock();
 }
 
@@ -969,7 +976,6 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
         bindPipeline2CommandBuffer(pipe_optimize_flow, FORWARD_PIPE, X, 1, 1, true);
     }
     queryCmdTimeEnd("20. training optimize");
-
     bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
 
 //     if (training_step >= 500 && training_step % 100 == 0 && splat_count * 1.06 < MAX_SPLAT_COUNT && training_step <= flow_steps)
@@ -2520,7 +2526,7 @@ void VulkanComputeExample::setPostFlowOptimPipeline()
         &splat_buffers.feature_array_avg,        // 18
         &splat_buffers.opacity_array_avg,         // 19
         &splat_buffers.curPointsNum, // 20
-        &splat_buffers.visible,
+        &splat_buffers.radius, // 21
 
         &splat_buffers.dL_dextr_params,
         &splat_buffers.camera_extrs,
@@ -3771,7 +3777,7 @@ void VulkanComputeExample::prepareStorageImage()
     // memAllocInfo.allocationSize = memReqs.size;
     // memAllocInfo.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     // VK_CHECK_RESULT(vkAllocateMemory(device, &memAllocInfo, nullptr, &storageImage.deviceMemory));
-    // VK_CHECK_RESULT(vkBindImageMemory(device, storageImage.image, storageImage.deviceMemory, 0));
+    // VK_CHECK_RESULT(vkBindBindImageMemory(device, storageImage.image, storageImage.deviceMemory, 0));
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
@@ -4031,7 +4037,7 @@ void VulkanComputeExample::bindPipeline2CommandBuffer(
         
         std::vector<float> pushConstants = { static_cast<float>(xyz_size), static_cast<float>((int)(current_scale * image_width)), static_cast<float>((int)(current_scale * image_height)), 
             pos_lr * inputGaussian.radius, static_cast<float>(sh_degree), inputGaussian.radius, static_cast<float>(training_step),
-            0
+            static_cast<float>(flow_steps)
         };
         vkCmdPushConstantsGS(compute.commandBuffer, pipe.pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float) * 8, pushConstants.data());
     }else{
@@ -4779,19 +4785,38 @@ void VulkanComputeExample::executeTransCommand()
 }
 
 void VulkanComputeExample::saveGaussians(std::string dataPath, bool save_head){
-    
-    buildComputeCommandBuffer([this]() { 
-        createGpu2CpuCopy(splat_buffers.xyz_array);
-        createGpu2CpuCopy(splat_buffers.scale_array);
-        createGpu2CpuCopy(splat_buffers.rotate_array);
-        createGpu2CpuCopy(splat_buffers.sh_coeff);
-        createGpu2CpuCopy(splat_buffers.opacity);
-    });
+    if(training_step > flow_steps){
+        buildComputeCommandBuffer([this]() { 
+            createGpu2CpuCopy(splat_buffers.xyz_base_array);
+            createGpu2CpuCopy(splat_buffers.scale_array);
+            createGpu2CpuCopy(splat_buffers.rot_base_array);
+            createGpu2CpuCopy(splat_buffers.sh_coeff);
+            createGpu2CpuCopy(splat_buffers.opacity);
+        });
+    }
+    else{
+        buildComputeCommandBuffer([this]() { 
+            createGpu2CpuCopy(splat_buffers.xyz_array);
+            createGpu2CpuCopy(splat_buffers.scale_array);
+            createGpu2CpuCopy(splat_buffers.rotate_array);
+            createGpu2CpuCopy(splat_buffers.sh_coeff);
+            createGpu2CpuCopy(splat_buffers.opacity);
+        });
+    }
     executeTransCommand();
     
     LOGI("Saving start!");
     std::vector<float> positionData;
-    copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
+    std::vector<float> rotationData;
+    if(training_step > flow_steps){
+        copyGpuBufferToVector(splat_buffers.xyz_base_array, positionData, splat_count, 3);
+        copyGpuBufferToVector(splat_buffers.rot_base_array, rotationData, splat_count, 4);
+    }
+    else{
+        copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
+        copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
+    }
+    
     inputGaussian.positions.clear();
     for (int i = 0; i < splat_count; i++) {
     inputGaussian.positions.emplace_back(
@@ -4800,6 +4825,7 @@ void VulkanComputeExample::saveGaussians(std::string dataPath, bool save_head){
             positionData[i * 3 + 2]
         );
     }
+    
     std::vector<float> scaleData;
     copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
     inputGaussian.scales.clear();
@@ -4811,8 +4837,6 @@ void VulkanComputeExample::saveGaussians(std::string dataPath, bool save_head){
         );
     }
     
-    std::vector<float> rotationData;
-    copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
     inputGaussian.rotations.clear();
     for (int i = 0; i < splat_count; i++) {
         inputGaussian.rotations.emplace_back(
