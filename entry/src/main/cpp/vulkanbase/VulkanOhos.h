@@ -128,13 +128,11 @@ extern PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR vkGetPhysicalDeviceFragmen
 extern PFN_vkCmdSetFragmentShadingRateKHR vkCmdSetFragmentShadingRateKHRGS;
 extern PFN_vkCreateRenderPass2KHR vkCreateRenderPass2KHRGS;
 
-namespace vks {
-    namespace ohos {
+namespace vkbase {
         bool loadVulkanLibrary();
         void loadVulkanFunctions(VkInstance instance);
-        void loadDeviceFunc(VkDevice device);
+
         void freeVulkanLibrary();
-    } // namespace ohos
-} // namespace vks
+} // namespace vkbase
 
 #endif //XCOMPONENTVULKAN_VULKANOHOS_H

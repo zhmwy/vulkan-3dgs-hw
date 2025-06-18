@@ -3661,7 +3661,7 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
         cv::cvtColor(img, img, cv::COLOR_BGR2RGBA);
         cv::cvtColor(dsp_img, dsp_img, cv::COLOR_BGR2RGBA);
         
-        vks::Texture2DGS texture_original;
+        vkbase::Texture2DGS texture_original;
         texture_original.fromImageBuffer(
             img.data,
             origin_width * origin_height * 4,
@@ -3671,7 +3671,7 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
             VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
         );
         
-        vks::Texture2DGS texture_resized;
+        vkbase::Texture2DGS texture_resized;
         texture_resized.fromImageBuffer(
             dsp_img.data,
             dsp_width * dsp_height * 4,
@@ -3710,12 +3710,12 @@ void VulkanComputeExample::loadAssets(int origin_width, int origin_height, float
             continue;
         }
         
-        vks::Texture2D texture_original;
+        vkbase::Texture2D texture_original;
         this->resizeAndUploadTexture(
             texture_original, image_data, width, height, 
             origin_width, origin_height, vulkanDevice, queue
         );
-        vks::Texture2D texture_resized;
+        vkbase::Texture2D texture_resized;
         this->resizeAndUploadTexture(
             texture_resized, image_data, width, height, 
             static_cast<int>(origin_width * scale), 
@@ -4401,9 +4401,9 @@ void VulkanComputeExample::executeComputeCommand()
 
     if (res != VK_SUCCESS) {
 #ifdef VULKAN_HW
-        LOGE("VulkanExample Fatal : VkResult is %{public}s", vks::tools::errorString(res).c_str());
+        LOGE("VulkanExample Fatal : VkResult is %s", vkbase::getErrorString(res).c_str());
 #elif defined(VULKAN_PC)
-        std::cerr << "VulkanExample Fatal : VkResult is " << vks::tools::errorString(res) << std::endl;
+        std::cerr << "VulkanExample Fatal : VkResult is " << vkbase::errorString(res) << std::endl;
 #endif
     }
     
@@ -4427,9 +4427,9 @@ void VulkanComputeExample::executeTransCommand()
 
     if (res != VK_SUCCESS) {
 #ifdef VULKAN_HW
-        LOGE("VulkanExample Fatal : VkResult is %{public}s", vks::tools::errorString(res).c_str());
+        LOGE("VulkanExample Fatal : VkResult is %s", vkbase::getErrorString(res).c_str());
 #elif defined(VULKAN_PC)
-        std::cerr << "VulkanExample Fatal : VkResult is " << vks::tools::errorString(res) << std::endl;
+        std::cerr << "VulkanExample Fatal : VkResult is " << vkbase::errorString(res) << std::endl;
 #endif
     }
     

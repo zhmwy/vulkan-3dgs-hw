@@ -14,7 +14,7 @@
 #	include <android/asset_manager.h>
 #endif
 
-namespace vks
+namespace vkbase
 {
 class TextureGS
 {

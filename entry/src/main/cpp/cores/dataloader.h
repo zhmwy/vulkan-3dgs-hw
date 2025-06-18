@@ -39,8 +39,8 @@ public:
 
         
         std::vector<Data> colors;         // RGB colors (r, g, b)
-        std::vector<vks::Texture2DGS> images;   // Images
-        std::vector<vks::Texture2DGS> images_low_res;
+        std::vector<vkbase::Texture2DGS> images;   // Images
+        std::vector<vkbase::Texture2DGS> images_low_res;
 
         std::vector<std::string> img_list;
         std::vector<DataExtr> extr_tmp;  

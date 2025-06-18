@@ -269,7 +269,7 @@ public:
     bool hasKNN = false;
     
     // Input image
-    vks::Texture2DGS textureColorMap;
+    vkbase::Texture2DGS textureColorMap;
     VmaAllocation storageImageAllocation;
 
     // Resources for the graphics part of the example

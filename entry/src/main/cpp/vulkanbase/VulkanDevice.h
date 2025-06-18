@@ -7,7 +7,7 @@
 #include <exception>
 #include <vector>
 
-namespace vks
+namespace vkbase
 {
 struct VulkanDevice
 {
@@ -41,4 +41,4 @@ struct VulkanDevice
 	void            vdFlushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free = true);
 	bool            vdExtensionSupported(std::string extension);
 };
-}        // namespace vks
+}        // namespace vkbase

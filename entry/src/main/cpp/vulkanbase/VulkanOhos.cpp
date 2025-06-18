@@ -130,31 +130,19 @@ PFN_vkCreateRenderPass2KHR vkCreateRenderPass2KHRGS;
 
 void *libVulkan;
 
-namespace vks {
-    namespace ohos {
+namespace vkbase {
         bool loadVulkanLibrary() {
             LOGI("vk::ohos::loadVulkanLibrary:Loading libvulkan.so");
-
             const char *path_ = "libvulkan.so";
             libVulkan = dlopen(path_, RTLD_NOW | RTLD_LOCAL);
             if (!libVulkan) {
                 LOGI("vk::ohos::loadVulkanLibrary: Could not load vulkan library %{public}s", dlerror());
                 return false;
             }
-            // Load base function pointers
-            LOGI("vk::ohos::loadVulkanLibrary: load vkEnumerateInstanceExtensionPropertiesGS");
             vkEnumerateInstanceExtensionPropertiesGS = reinterpret_cast<PFN_vkEnumerateInstanceExtensionProperties>(dlsym(libVulkan, "vkEnumerateInstanceExtensionProperties"));
-
-            LOGI("vk::ohos::loadVulkanLibrary: load vkEnumerateInstanceLayerPropertiesGS");
             vkEnumerateInstanceLayerPropertiesGS = reinterpret_cast<PFN_vkEnumerateInstanceLayerProperties>(dlsym(libVulkan, "vkEnumerateInstanceLayerProperties"));
-            
-            LOGI("vk::ohos::loadVulkanLibrary: load vkCreateInstanceGS");
             vkCreateInstanceGS = reinterpret_cast<PFN_vkCreateInstance>(dlsym(libVulkan, "vkCreateInstance"));
-            
-            LOGI("vk::ohos::loadVulkanLibrary: load vkGetInstanceProcAddrGS");
             vkGetInstanceProcAddrGS =reinterpret_cast<PFN_vkGetInstanceProcAddr>(dlsym(libVulkan, "vkGetInstanceProcAddr"));
-    
-            LOGI("vk::ohos::loadVulkanLibrary: load vkGetDeviceProcAddrGS");
             vkGetDeviceProcAddrGS = reinterpret_cast<PFN_vkGetDeviceProcAddr>(dlsym(libVulkan, "vkGetDeviceProcAddr"));
             
             return true;
@@ -391,14 +379,8 @@ namespace vks {
             }
             LOGI("Loaded vulkan functions");
         }
-        void freeVulkanLibrary() { dlclose(libVulkan); }
 
-        void loadDeviceFunc(VkDevice device)
-        {
-            if (!vkCmdSetFragmentShadingRateKHRGS) {
-                vkCmdSetFragmentShadingRateKHRGS = reinterpret_cast<PFN_vkCmdSetFragmentShadingRateKHR>(
-                    vkGetDeviceProcAddrGS(device, "vkCmdSetFragmentShadingRateKHR"));
-            }
+        void freeVulkanLibrary() { 
+            dlclose(libVulkan); 
         }
-    }
 }
