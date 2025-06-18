@@ -786,69 +786,6 @@ void VulkanComputeExample::densifyCmd()
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.max_radii2D, 0, VK_WHOLE_SIZE, 0);
 }
 
-void VulkanComputeExample::updRenderCmd()
-{
-    VkImageCopy copyRegionI2I = {};
-    copyRegionI2I.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegionI2I.srcSubresource.mipLevel = 0;
-    copyRegionI2I.srcSubresource.baseArrayLayer = 0;
-    copyRegionI2I.srcSubresource.layerCount = 1;
-    copyRegionI2I.srcOffset = {0, 0, 0};
-
-    copyRegionI2I.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegionI2I.dstSubresource.mipLevel = 0;
-    copyRegionI2I.dstSubresource.baseArrayLayer = 0;
-    copyRegionI2I.dstSubresource.layerCount = 1;
-    copyRegionI2I.dstOffset = {static_cast<int32_t>((unsigned int)(image_width * current_scale)), static_cast<int32_t>((unsigned int)(image_height * current_scale)), 1};
-    copyRegionI2I.extent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1};
-
-    // render fix view
-    if (timer.elapsed() - timer.last_time > 16) {
-        timer.upd_last_time(timer.elapsed());
-        render_index += 1;
-        // render_index = 6;
-        last_step_tag = training_step;
-        upd_cmd_buffer = true;
-        
-        // TODO: problem?
-        vkCmdCopyImageGS(
-            compute.commandBuffer,
-            inputGaussian.images[6].vkImage,
-            inputGaussian.images[6].vkImageLayout,
-            textureColorMap.vkImage,
-            textureColorMap.vkImageLayout,
-            1,
-            &copyRegionI2I
-        );
-    }
-    
-    VkBufferCopy region = {};
-    region.srcOffset = 7 * (render_index % inputGaussian.intr_tmp.size()) * sizeof(float);
-    region.dstOffset = 0;
-    region.size = sizeof(float) * 7;
-    vkCmdCopyBufferGS(
-        compute.commandBuffer,
-        splat_buffers.camera_extrs,
-        splat_buffers.extr_params_render,
-        1, &region
-    );
-    
-    if (inputGaussian.intr_tmp.size() > 1)
-    {
-        splat_buffers.intr_params_render.FromCpu(
-            compute.commandBuffer,
-            inputGaussian.intr_tmp[render_index % inputGaussian.intr_tmp.size()].data()
-        );
-    }
-    else{
-        splat_buffers.intr_params_render.FromCpu(
-            compute.commandBuffer,
-            inputGaussian.intr_tmp[0].data()
-        );
-    }
-    TransComputeBarrierBlock();
-}
-
 void VulkanComputeExample::updRenderCmd(int index)
 {
     if (index >= inputGaussian.extr_tmp_test.size())

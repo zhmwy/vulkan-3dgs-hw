@@ -66,17 +66,6 @@ VkResult VulkanExampleBase::createInstance()
     return vkCreateInstanceGS(&instanceCreateInfo, nullptr, &instance);
 }
 
-void VulkanExampleBase::renderFrame() {}
-
-void VulkanExampleBase::createCommandBuffers()
-{
-}
-
-void VulkanExampleBase::destroyCommandBuffers()
-{
-	vkFreeCommandBuffersGS(device, cmdPool, static_cast<uint32_t>(drawCmdBuffers.size()), drawCmdBuffers.data());
-}
-
 void VulkanExampleBase::createPipelineCache()
 {
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
@@ -88,8 +77,7 @@ bool VulkanExampleBase::prepare()
 {
 	createCommandPool();
 // 	createCommandBuffers();
-	createSynchronizationPrimitives();
-	setupDepthStencil();
+//	createSynchronizationPrimitives();
 	setupRenderPass();
 	createPipelineCache();
 // 	setupFrameBuffer();
@@ -112,37 +100,6 @@ VkPipelineShaderStageCreateInfo VulkanExampleBase::loadShader(std::string fileNa
 	}
 
 	return shaderStage;
-}
-
-void VulkanExampleBase::renderLoop()
-{
-	destWidth = screenWidth;
-	destHeight = screenHeight;
-	lastTimestamp = std::chrono::high_resolution_clock::now();
-
-    // Render frame
-    if (prepared)
-    {
-        auto tStart = std::chrono::high_resolution_clock::now();
-        render();
-        frameCounter++;
-        auto tEnd = std::chrono::high_resolution_clock::now();
-        auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
-        frameTimer = tDiff / 1000.0f;
-//         camera.update(frameTimer);
-        float fpsTimer = std::chrono::duration<double, std::milli>(tEnd - lastTimestamp).count();
-        if (fpsTimer > 1000.0f) {
-            lastFPS = (float)frameCounter * (1000.0f / fpsTimer);
-            frameCounter = 0;
-            lastTimestamp = tEnd;
-        }
-
-        bool updateView = false;
-    }
-	// Flush device to make sure all resources can be freed
-	if (device != VK_NULL_HANDLE) {
-        vkDeviceWaitIdleGS(device);
-    }
 }
 
 void VulkanExampleBase::prepareFrame()
@@ -170,7 +127,6 @@ VulkanExampleBase::~VulkanExampleBase()
 	{
 		vkDestroyDescriptorPoolGS(device, descriptorPool, nullptr);
 	}
-	destroyCommandBuffers();
 	if (renderPass != VK_NULL_HANDLE)
 	{
 		vkDestroyRenderPassGS(device, renderPass, nullptr);
@@ -188,9 +144,6 @@ VulkanExampleBase::~VulkanExampleBase()
 	{
 		vkDestroyShaderModuleGS(device, shaderModule, nullptr);
 	}
-	vkDestroyImageViewGS(device, depthStencil.view, nullptr);
-	vkDestroyImageGS(device, depthStencil.image, nullptr);
-	vkFreeMemoryGS(device, depthStencil.mem, nullptr);
 
 	vkDestroyPipelineCacheGS(device, pipelineCache, nullptr);
 
@@ -198,16 +151,11 @@ VulkanExampleBase::~VulkanExampleBase()
 
 	vkDestroySemaphoreGS(device, semaphores.presentComplete, nullptr);
 	vkDestroySemaphoreGS(device, semaphores.renderComplete, nullptr);
-	for (auto& fence : waitFences) {
-		vkDestroyFenceGS(device, fence, nullptr);
-	}
 
 	delete vulkanDevice;
 
 	vkDestroyInstanceGS(instance, nullptr);
 }
-
-
 
 bool VulkanExampleBase::initVulkan()
 {
@@ -302,22 +250,8 @@ bool VulkanExampleBase::initVulkan()
 	return true;
 }
 
-void VulkanExampleBase::viewChanged() {}
-
-void VulkanExampleBase::keyPressed(uint32_t) {}
-
-
-void VulkanExampleBase::buildCommandBuffers() {}
-
 void VulkanExampleBase::createSynchronizationPrimitives()
 {
-                   LOGI("VulkanExampleBase::createSynchronizationPrimitives");
-	// Wait fences to sync command buffer access
-	VkFenceCreateInfo fenceCreateInfo = vks::initializers::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-	waitFences.resize(drawCmdBuffers.size());
-	for (auto& fence : waitFences) {
-		VK_CHECK_RESULT(vkCreateFenceGS(device, &fenceCreateInfo, nullptr, &fence));
-	}
 }
 
 void VulkanExampleBase::createCommandPool()
@@ -328,76 +262,6 @@ void VulkanExampleBase::createCommandPool()
 //	cmdPoolInfo.queueFamilyIndex = swapChain.queueNodeIndex;
 	cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	VK_CHECK_RESULT(vkCreateCommandPoolGS(device, &cmdPoolInfo, nullptr, &cmdPool));
-}
-
-void VulkanExampleBase::setupDepthStencil()
-{
-           LOGI("VulkanExampleBase::setupDepthStencil");
-	VkImageCreateInfo imageCI{};
-	imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageCI.imageType = VK_IMAGE_TYPE_2D;
-	imageCI.format = depthFormat;
-	imageCI.extent = { screenWidth, screenHeight, 1 };
-	imageCI.mipLevels = 1;
-	imageCI.arrayLayers = 1;
-	imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageCI.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-	VK_CHECK_RESULT(vkCreateImageGS(device, &imageCI, nullptr, &depthStencil.image));
-	VkMemoryRequirements memReqs{};
-	vkGetImageMemoryRequirementsGS(device, depthStencil.image, &memReqs);
-
-	VkMemoryAllocateInfo memAllloc{};
-	memAllloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memAllloc.allocationSize = memReqs.size;
-	memAllloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK_RESULT(vkAllocateMemoryGS(device, &memAllloc, nullptr, &depthStencil.mem));
-	VK_CHECK_RESULT(vkBindImageMemoryGS(device, depthStencil.image, depthStencil.mem, 0));
-
-	VkImageViewCreateInfo imageViewCI{};
-	imageViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	imageViewCI.image = depthStencil.image;
-	imageViewCI.format = depthFormat;
-	imageViewCI.subresourceRange.baseMipLevel = 0;
-	imageViewCI.subresourceRange.levelCount = 1;
-	imageViewCI.subresourceRange.baseArrayLayer = 0;
-	imageViewCI.subresourceRange.layerCount = 1;
-	imageViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	// Stencil aspect should only be set on depth + stencil formats (VK_FORMAT_D16_UNORM_S8_UINT..VK_FORMAT_D32_SFLOAT_S8_UINT
-	if (depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
-		imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-	}
-    VK_CHECK_RESULT(vkCreateImageViewGS(device, &imageViewCI, nullptr, &depthStencil.view));
-}
-
-void VulkanExampleBase::setupFrameBuffer()
-{
-       LOGI("VulkanExampleBase::setupFrameBuffer");
-	VkImageView attachments[2];
-
-	// Depth/Stencil attachment is the same for all frame buffers
-	attachments[1] = depthStencil.view;
-
-	VkFramebufferCreateInfo frameBufferCreateInfo = {};
-	frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	frameBufferCreateInfo.pNext = NULL;
-	frameBufferCreateInfo.renderPass = renderPass;
-	frameBufferCreateInfo.attachmentCount = 2;
-	frameBufferCreateInfo.pAttachments = attachments;
-	frameBufferCreateInfo.width = screenWidth;
-	frameBufferCreateInfo.height = screenHeight;
-	frameBufferCreateInfo.layers = 1;
-
-	// Create frame buffers for every swap chain image
-//	frameBuffers.resize(swapChain.imageCount);
-//	for (uint32_t i = 0; i < frameBuffers.size(); i++)
-//	{
-//        attachments[0] = swapChain.buffers[i].view;
-//        VK_CHECK_RESULT(vkCreateFramebufferGS(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
-//    }
-    LOGI("VulkanExampleBase::setupFrameBuffer end");
 }
 
 void VulkanExampleBase::getEnabledFeatures() {}
