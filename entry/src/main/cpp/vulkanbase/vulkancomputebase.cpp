@@ -185,12 +185,12 @@ bool VulkanComputeBase::initVulkan()
 	// Derived examples can enable extensions based on the list of supported extensions read from the physical device
 	getEnabledExtensionsGS();
 
-	VkResult res = vulkanDevice->createLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
+	VkResult res = vulkanDevice->vdCreateLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
 	if (res != VK_SUCCESS) {
 		LOGE("initVulkan: create logic device failed");
 		return false;
 	}
-	device = vulkanDevice->logicalDevice;
+	device = vulkanDevice->vdLogicalDevice;
 
     // Get a graphics queue from the device
     vkGetDeviceQueueGS(device, vulkanDevice->queueFamilyIndices.graphics, 0, &queue);
