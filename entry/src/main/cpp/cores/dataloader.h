@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 #include "tinyply.h"
-#include "vulkanexamplebase.h"
+#include "vulkancomputebase.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 

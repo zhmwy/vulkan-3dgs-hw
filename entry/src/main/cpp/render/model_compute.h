@@ -3,7 +3,7 @@
 #ifndef VULKANEXAMPLE_H
 #define VULKANEXAMPLE_H
 
-#include "vulkanexamplebase.h"
+#include "vulkancomputebase.h"
 #include "vk_mem_alloc.h"
 #include "cores/buffer.h"
 #include "cores/cpu_buffer.h"
@@ -64,7 +64,7 @@ struct Vertex {
     float uv[2];
 };
 
-class VulkanComputeExample : public VulkanExampleBase
+class VulkanComputeExample : public VulkanComputeBase
 {
 public:
     void loadTestData(std::string& dataFolder, int flag=-1);
