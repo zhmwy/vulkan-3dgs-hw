@@ -74,7 +74,7 @@ void VulkanComputeExample::encoderenderSelectedImage()
     bindPipeline2CommandBuffer(pipe_project_render, FORWARD_PIPE, X, 1, 1);
     bindPipeline2CommandBuffer(pipe_sh_render, FORWARD_PIPE, X, 1, 1, true);
     forwardCmd();
-    bufferToImageCmd();
+//    bufferToImageCmd();
 //     createGpu2CpuCopys();
     
 }
@@ -545,30 +545,6 @@ void VulkanComputeExample::forwardCmdTime()
     queryCmdTimeEnd("14. forward_copy_buffer2img");
 }
 
-void VulkanComputeExample::bufferToImageCmd()
-{
-    VkBufferImageCopy copyRegionI = {};
-    copyRegionI.bufferOffset = 0;
-    copyRegionI.bufferRowLength = 0;         // Tightly packed
-    copyRegionI.bufferImageHeight = 0;       // Tightly packed
-    copyRegionI.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegionI.imageSubresource.mipLevel = 0;
-    copyRegionI.imageSubresource.baseArrayLayer = 0;
-    copyRegionI.imageSubresource.layerCount = 1;
-    copyRegionI.imageOffset = { 0, 0, 0 };
-    copyRegionI.imageExtent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1 };
-
-    vkCmdCopyBufferToImageGS(
-        compute.commandBuffer,
-        splat_buffers.rfeat_alpha,
-        storageImage.vkImage,
-        storageImage.vkImageLayout,
-        1,
-        &copyRegionI
-    );
-    TransComputeBarrierBlock();
-}
-
 void VulkanComputeExample::backwardCmd()
 {
     uint32_t X = 0;
@@ -936,7 +912,6 @@ VulkanComputeExample::~VulkanComputeExample()
         indexBuffer.destroy();
 
         textureColorMap.destroyGS();
-        storageImage.destroyGS();
         
 //         vmaDestroyImage(allocator, storageImage.image, storageImageAllocation);
 //         vmaDestroyAllocator(allocator);
@@ -3647,7 +3622,7 @@ void VulkanComputeExample::prepareGraphics()
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPostCompute));
     std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
         vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
-        vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &storageImage.vkDescriptor)
+        //vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &storageImage.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
@@ -3797,7 +3772,7 @@ void VulkanComputeExample::prepareCompute()
 
     std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
         vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.vkDescriptor),
-        vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.vkDescriptor)
+        //vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, nullptr);
 
