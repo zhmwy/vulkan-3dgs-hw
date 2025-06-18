@@ -1,7 +1,7 @@
 
 #include <VulkanTexture.h>
 
-namespace vks
+namespace vkbase
 {
 	void TextureGS::updateDescriptorGS()
 	{
@@ -21,7 +21,7 @@ namespace vks
 		vkFreeMemoryGS(vkDevice->vdLogicalDevice, vkDeviceMemory, nullptr);
 	}
 
-	void Texture2DGS::fromImageBuffer(void* buffer, VkDeviceSize bufferSize, VkFormat format, uint32_t texWidth, uint32_t texHeight, vks::VulkanDevice *device, VkQueue copyQueue, VkFilter filter, VkImageUsageFlags imageUsageFlags, VkImageLayout imageLayout)
+	void Texture2DGS::fromImageBuffer(void* buffer, VkDeviceSize bufferSize, VkFormat format, uint32_t texWidth, uint32_t texHeight, vkbase::VulkanDevice *device, VkQueue copyQueue, VkFilter filter, VkImageUsageFlags imageUsageFlags, VkImageLayout imageLayout)
 	{
 		assert(buffer);
 
@@ -109,7 +109,7 @@ namespace vks
 
 		// Image barrier for optimal image (target)
 		// Optimal image will be used as destination for the copy
-		vks::tools::setImageLayout(
+		vkbase::setImageLayout(
 			copyCmd,
 			vkImage,
 			VK_IMAGE_LAYOUT_UNDEFINED,
@@ -128,7 +128,7 @@ namespace vks
 
 		// Change texture image layout to shader read after all mip levels have been copied
 		this->vkImageLayout = imageLayout;
-		vks::tools::setImageLayout(
+		vkbase::setImageLayout(
 			copyCmd,
 			vkImage,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
