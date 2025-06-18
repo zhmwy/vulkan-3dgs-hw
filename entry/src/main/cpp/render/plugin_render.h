@@ -22,7 +22,6 @@
 #include <condition_variable>
 // #include "model_3d_sponza.h"
 #include "model_compute.h"
-#include "vulkanRender.h"
 
 napi_value Train3DGS(napi_env env, napi_callback_info info);
 napi_value InitProgress(napi_env env, napi_callback_info info);

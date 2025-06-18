@@ -649,16 +649,7 @@ public:
         
         cv::imwrite(filename, image);
     }
-    #ifdef VULKAN_PC
-    void OnUpdateUIOverlay(vks::UIOverlay* overlay)
-    {
-        if (overlay->header("Settings")) {
-            if (overlay->comboBox("Shader", &compute.pipelineIndex, filterNames)) {
-                buildComputeCommandBuffer();
-            }
-        }
-    }
-    #endif
+    
     template<typename T>
     void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50, int length = 3, int offset = 0);
 private:
