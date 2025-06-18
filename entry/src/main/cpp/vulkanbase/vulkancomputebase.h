@@ -6,7 +6,6 @@
 #include "VulkanOhos.h"
 #include "vulkan/vulkan.h"
 
-#include "VulkanBuffer.h"
 #include "VulkanDevice.h"
 #include "VulkanTexture.h"
 #include "VulkanInitializers.hpp"

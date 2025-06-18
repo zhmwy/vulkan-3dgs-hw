@@ -959,7 +959,6 @@ VulkanComputeExample::~VulkanComputeExample()
         vkDestroyPipelineLayoutGS(device, graphics.pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayoutGS(device, graphics.descriptorSetLayout, nullptr);
         vkDestroySemaphoreGS(device, graphics.semaphore, nullptr);
-        graphics.uniformBuffer.destroy();
 
         // Compute
         for (auto& pipeline : compute.pipelines)
@@ -972,9 +971,6 @@ VulkanComputeExample::~VulkanComputeExample()
         vkDestroyCommandPoolGS(device, compute.commandPool, nullptr);
 
         this->DestoryBuffers();
-        
-        vertexBuffer.destroy();
-        indexBuffer.destroy();
 
         textureColorMap.destroyGS();
         
@@ -3901,42 +3897,6 @@ void VulkanComputeExample::buildComputeCommandBuffer(std::function<void()> func)
     VK_CHECK_RESULT(vkEndCommandBufferGS(compute.commandBuffer));
 }
 
-void VulkanComputeExample::generateQuad()
-{
-    std::vector<Vertex> vertices = {
-        { {  1.0f,  1.0f, 0.0f }, { 1.0f, 1.0f } },
-        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f } },
-        { { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },
-        { {  1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f } }
-    };
-
-    std::vector<uint32_t> indices = { 0,1,2, 2,3,0 };
-    indexCount = static_cast<uint32_t>(indices.size());
-
-    struct StagingBuffers {
-        vks::Buffer vertices;
-        vks::Buffer indices;
-    } stagingBuffers;
-
-    VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-        &stagingBuffers.vertices, vertices.size() * sizeof(Vertex), vertices.data()));
-    VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-        &stagingBuffers.indices, indices.size() * sizeof(uint32_t), indices.data()));
-
-    VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer, vertices.size() * sizeof(Vertex)));
-    VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer, indices.size() * sizeof(uint32_t)));
-
-    vulkanDevice->copyBuffer(&stagingBuffers.vertices, &vertexBuffer, queue);
-    vulkanDevice->copyBuffer(&stagingBuffers.indices, &indexBuffer, queue);
-
-    stagingBuffers.vertices.destroy();
-    stagingBuffers.indices.destroy();
-}
-
 void VulkanComputeExample::setupDescriptorPool()
 {
     std::vector<VkDescriptorPoolSize> poolSizes = {
@@ -3973,15 +3933,13 @@ void VulkanComputeExample::prepareGraphics()
 
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPreCompute));
     std::vector<VkWriteDescriptorSet> baseImageWriteDescriptorSets = {
-        vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
+        //vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
         vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textureColorMap.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(baseImageWriteDescriptorSets.size()), baseImageWriteDescriptorSets.data(), 0, nullptr);
 
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPostCompute));
     std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
-        vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
-        //vks::initializers::writeDescriptorSet(graphics.descriptorSetPostCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &storageImage.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
@@ -4205,19 +4163,6 @@ void VulkanComputeExample::prepreAllocator()
     vmaCreateAllocator(&allocatorCreateInfo, &allocator);
 }
 
-void VulkanComputeExample::prepareUniformBuffers()
-{
-    VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-        &graphics.uniformBuffer, sizeof(Graphics::UniformData)));
-    VK_CHECK_RESULT(graphics.uniformBuffer.map());
-}
-
-void VulkanComputeExample::updateUniformBuffers()
-{
-    memcpy(graphics.uniformBuffer.mapped, &graphics.uniformData, sizeof(Graphics::UniformData));
-}
-
 bool VulkanComputeExample::prepare()
 {
     if (prepared) {
@@ -4236,9 +4181,7 @@ bool VulkanComputeExample::prepare()
     prepreAllocator();
 //     loadAssets(low_resolotion_scale);
     loadAssets(WIDTH, HEIGHT, low_resolotion_scale);
-    generateQuad();
-    prepareUniformBuffers();
-    //prepareStorageImage();
+
     setupDescriptorPool();
     prepareGraphics();
     prepareCompute();

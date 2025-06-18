@@ -28,7 +28,7 @@ add_library(3dgs SHARED
     manager/plugin_manager.cpp
 
     vulkanbase/VulkanOhos.cpp
-    vulkanbase/VulkanBuffer.cpp
+#    vulkanbase/VulkanBuffer.cpp
     vulkanbase/VulkanDevice.cpp
     vulkanbase/vulkancomputebase.cpp
     vulkanbase/VulkanInitializers.hpp

@@ -7,8 +7,6 @@
 
 #include "vulkan/vulkan.h"
 
-
-#include "VulkanBuffer.h"
 #include "VulkanDevice.h"
 #include "VulkanTools.h"
 
