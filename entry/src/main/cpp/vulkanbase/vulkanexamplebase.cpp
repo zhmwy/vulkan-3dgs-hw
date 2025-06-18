@@ -85,7 +85,7 @@ bool VulkanExampleBase::prepare()
     return true;
 }
 
-VkPipelineShaderStageCreateInfo VulkanExampleBase::loadShader(std::string fileName, VkShaderStageFlagBits stage, bool isBase)
+VkPipelineShaderStageCreateInfo VulkanExampleBase::loadShader(std::string fileName, VkShaderStageFlagBits stage)
 {
 	VkPipelineShaderStageCreateInfo shaderStage = {};
 	shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -93,21 +93,9 @@ VkPipelineShaderStageCreateInfo VulkanExampleBase::loadShader(std::string fileNa
 	shaderStage.module = vks::tools::loadSpvShader(fileName.c_str(), device);
 	shaderStage.pName = "main";
 	assert(shaderStage.module != VK_NULL_HANDLE);
-	if (isBase) {
-		shaderModules.push_back(shaderStage.module);
-	} else {
-		exampleModules.push_back(shaderStage.module);
-	}
+	shaderModules.push_back(shaderStage.module);
 
 	return shaderStage;
-}
-
-void VulkanExampleBase::prepareFrame()
-{
-}
-
-void VulkanExampleBase::submitFrame()
-{
 }
 
 VulkanExampleBase::VulkanExampleBase()
@@ -131,16 +119,8 @@ VulkanExampleBase::~VulkanExampleBase()
 	{
 		vkDestroyRenderPassGS(device, renderPass, nullptr);
 	}
-	for (uint32_t i = 0; i < frameBuffers.size(); i++)
-	{
-		vkDestroyFramebufferGS(device, frameBuffers[i], nullptr);
-	}
 
 	for (auto& shaderModule : shaderModules)
-	{
-		vkDestroyShaderModuleGS(device, shaderModule, nullptr);
-	}
-	for (auto& shaderModule : exampleModules)
 	{
 		vkDestroyShaderModuleGS(device, shaderModule, nullptr);
 	}
@@ -250,13 +230,9 @@ bool VulkanExampleBase::initVulkan()
 	return true;
 }
 
-void VulkanExampleBase::createSynchronizationPrimitives()
-{
-}
-
 void VulkanExampleBase::createCommandPool()
 {
-               LOGI("VulkanExampleBase::createCommandPool");
+    LOGI("VulkanExampleBase::createCommandPool");
 	VkCommandPoolCreateInfo cmdPoolInfo = {};
 	cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 //	cmdPoolInfo.queueFamilyIndex = swapChain.queueNodeIndex;

@@ -48,23 +48,13 @@
 class VulkanExampleBase
 {
 public:
-	std::string getWindowTitle();
 
-	uint32_t destWidth;
-	uint32_t destHeight;
-	bool resizing = false;
-	bool initDeferredSize = false;
-	void handleMouseMove(int32_t x, int32_t y);
 	void createPipelineCache();
 	void createCommandPool();
-	void createSynchronizationPrimitives();
 
 	bool libLoaded = false;
 protected:
-	// Frame counter to display fps
-	uint32_t frameCounter = 0;
-	uint32_t lastFPS = 0;
-	std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
+    
 	// Vulkan instance, stores all per-application states
 	VkInstance instance;
 	std::vector<std::string> supportedInstanceExtensions;
@@ -99,19 +89,14 @@ protected:
     
 	// Global render pass for frame buffer writes
 	VkRenderPass renderPass = VK_NULL_HANDLE;
-	// List of available frame buffers (same as number of swap chain images)
-	std::vector<VkFramebuffer>frameBuffers;
-	// Active frame buffer index
-	uint32_t currentBuffer = 0;
+    
 	// Descriptor set pool
 	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-	// List of shader modules created (stored for cleanup)
+    
 	std::vector<VkShaderModule> shaderModules;
-    std::vector<VkShaderModule> exampleModules;
-    // Pipeline cache object
+    
 	VkPipelineCache pipelineCache;
-	// Wraps the swap chain to present images (framebuffers) to the windowing system
-	// Synchronization semaphores
+    
 	struct {
 		// Swap chain image presentation
 		VkSemaphore presentComplete;
@@ -126,65 +111,26 @@ public:
 	uint32_t lowResWidth;
 	uint32_t lowResHeight;
 
-	float noUpscale = 0.6;
-	float useUpScale = 0.4;
-
 	bool prepared = false;
-	bool resized = false;
-    bool viewUpdated = false;
-    uint32_t screenWidth = 1280;
-    uint32_t screenHeight = 720;
-    
-    float m_zNear = 0.1f;
-    float m_zFar = 64.0f;
-    /** @brief Last frame time measured using a high performance timer (if available) */
-	float frameTimer = 1.0f;
 
-	/** @brief Encapsulated physical and logical vulkan device */
 	vks::VulkanDevice *vulkanDevice;
-    vks::TextureGS lowImage;
-	VkClearColorValue defaultClearColor = { { 0.025f, 0.025f, 0.025f, 1.0f } };
-
-	static std::vector<const char*> args;
-
-	// Defines a frame rate independent timer value clamped from -1.0...1.0
-	// For use in animations, rotations, etc.
-	float timer = 0.0f;
-	// Multiplier for speeding up (or slowing down) the global timer
-	float timerSpeed = 0.25f;
-	bool paused = false;
 
 	std::string name = "XEngineExample";
 	uint32_t apiVersion = VK_API_VERSION_1_3;
-	NativeWindow* window = nullptr;
 
 	VulkanExampleBase();
 	virtual ~VulkanExampleBase();
-	/** @brief Setup the vulkan instance, enable required extensions and connect to the physical device (GPU) */
+    
 	bool initVulkan();
 
-	/** @brief (Virtual) Creates the application wide Vulkan instance */
 	virtual VkResult createInstance();
-	/** @brief (Pure virtual) Render function to be implemented by the sample application */
+    
 	virtual void render() = 0;
     
-	/** @brief (Virtual) Setup a default renderpass */
 	virtual void setupRenderPass();
-    /** @brief (Virtual) Called after the physical device features have been read, can be used to set features to enable
-     * on the device */
     virtual void getEnabledFeatures();
-	/** @brief (Virtual) Called after the physical device extensions have been read, can be used to enable extensions based on the supported extension listing*/
 	virtual void getEnabledExtensionsGS();
-    /** @brief Prepares all Vulkan resources and functions required to run the sample */
 	virtual bool prepare();
-
-	/** @brief Loads a SPIR-V shader file for the given shader stage */
-	VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage, bool isBase = true);
-
-	/** Prepare the next frame for workload submission by acquiring the next swap chain image */
-	void prepareFrame();
-	/** @brief Presents the current image to the swap chain */
-	void submitFrame();
-
+	VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
 	std::string getPath(std::string path);
 };

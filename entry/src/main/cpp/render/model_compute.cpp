@@ -932,11 +932,6 @@ VulkanComputeExample::VulkanComputeExample() : VulkanExampleBase()
 
     std::string title = "Compute shader image load/store";
 
-# ifdef VULKAN_PC
-    screenWidth = width;
-    screenHeight = height;
-# endif
-
     // Initialize Vulkan handles to VK_NULL_HANDLE
     graphics.descriptorSetLayout = VK_NULL_HANDLE;
     graphics.descriptorSetPreCompute = VK_NULL_HANDLE;
