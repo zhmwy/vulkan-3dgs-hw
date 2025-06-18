@@ -259,12 +259,7 @@ public:
         VkPipeline pipeline;                          // Image display pipeline
         VkPipelineLayout pipelineLayout;              // Layout of the graphics pipeline
         VkSemaphore semaphore;                        // Execution dependency between compute & graphic submission
-        // Used to pass data to the graphics shaders
-        struct UniformData {
-            Base::Math::Mat4X4 projection;
-            Base::Math::Mat4X4 modelView;
-        } uniformData;
-        vks::Buffer uniformBuffer;
+        
     } graphics;
 
     // Resources for the compute part of the example
@@ -336,8 +331,6 @@ public:
     Compute3DGS pipe_hist_odd;
     Compute3DGS pipe_hist_offset;
     
-    vks::Buffer vertexBuffer;
-    vks::Buffer indexBuffer;
     uint32_t indexCount;
     uint32_t vertexBufferSize;
 
@@ -356,20 +349,6 @@ public:
     
     int use_method = 0;
     int cur_method = 0;
-    
-    virtual void viewChanged()
-    {
-        updateUniformBuffers();
-    }
-    
-    void SetMethod(int method)
-    {
-        use_method = method;
-        compute.pipelineIndex = use_method;
-        #ifdef VULKAN_HW
-//         LOGI("VulkanExample curr set method: %{public}d", use_method);
-        #endif
-    }
 
     // Redundant vulkan create methos
     void createPipelineLayout(    
@@ -483,12 +462,9 @@ public:
     virtual void encodePipeline2CommandBuffer();
     void buildComputeCommandBuffer(std::function<void()> func);
     
-    void generateQuad();
     void setupDescriptorPool();
     void prepareGraphics();
     void prepareCompute();
-    void prepareUniformBuffers();
-    void updateUniformBuffers();
 
     virtual bool prepare();
     float calculatePSNR(float* mse, int width, int height, float& psnr_total);
