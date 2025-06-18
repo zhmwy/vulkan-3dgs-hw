@@ -85,7 +85,7 @@ VkPipelineShaderStageCreateInfo VulkanComputeBase::loadShader(std::string fileNa
 	VkPipelineShaderStageCreateInfo shaderStage = {};
 	shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderStage.stage = stage;
-	shaderStage.module = vks::tools::loadSpvShader(fileName.c_str(), device);
+	shaderStage.module = vkbase::loadSpvShader(fileName.c_str(), device);
 	shaderStage.pName = "main";
 	assert(shaderStage.module != VK_NULL_HANDLE);
 	shaderModules.push_back(shaderStage.module);
@@ -95,7 +95,7 @@ VkPipelineShaderStageCreateInfo VulkanComputeBase::loadShader(std::string fileNa
 
 VulkanComputeBase::VulkanComputeBase()
 {
-	libLoaded = vks::ohos::loadVulkanLibrary();
+	libLoaded = vkbase::loadVulkanLibrary();
 	if (libLoaded) {
         LOGI("VulkanComputeBase dlopen libvulkan.so success ");
 	} else {
@@ -144,7 +144,7 @@ bool VulkanComputeBase::initVulkan()
 		return false;
 	}
 
-	vks::ohos::loadVulkanFunctions(instance);
+	vkbase::loadVulkanFunctions(instance);
 
 	// Physical device
 	uint32_t gpuCount = 0;
@@ -180,7 +180,7 @@ bool VulkanComputeBase::initVulkan()
 	// Vulkan device creation
 	// This is handled by a separate class that gets a logical device representation
 	// and encapsulates functions related to a device
-	vulkanDevice = new vks::VulkanDevice(physicalDevice);
+	vulkanDevice = new vkbase::VulkanDevice(physicalDevice);
 
 	// Derived examples can enable extensions based on the list of supported extensions read from the physical device
 	getEnabledExtensionsGS();

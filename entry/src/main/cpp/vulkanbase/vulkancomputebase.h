@@ -37,7 +37,7 @@ protected:
 
 	bool prepared = false;
 
-	vks::VulkanDevice *vulkanDevice;
+	vkbase::VulkanDevice *vulkanDevice;
     
 	VkInstance instance;
 	std::vector<std::string> supportedInstanceExtensions;

@@ -2,7 +2,7 @@
 #include "VulkanTools.h"
 #include <unordered_set>
 
-namespace vks
+namespace vkbase
 {	
 	VulkanDevice::VulkanDevice(VkPhysicalDevice physicalDevice)
 	{
