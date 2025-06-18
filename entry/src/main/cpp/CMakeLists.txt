@@ -30,7 +30,7 @@ add_library(3dgs SHARED
     vulkanbase/VulkanOhos.cpp
     vulkanbase/VulkanBuffer.cpp
     vulkanbase/VulkanDevice.cpp
-    vulkanbase/vulkanexamplebase.cpp
+    vulkanbase/vulkancomputebase.cpp
     vulkanbase/VulkanInitializers.hpp
 #    vulkanbase/VulkanSwapChain.cpp
     vulkanbase/VulkanTools.cpp

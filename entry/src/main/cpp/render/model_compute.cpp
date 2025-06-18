@@ -915,7 +915,7 @@ void VulkanComputeExample::encodePipeline2CommandBuffer()
 
 /********************* End ****************************/
 
-VulkanComputeExample::VulkanComputeExample() : VulkanExampleBase()
+VulkanComputeExample::VulkanComputeExample() : VulkanComputeBase()
 {
 #ifdef WIN32
     AllocConsole();

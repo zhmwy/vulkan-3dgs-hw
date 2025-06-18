@@ -2,10 +2,8 @@
 #include <iostream>
 #include <vector>
 #include "tinyply.h"
-#define GLM_FORCE_PRECISION_HIGH     // 高精度
-#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES  // 确保默认对齐方式
-#include <glm/glm.hpp>
-#include "vulkanexamplebase.h"
+
+#include "vulkancomputebase.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <Eigen/Dense>
