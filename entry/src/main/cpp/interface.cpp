@@ -2,8 +2,8 @@
 #include "common/common.h"
 #include "file/file_operator.h"
 #include "render/plugin_render.h"
-#include "render/vulkanRender.h"
 #include "human/head_mask/manageHeadMasks.h"
+
 
 #include <multimedia/image_framework/image_source_mdk.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
@@ -14,7 +14,7 @@ bool PluginRender::stop = false;
 std::unordered_map<std::string, PluginRender*> PluginRender::m_instance;
 OH_NativeXComponent_Callback PluginRender::m_callback;
 // napi_threadsafe_function g_progress_cb_train = nullptr;  
-VulkanRender* _renderer = NULL;
+VulkanComputeExample* _renderer = NULL;
 
 InterfaceImplVulkan::InterfaceImplVulkan() : _progress(0.0f), _isInitialized(false), _isTraining(false), _g_progress_cb_train(nullptr) {}
 
@@ -36,7 +36,7 @@ void InterfaceImplVulkan::InitVulkan(std::string datapath, std::string outputpat
     // Reset progress
     updateProgress(0.0f);
 
-    _renderer = new VulkanRender();
+    _renderer = new VulkanComputeExample();
     _renderer->loadTestData(_dataPath);
     std::string sandbox_basepath = _renderer->basepath;
 

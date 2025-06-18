@@ -4223,7 +4223,8 @@ bool VulkanComputeExample::prepare()
     if (prepared) {
         return true;
     }
-//     VulkanExampleBase::prepare();
+    
+	VulkanComputeBase::prepare();
 
     LOGI("Prepare: Begin to prepare the training process.");
     
