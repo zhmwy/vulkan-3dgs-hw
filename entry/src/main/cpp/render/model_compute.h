@@ -464,7 +464,7 @@ public:
     void bufferToImageCmd();
     void optimizeStepCmd();
     void densifyCmd();
-    void updRenderCmd();
+    
     void updRenderCmd(int index);
     virtual void encodeInitBuffersValues2CommandBuffer();
     virtual void encoderenderSelectedImage();

@@ -87,8 +87,7 @@ protected:
 	VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	// Contains command buffers and semaphores to be presented to the queue
 	VkSubmitInfo submitInfo;
-	// Command buffers used for rendering
-	std::vector<VkCommandBuffer> drawCmdBuffers;
+    
 	// Global render pass for frame buffer writes
 	VkRenderPass renderPass = VK_NULL_HANDLE;
 	// List of available frame buffers (same as number of swap chain images)
@@ -110,7 +109,6 @@ protected:
 		// Command buffer submission and execution
 		VkSemaphore renderComplete;
 	} semaphores;
-	std::vector<VkFence> waitFences;
 
 public:
 	uint32_t highResWidth;
@@ -151,38 +149,16 @@ public:
 	uint32_t apiVersion = VK_API_VERSION_1_3;
 	NativeWindow* window = nullptr;
 
-
-	struct {
-		VkImage image;
-		VkDeviceMemory mem;
-		VkImageView view;
-	} depthStencil;
-
 	VulkanExampleBase();
 	virtual ~VulkanExampleBase();
 	/** @brief Setup the vulkan instance, enable required extensions and connect to the physical device (GPU) */
 	bool initVulkan();
-    void windowResize();
-
-    void setupWindow(NativeWindow* nativeWindow)
-	{
-		window = nativeWindow;
-	}
 
 	/** @brief (Virtual) Creates the application wide Vulkan instance */
 	virtual VkResult createInstance();
 	/** @brief (Pure virtual) Render function to be implemented by the sample application */
 	virtual void render() = 0;
-	/** @brief (Virtual) Called when the camera view has changed */
-	virtual void viewChanged();
-	/** @brief (Virtual) Called after a key was pressed, can be used to do custom key handling */
-	virtual void keyPressed(uint32_t);
-	/** @brief (Virtual) Called when resources have been recreated that require a rebuild of the command buffers (e.g. frame buffer), to be implemented by the sample application */
-	virtual void buildCommandBuffers();
-	/** @brief (Virtual) Setup default depth and stencil views */
-	virtual void setupDepthStencil();
-	/** @brief (Virtual) Setup default framebuffers for all requested swapchain images */
-	virtual void setupFrameBuffer();
+    
 	/** @brief (Virtual) Setup a default renderpass */
 	virtual void setupRenderPass();
     /** @brief (Virtual) Called after the physical device features have been read, can be used to set features to enable
@@ -196,20 +172,10 @@ public:
 	/** @brief Loads a SPIR-V shader file for the given shader stage */
 	VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage, bool isBase = true);
 
-	/** @brief Entry point for the main render loop */
-	void renderLoop();
-
-	/** @brief Adds the drawing commands for the ImGui overlay to the given command buffer */
-	void drawUI(const VkCommandBuffer commandBuffer);
-
 	/** Prepare the next frame for workload submission by acquiring the next swap chain image */
 	void prepareFrame();
 	/** @brief Presents the current image to the swap chain */
 	void submitFrame();
-	/** @brief (Virtual) Default image acquire + submission and command buffer submission function */
-	virtual void renderFrame();
-    void createCommandBuffers();
-    void destroyCommandBuffers();
 
 	std::string getPath(std::string path);
 };
