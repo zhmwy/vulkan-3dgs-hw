@@ -41,31 +41,6 @@ namespace vks
 			}
 		}
 
-		VkBool32 supportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat *depthFormat)
-		{
-			std::vector<VkFormat> depthFormats = {
-				VK_FORMAT_D32_SFLOAT_S8_UINT,
-				VK_FORMAT_D32_SFLOAT,
-				VK_FORMAT_D24_UNORM_S8_UINT,
-				VK_FORMAT_D16_UNORM_S8_UINT,
-				VK_FORMAT_D16_UNORM
-			};
-
-			for (auto& format : depthFormats)
-			{
-				VkFormatProperties formatProps;
-				vkGetPhysicalDeviceFormatPropertiesGS(physicalDevice, format, &formatProps);
-				// Format must support depth stencil attachment for optimal tiling
-				if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-				{
-					*depthFormat = format;
-					return true;
-				}
-			}
-
-			return false;
-		}
-
 		void setImageLayout(
 			VkCommandBuffer cmdbuffer,
 			VkImage image,
@@ -76,7 +51,7 @@ namespace vks
 			VkPipelineStageFlags dstStageMask)
 		{
 			// Create an image barrier object
-			VkImageMemoryBarrier imageMemoryBarrier = vks::initializers::imageMemoryBarrier();
+			VkImageMemoryBarrier imageMemoryBarrier = vkbase::vkImageMemoryBarrier();
 			imageMemoryBarrier.oldLayout = oldImageLayout;
 			imageMemoryBarrier.newLayout = newImageLayout;
 			imageMemoryBarrier.image = image;
