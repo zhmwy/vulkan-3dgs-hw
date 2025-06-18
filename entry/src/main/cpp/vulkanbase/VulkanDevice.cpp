@@ -269,13 +269,13 @@ namespace vks
 
 	VkCommandBuffer VulkanDevice::vdCreateCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool, bool begin)
 	{
-		VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(pool, level, 1);
+		VkCommandBufferAllocateInfo cmdBufAllocateInfo = vkbase::vkCommandBufferAllocateInfo(pool, level, 1);
 		VkCommandBuffer cmdBuffer;
 		VK_CHECK_RESULT(vkAllocateCommandBuffersGS(vdLogicalDevice, &cmdBufAllocateInfo, &cmdBuffer));
 		// If requested, also start recording for the new command buffer
 		if (begin)
 		{
-			VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
+			VkCommandBufferBeginInfo cmdBufInfo = vkbase::vkCommandBufferBeginInfo();
 			VK_CHECK_RESULT(vkBeginCommandBufferGS(cmdBuffer, &cmdBufInfo));
 		}
 		return cmdBuffer;
@@ -295,11 +295,11 @@ namespace vks
 
 		VK_CHECK_RESULT(vkEndCommandBufferGS(commandBuffer));
 
-		VkSubmitInfo submitInfo = vks::initializers::submitInfo();
+		VkSubmitInfo submitInfo = vkbase::vkSubmitInfo();
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer;
 		// Create fence to ensure that the command buffer has finished executing
-		VkFenceCreateInfo fenceInfo = vks::initializers::fenceCreateInfo(VK_FLAGS_NONE);
+		VkFenceCreateInfo fenceInfo = vkbase::vkFenceCreateInfo(VK_FLAGS_NONE);
 		VkFence fence;
 		VK_CHECK_RESULT(vkCreateFenceGS(vdLogicalDevice, &fenceInfo, nullptr, &fence));
 		// Submit to the queue

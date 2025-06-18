@@ -38,8 +38,6 @@ namespace vks
 	{
 		std::string getErrorString(VkResult errorCode);
 
-		VkBool32 supportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat *depthFormat);
-
 		void setImageLayout(
 			VkCommandBuffer cmdbuffer,
 			VkImage image,

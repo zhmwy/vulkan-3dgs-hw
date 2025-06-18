@@ -30,7 +30,7 @@ namespace vks
 		height = texHeight;
 		texMipLevels = 1;
 
-		VkMemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
+		VkMemoryAllocateInfo memAllocInfo = vkbase::vkMemoryAllocateInfo();
 		VkMemoryRequirements memReqs;
 
 		// Use a separate command buffer for texture loading
@@ -40,7 +40,7 @@ namespace vks
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingMemory;
 
-		VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo();
+		VkBufferCreateInfo bufferCreateInfo = vkbase::vkBufferCreateInfo();
 		bufferCreateInfo.size = bufferSize;
 		// This buffer is used as a transfer source for the buffer copy
 		bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -75,7 +75,7 @@ namespace vks
 		bufferCopyRegion.bufferOffset = 0;
 
 		// Create optimal tiled target image
-		VkImageCreateInfo imageCreateInfo = vks::initializers::imageCreateInfo();
+		VkImageCreateInfo imageCreateInfo = vkbase::vkImageCreateInfo();
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 		imageCreateInfo.format = format;
 		imageCreateInfo.mipLevels = texMipLevels;

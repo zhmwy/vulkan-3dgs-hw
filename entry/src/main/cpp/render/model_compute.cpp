@@ -1375,7 +1375,7 @@ void VulkanComputeExample::createPipelineLayout(
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(numBindings);
     
     for (uint32_t i = 0; i < numBindings; ++i) {
-        setLayoutBindings[i] = vks::initializers::descriptorSetLayoutBinding(
+        setLayoutBindings[i] = vkbase::vkDescriptorSetLayoutBinding(
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,              // descriptor type
             VK_SHADER_STAGE_COMPUTE_BIT,                    // shader stage
             i                                               // binding number
@@ -1383,7 +1383,7 @@ void VulkanComputeExample::createPipelineLayout(
     }
 
     // Create descriptor set layout
-    VkDescriptorSetLayoutCreateInfo layoutInfo = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
+    VkDescriptorSetLayoutCreateInfo layoutInfo = vkbase::vkDescriptorSetLayoutCreateInfo(setLayoutBindings);
 
     VK_CHECK_RESULT(
         vkCreateDescriptorSetLayoutGS(device, &layoutInfo, nullptr, &pipe_3dgs.descriptorSetLayout)
@@ -1416,7 +1416,7 @@ void VulkanComputeExample::createPipelineLayout(
     );
 
     // Allocate descriptor set
-    VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(
+    VkDescriptorSetAllocateInfo allocInfo = vkbase::vkDescriptorSetAllocateInfo(
         descriptorPool, 
         &pipe_3dgs.descriptorSetLayout, 1
     );
@@ -3462,7 +3462,7 @@ void VulkanComputeExample::buildComputeCommandBuffer(std::function<void()> func)
 {
     vkQueueWaitIdleGS(compute.queue);
 
-    VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
+    VkCommandBufferBeginInfo cmdBufInfo = vkbase::vkCommandBufferBeginInfo();
     VK_CHECK_RESULT(vkBeginCommandBufferGS(compute.commandBuffer, &cmdBufInfo));
     
     func();
@@ -3473,41 +3473,41 @@ void VulkanComputeExample::buildComputeCommandBuffer(std::function<void()> func)
 void VulkanComputeExample::setupDescriptorPool()
 {
     std::vector<VkDescriptorPoolSize> poolSizes = {
-        vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
-        vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2),
-        vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2),
-        vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2048),
-        vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 64),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2048),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 64),
     };
-    VkDescriptorPoolCreateInfo descriptorPoolInfo = vks::initializers::descriptorPoolCreateInfo(poolSizes, 2048);
+    VkDescriptorPoolCreateInfo descriptorPoolInfo = vkbase::vkDescriptorPoolCreateInfo(poolSizes, 2048);
     VK_CHECK_RESULT(vkCreateDescriptorPoolGS(device, &descriptorPoolInfo, nullptr, &descriptorPool));
 }
 
 void VulkanComputeExample::prepareGraphics()
 {
-    VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
+    VkSemaphoreCreateInfo semaphoreCreateInfo = vkbase::vkSemaphoreCreateInfo();
     VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &graphics.semaphore));
 
-    VkSubmitInfo submitInfo = vks::initializers::submitInfo();
+    VkSubmitInfo submitInfo = vkbase::vkSubmitInfo();
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &graphics.semaphore;
     VK_CHECK_RESULT(vkQueueSubmitGS(queue, 1, &submitInfo, VK_NULL_HANDLE));
     VK_CHECK_RESULT(vkQueueWaitIdleGS(queue));
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
-        vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+        vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
+        vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
     };
-    VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
+    VkDescriptorSetLayoutCreateInfo descriptorLayout = vkbase::vkDescriptorSetLayoutCreateInfo(setLayoutBindings);
     VK_CHECK_RESULT(vkCreateDescriptorSetLayoutGS(device, &descriptorLayout, nullptr, &graphics.descriptorSetLayout));
 
     VkDescriptorSetAllocateInfo allocInfo =
-        vks::initializers::descriptorSetAllocateInfo(descriptorPool, &graphics.descriptorSetLayout, 1);
+        vkbase::vkDescriptorSetAllocateInfo(descriptorPool, &graphics.descriptorSetLayout, 1);
 
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPreCompute));
     std::vector<VkWriteDescriptorSet> baseImageWriteDescriptorSets = {
-        //vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
-        vks::initializers::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textureColorMap.vkDescriptor)
+        //vkbase::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
+        vkbase::vkWriteDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textureColorMap.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(baseImageWriteDescriptorSets.size()), baseImageWriteDescriptorSets.data(), 0, nullptr);
 
@@ -3516,25 +3516,25 @@ void VulkanComputeExample::prepareGraphics()
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&graphics.descriptorSetLayout, 1);
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkbase::vkPipelineLayoutCreateInfo(&graphics.descriptorSetLayout, 1);
     VK_CHECK_RESULT(vkCreatePipelineLayoutGS(device, &pipelineLayoutCreateInfo, nullptr, &graphics.pipelineLayout));
 
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = vks::initializers::pipelineInputAssemblyStateCreateInfo(
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = vkbase::vkPipelineInputAssemblyStateCreateInfo(
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
-    VkPipelineRasterizationStateCreateInfo rasterizationState = vks::initializers::pipelineRasterizationStateCreateInfo(
+    VkPipelineRasterizationStateCreateInfo rasterizationState = vkbase::vkPipelineRasterizationStateCreateInfo(
         VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
-    VkPipelineColorBlendAttachmentState blendAttachmentState = vks::initializers::pipelineColorBlendAttachmentState(
+    VkPipelineColorBlendAttachmentState blendAttachmentState = vkbase::vkPipelineColorBlendAttachmentState(
         0xf, VK_FALSE);
-    VkPipelineColorBlendStateCreateInfo colorBlendState = vks::initializers::pipelineColorBlendStateCreateInfo(
+    VkPipelineColorBlendStateCreateInfo colorBlendState = vkbase::vkPipelineColorBlendStateCreateInfo(
         1, &blendAttachmentState);
-    VkPipelineDepthStencilStateCreateInfo depthStencilState = vks::initializers::pipelineDepthStencilStateCreateInfo(
+    VkPipelineDepthStencilStateCreateInfo depthStencilState = vkbase::vkPipelineDepthStencilStateCreateInfo(
         VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
-    VkPipelineViewportStateCreateInfo viewportState = vks::initializers::pipelineViewportStateCreateInfo(
+    VkPipelineViewportStateCreateInfo viewportState = vkbase::vkPipelineViewportStateCreateInfo(
         1, 1, 0);
-    VkPipelineMultisampleStateCreateInfo multisampleState = vks::initializers::pipelineMultisampleStateCreateInfo(
+    VkPipelineMultisampleStateCreateInfo multisampleState = vkbase::vkPipelineMultisampleStateCreateInfo(
         VK_SAMPLE_COUNT_1_BIT, 0);
     std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-    VkPipelineDynamicStateCreateInfo dynamicState = vks::initializers::pipelineDynamicStateCreateInfo(
+    VkPipelineDynamicStateCreateInfo dynamicState = vkbase::vkPipelineDynamicStateCreateInfo(
         dynamicStateEnables);
     std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
@@ -3552,19 +3552,19 @@ void VulkanComputeExample::prepareGraphics()
     shaderStages[1] = loadShader(fshader_file, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
-        vks::initializers::vertexInputBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX)
+        vkbase::vkVertexInputBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX)
     };
     std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
-        vks::initializers::vertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)),
-        vks::initializers::vertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv)),
+        vkbase::vkVertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)),
+        vkbase::vkVertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv)),
     };
-    VkPipelineVertexInputStateCreateInfo vertexInputState = vks::initializers::pipelineVertexInputStateCreateInfo();
+    VkPipelineVertexInputStateCreateInfo vertexInputState = vkbase::vkPipelineVertexInputStateCreateInfo();
     vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindings.size());
     vertexInputState.pVertexBindingDescriptions = vertexInputBindings.data();
     vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
     vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
-    VkGraphicsPipelineCreateInfo pipelineCreateInfo = vks::initializers::pipelineCreateInfo(
+    VkGraphicsPipelineCreateInfo pipelineCreateInfo = vkbase::vkPipelineCreateInfo(
         graphics.pipelineLayout, renderPass, 0);
     pipelineCreateInfo.pVertexInputState = &vertexInputState;
     pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
@@ -3646,27 +3646,27 @@ void VulkanComputeExample::prepareCompute()
     vkGetDeviceQueueGS(device, vulkanDevice->queueFamilyIndices.compute, 0, &compute.queue);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 0),
-        vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 1),
+        vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 0),
+        vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 1),
     };
 
-    VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
+    VkDescriptorSetLayoutCreateInfo descriptorLayout = vkbase::vkDescriptorSetLayoutCreateInfo(setLayoutBindings);
     VK_CHECK_RESULT(vkCreateDescriptorSetLayoutGS(device, &descriptorLayout, nullptr, &compute.descriptorSetLayout));
 
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&compute.descriptorSetLayout, 1);
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkbase::vkPipelineLayoutCreateInfo(&compute.descriptorSetLayout, 1);
     VK_CHECK_RESULT(vkCreatePipelineLayoutGS(device, &pipelineLayoutCreateInfo, nullptr, &compute.pipelineLayout));
 
-    VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(
+    VkDescriptorSetAllocateInfo allocInfo = vkbase::vkDescriptorSetAllocateInfo(
         descriptorPool, &compute.descriptorSetLayout, 1);
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &compute.descriptorSet));
 
     std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
-        vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.vkDescriptor),
-        //vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.vkDescriptor)
+        vkbase::vkWriteDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.vkDescriptor),
+        //vkbase::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.vkDescriptor)
     };
     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, nullptr);
 
-    VkComputePipelineCreateInfo computePipelineCreateInfo = vks::initializers::computePipelineCreateInfo(
+    VkComputePipelineCreateInfo computePipelineCreateInfo = vkbase::vkComputePipelineCreateInfo(
         compute.pipelineLayout, 0);
 
     filterNames = { "emboss", "edgedetect", "sgd" };
@@ -3692,11 +3692,11 @@ void VulkanComputeExample::prepareCompute()
     cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VK_CHECK_RESULT(vkCreateCommandPoolGS(device, &cmdPoolInfo, nullptr, &compute.commandPool));
 
-    VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(
+    VkCommandBufferAllocateInfo cmdBufAllocateInfo = vkbase::vkCommandBufferAllocateInfo(
         compute.commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
     VK_CHECK_RESULT(vkAllocateCommandBuffersGS(device, &cmdBufAllocateInfo, &compute.commandBuffer));
 
-    VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
+    VkSemaphoreCreateInfo semaphoreCreateInfo = vkbase::vkSemaphoreCreateInfo();
     VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &compute.semaphore));
 
     VkQueryPoolCreateInfo queryPoolInfo = {};
@@ -3945,7 +3945,7 @@ void VulkanComputeExample::executeComputeCommand()
 {
     VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 
-    VkSubmitInfo computeSubmitInfo = vks::initializers::submitInfo();
+    VkSubmitInfo computeSubmitInfo = vkbase::vkSubmitInfo();
     computeSubmitInfo.commandBufferCount = 1;
     computeSubmitInfo.pCommandBuffers = &compute.commandBuffer;
     computeSubmitInfo.waitSemaphoreCount = 1;
@@ -3971,7 +3971,7 @@ void VulkanComputeExample::executeTransCommand()
 {
     VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
-    VkSubmitInfo computeSubmitInfo = vks::initializers::submitInfo();
+    VkSubmitInfo computeSubmitInfo = vkbase::vkSubmitInfo();
     computeSubmitInfo.commandBufferCount = 1;
     computeSubmitInfo.pCommandBuffers = &compute.commandBuffer;
     computeSubmitInfo.waitSemaphoreCount = 1;
