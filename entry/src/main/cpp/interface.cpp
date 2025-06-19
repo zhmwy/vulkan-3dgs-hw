@@ -1,19 +1,13 @@
 #include "interface.h"
 #include "common/common.h"
 #include "file/file_operator.h"
-#include "render/plugin_render.h"
-#include "human/head_mask/manageHeadMasks.h"
 
+#include "human/head_mask/manageHeadMasks.h"
+#include "render/model_compute.h"
 
 #include <multimedia/image_framework/image_source_mdk.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
-
-std::mutex PluginRender::m_mutex;
-std::condition_variable PluginRender::m_con;
-bool PluginRender::stop = false;
-std::unordered_map<std::string, PluginRender*> PluginRender::m_instance;
-OH_NativeXComponent_Callback PluginRender::m_callback;
-// napi_threadsafe_function g_progress_cb_train = nullptr;  
+ 
 VulkanComputeGS* _renderer = NULL;
 
 InterfaceImplVulkan::InterfaceImplVulkan() : _progress(0.0f), _isInitialized(false), _isTraining(false), _g_progress_cb_train(nullptr) {}
