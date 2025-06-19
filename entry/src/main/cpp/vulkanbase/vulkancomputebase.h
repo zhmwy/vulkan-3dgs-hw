@@ -37,7 +37,7 @@ protected:
 
 	bool prepared = false;
 
-	vkbase::VulkanDevice *vulkanDevice;
+	std::shared_ptr<vkbase::VulkanDevice> vulkanDevice;
     
 	VkInstance instance;
 	std::vector<std::string> supportedInstanceExtensions;
@@ -51,7 +51,8 @@ protected:
 	std::vector<const char*> enabledDeviceExtensions;
 	std::vector<const char*> enabledInstanceExtensions;
     
-	void* deviceCreatepNextChain = nullptr;
+    VkPhysicalDeviceFeatures2 features_{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    
 	VkDevice device;
     
 	//VkQueue queue;

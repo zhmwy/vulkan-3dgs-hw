@@ -19,7 +19,7 @@ namespace vkbase
 class TextureGS
 {
   public:
-	VulkanDevice *        vkDevice;
+	std::shared_ptr<VulkanDevice>     vkDevice;
 	VkImage               vkImage;
 	VkImageLayout         vkImageLayout;
 	VkDeviceMemory        vkDeviceMemory;
@@ -44,7 +44,7 @@ class Texture2DGS : public TextureGS
 	    VkFormat           texFormat,
 	    uint32_t           texWidth,
 	    uint32_t           texHeight,
-	    VulkanDevice      *texDevice,
+	    std::shared_ptr<VulkanDevice>      texDevice,
 	    VkQueue            texCopyQueue,
 	    VkFilter           texFilter          = VK_FILTER_LINEAR,
 	    VkImageUsageFlags  texImageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,

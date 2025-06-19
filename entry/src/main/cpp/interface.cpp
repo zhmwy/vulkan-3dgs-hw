@@ -6,7 +6,27 @@
 #include <multimedia/image_framework/image_source_mdk.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
  
-VulkanComputeGS* _renderer = NULL;
+
+
+class InterfaceImplVulkan : public InterfaceVulkan {
+private:
+    std::string _dataPath;
+    std::string _outputPath;
+    float _progress;
+    bool _isInitialized;
+    bool _isTraining;
+    napi_threadsafe_function _g_progress_cb_train;
+    void updateProgress(float value);
+    
+    std::unique_ptr<VulkanComputeGS> _renderer = NULL;
+
+public:
+    InterfaceImplVulkan();
+    ~InterfaceImplVulkan();
+    void InitVulkan(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train);
+    void TrainVulkan();
+    float GetProcessVulkan();
+};
 
 InterfaceImplVulkan::InterfaceImplVulkan() : _progress(0.0f), _isInitialized(false), _isTraining(false), _g_progress_cb_train(nullptr) {}
 
@@ -15,10 +35,6 @@ InterfaceImplVulkan::~InterfaceImplVulkan() {
         _isTraining = false;
     }
     
-    if (_renderer) {
-        delete _renderer;
-        _renderer = nullptr;
-    }
 }
 
 void InterfaceImplVulkan::InitVulkan(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train) {
@@ -28,9 +44,8 @@ void InterfaceImplVulkan::InitVulkan(std::string datapath, std::string outputpat
     // Reset progress
     updateProgress(0.0f);
 
-    _renderer = new VulkanComputeGS();
+    _renderer = std::make_unique<VulkanComputeGS>();
     _renderer->loadTestData(_dataPath);
-    std::string sandbox_basepath = _renderer->basepath;
 
     _renderer->initVulkan();
     _renderer->prepare();

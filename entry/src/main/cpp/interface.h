@@ -20,24 +20,6 @@ extern "C" InterfaceVulkan* createInstanceVulkan();
 extern "C" void destoryInstanceVulkan(InterfaceVulkan* instance);
 
 
-class InterfaceImplVulkan : public InterfaceVulkan {
-private:
-    std::string _dataPath;
-    std::string _outputPath;
-    float _progress;
-    bool _isInitialized;
-    bool _isTraining;
-    napi_threadsafe_function _g_progress_cb_train;
-    void updateProgress(float value);
-    
-
-public:
-    InterfaceImplVulkan();
-    ~InterfaceImplVulkan();
-    void InitVulkan(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train);
-    void TrainVulkan();
-    float GetProcessVulkan();
-};
 
 
 #endif //VULKAN_3DGS_HW_MAIN_H

@@ -434,7 +434,7 @@ public:
     template<typename T>
     void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50, int length = 3, int offset = 0);
 private:
-    VkPhysicalDeviceFeatures2 features_{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    
     VkPhysicalDeviceImagelessFramebufferFeatures imageless_framebuffer_feature_{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES};
     VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_features_{

@@ -211,7 +211,7 @@ struct AsyncContext {
     napi_async_work work;
     napi_deferred deferred;
     NativeResourceManager* resourceMgr;
-    InterfaceImplVulkan* impl;
+    InterfaceVulkan* impl;
     std::string datapath;
     std::string outputpath;
 };
@@ -250,7 +250,7 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
     std::string dataFolder(dataPath, pathLength);
 
     // Create interface instance
-    InterfaceImplVulkan* impl = static_cast<InterfaceImplVulkan*>(createInstanceVulkan());
+    InterfaceVulkan* impl = static_cast<InterfaceVulkan*>(createInstanceVulkan());
 //     impl->Init(dataFolder, dataFolder);
 
     // Create async context

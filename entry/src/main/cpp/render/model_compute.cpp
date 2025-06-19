@@ -957,8 +957,6 @@ void VulkanComputeGS::getEnabledFeatures()
 
     features_.pNext = &imageless_framebuffer_feature_;
     vkGetPhysicalDeviceFeatures2GS(physicalDevice, &features_);
-
-    deviceCreatepNextChain = &features_; 
 }
 
 void VulkanComputeGS::getEnabledExtensionsGS()

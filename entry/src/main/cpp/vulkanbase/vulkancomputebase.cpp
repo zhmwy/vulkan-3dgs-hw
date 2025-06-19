@@ -124,8 +124,8 @@ VulkanComputeBase::~VulkanComputeBase()
 
 	vkDestroyCommandPoolGS(device, cmdPool, nullptr);
 
-	delete vulkanDevice;
-
+    vulkanDevice = nullptr;
+    
 	vkDestroyInstanceGS(instance, nullptr);
 }
 
@@ -180,12 +180,12 @@ bool VulkanComputeBase::initVulkan()
 	// Vulkan device creation
 	// This is handled by a separate class that gets a logical device representation
 	// and encapsulates functions related to a device
-	vulkanDevice = new vkbase::VulkanDevice(physicalDevice);
+	vulkanDevice = std::make_shared<vkbase::VulkanDevice>(physicalDevice);
 
 	// Derived examples can enable extensions based on the list of supported extensions read from the physical device
 	getEnabledExtensionsGS();
 
-	VkResult res = vulkanDevice->vdCreateLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
+	VkResult res = vulkanDevice->vdCreateLogicalDevice(enabledFeatures, enabledDeviceExtensions, &features_);
 	if (res != VK_SUCCESS) {
 		LOGE("initVulkan: create logic device failed");
 		return false;
