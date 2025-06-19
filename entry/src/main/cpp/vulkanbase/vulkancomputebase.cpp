@@ -193,7 +193,7 @@ bool VulkanComputeBase::initVulkan()
 	device = vulkanDevice->vdLogicalDevice;
 
     // Get a graphics queue from the device
-    vkGetDeviceQueueGS(device, vulkanDevice->queueFamilyIndices.graphics, 0, &queue);
+    //vkGetDeviceQueueGS(device, vulkanDevice->queueFamilyIndices.graphics, 0, &queue);
 	return true;
 }
 

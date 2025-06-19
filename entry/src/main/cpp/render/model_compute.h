@@ -58,36 +58,20 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-// Vertex layout for this example
-struct Vertex {
-    float pos[3];
-    float uv[2];
-};
-
-class VulkanComputeExample : public VulkanComputeBase
+class VulkanComputeGS : public VulkanComputeBase
 {
 public:
     void loadTestData(std::string& dataFolder, int flag=-1);
-//     void loadIntrinsics(std::string& dataFolder);
     
     void encodeCpu2Gpu();
     void createGpu2CpuCopys();
-    VulkanComputeExample();
-    ~VulkanComputeExample();
-    void DestoryBuffer(vkgs::Buffer buffer);
+    VulkanComputeGS();
+    ~VulkanComputeGS();
     void DestoryBuffers();  
 
-    #ifdef VULKAN_PC
-    uint32_t screenWidth;
-    uint32_t screenHeight;
-    #endif
-
-//     int render_count = 0;
     Timer timer;
 
     VmaAllocator allocator;
-
-    // DataLoader::InputGaussianStruct inputGaussian;
 
     std::string basepath = "";
     DataLoader::InputInitStruct inputGaussian;
@@ -104,7 +88,7 @@ public:
     int max_training_step = 10000;
     int last_step_tag = 0;
     int render_index = 0;
-    bool upd_cmd_buffer = true;
+    
     float low_resolotion_scale = 0.25;
 
     int low_resolution_steps = 500;
@@ -134,7 +118,6 @@ public:
         vkgs::Buffer sortHistOffsets;
         
         VkQueryPool queryPool = VK_NULL_HANDLE;
-//         VrdxSorter sorter = VK_NULL_HANDLE;
     } sort_buffers;
 
     struct SplatBuffers {
@@ -324,8 +307,6 @@ public:
     
     uint32_t indexCount;
     uint32_t vertexBufferSize;
-
-    std::vector<std::string> filterNames;
     
     float total_psnr = 0;
     float total_psnr_mask = 0;
@@ -355,19 +336,19 @@ public:
     );
 
     void bindPipeline2CommandBuffer(
-        const VulkanComputeExample::Compute3DGS& pipe, 
+        const VulkanComputeGS::Compute3DGS& pipe, 
         const int PIPELINE_INDEX,
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         bool float_constant = false
     );
     void bindPipeline2CommandBuffer2(
-        const VulkanComputeExample::Compute3DGS& pipe, 
+        const VulkanComputeGS::Compute3DGS& pipe, 
         const int PIPELINE_INDEX,
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         bool float_constant = false
     );
     void bindPipeline2CommandBufferPushConstants(
-        const VulkanComputeExample::Compute3DGS& pipe, 
+        const VulkanComputeGS::Compute3DGS& pipe, 
         const int PIPELINE_INDEX,
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         std::vector<uint32_t>& pushConstants
@@ -431,7 +412,6 @@ public:
     void backwardCmd();
     void zeroGradCmd();
     void imageToBufferCmd();
-    void bufferToImageCmd();
     void optimizeStepCmd();
     void densifyCmd();
     
@@ -463,8 +443,6 @@ public:
     virtual void printLog(bool train = true);
     void executeComputeCommand();
     void executeTransCommand();
-
-    // void drawUI(const VkCommandBuffer commandBuffer);
 
     void queryEventTime();
     void queryCmdTimeStart(std::string enventName);
@@ -523,7 +501,6 @@ public:
             });
 
         executeComputeCommand();
-//         printLog(false);
     }
     
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
