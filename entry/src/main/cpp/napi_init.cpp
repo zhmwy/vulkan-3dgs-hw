@@ -15,7 +15,7 @@
 
 #include <hilog/log.h>
 #include "file/file_operator.h"
-#include "manager/plugin_manager.h"
+// #include "manager/plugin_manager.h"
 #include "render/plugin_render.h"
 #include "common/common.h"
 #include <rawfile/raw_file.h>
