@@ -54,7 +54,7 @@ protected:
 	void* deviceCreatepNextChain = nullptr;
 	VkDevice device;
     
-	VkQueue queue;
+	//VkQueue queue;
 	VkCommandPool cmdPool;
     
 	VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;

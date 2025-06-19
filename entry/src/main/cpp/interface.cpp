@@ -14,7 +14,7 @@ bool PluginRender::stop = false;
 std::unordered_map<std::string, PluginRender*> PluginRender::m_instance;
 OH_NativeXComponent_Callback PluginRender::m_callback;
 // napi_threadsafe_function g_progress_cb_train = nullptr;  
-VulkanComputeExample* _renderer = NULL;
+VulkanComputeGS* _renderer = NULL;
 
 InterfaceImplVulkan::InterfaceImplVulkan() : _progress(0.0f), _isInitialized(false), _isTraining(false), _g_progress_cb_train(nullptr) {}
 
@@ -36,7 +36,7 @@ void InterfaceImplVulkan::InitVulkan(std::string datapath, std::string outputpat
     // Reset progress
     updateProgress(0.0f);
 
-    _renderer = new VulkanComputeExample();
+    _renderer = new VulkanComputeGS();
     _renderer->loadTestData(_dataPath);
     std::string sandbox_basepath = _renderer->basepath;
 

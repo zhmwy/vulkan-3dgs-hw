@@ -50,7 +50,7 @@ public:
     void *m_window;
     int m_mode = 0;
 //     VulkanExample *m_vulkanexample;
-    VulkanComputeExample *m_vulkanexample;
+    VulkanComputeGS *m_vulkanexample;
     std::thread m_renderThread;
 };
 #endif // RENDER_PLUGIN_RENDER_H

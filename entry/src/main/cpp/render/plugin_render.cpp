@@ -26,7 +26,7 @@ PluginRender::PluginRender(std::string &id)
 {
     this->m_id = id;
 //     this->m_vulkanexample = new VulkanExample();
-    this->m_vulkanexample = new VulkanComputeExample();
+    this->m_vulkanexample = new VulkanComputeGS();
     OH_NativeXComponent_Callback *renderCallback = &PluginRender::m_callback;
 //     renderCallback->OnSurfaceCreated = OnSurfaceCreatedCB;
 //     renderCallback->OnSurfaceChanged = OnSurfaceChangedCB;
