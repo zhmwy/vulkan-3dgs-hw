@@ -799,14 +799,6 @@ VulkanComputeExample::VulkanComputeExample() : VulkanComputeBase()
 
     std::string title = "Compute shader image load/store";
 
-    // Initialize Vulkan handles to VK_NULL_HANDLE
-    graphics.descriptorSetLayout = VK_NULL_HANDLE;
-    graphics.descriptorSetPreCompute = VK_NULL_HANDLE;
-    graphics.descriptorSetPostCompute = VK_NULL_HANDLE;
-    graphics.pipeline = VK_NULL_HANDLE;
-    graphics.pipelineLayout = VK_NULL_HANDLE;
-    graphics.semaphore = VK_NULL_HANDLE;
-
     compute.queue = VK_NULL_HANDLE;
     compute.commandPool = VK_NULL_HANDLE;
     compute.commandBuffer = VK_NULL_HANDLE;
@@ -821,11 +813,6 @@ VulkanComputeExample::VulkanComputeExample() : VulkanComputeBase()
 VulkanComputeExample::~VulkanComputeExample()
 {
     if (device) {
-        // Graphics
-        vkDestroyPipelineGS(device, graphics.pipeline, nullptr);
-        vkDestroyPipelineLayoutGS(device, graphics.pipelineLayout, nullptr);
-        vkDestroyDescriptorSetLayoutGS(device, graphics.descriptorSetLayout, nullptr);
-        vkDestroySemaphoreGS(device, graphics.semaphore, nullptr);
 
         // Compute
         for (auto& pipeline : compute.pipelines)
@@ -3483,100 +3470,16 @@ void VulkanComputeExample::setupDescriptorPool()
     VK_CHECK_RESULT(vkCreateDescriptorPoolGS(device, &descriptorPoolInfo, nullptr, &descriptorPool));
 }
 
-void VulkanComputeExample::prepareGraphics()
+void VulkanComputeExample::prepareSyncSemaphore()
 {
     VkSemaphoreCreateInfo semaphoreCreateInfo = vkbase::vkSemaphoreCreateInfo();
-    VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &graphics.semaphore));
-
+    VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &syncSemaphore));
+    
     VkSubmitInfo submitInfo = vkbase::vkSubmitInfo();
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &graphics.semaphore;
+    submitInfo.pSignalSemaphores = &syncSemaphore;
     VK_CHECK_RESULT(vkQueueSubmitGS(queue, 1, &submitInfo, VK_NULL_HANDLE));
     VK_CHECK_RESULT(vkQueueWaitIdleGS(queue));
-
-    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-        vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
-        vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-    };
-    VkDescriptorSetLayoutCreateInfo descriptorLayout = vkbase::vkDescriptorSetLayoutCreateInfo(setLayoutBindings);
-    VK_CHECK_RESULT(vkCreateDescriptorSetLayoutGS(device, &descriptorLayout, nullptr, &graphics.descriptorSetLayout));
-
-    VkDescriptorSetAllocateInfo allocInfo =
-        vkbase::vkDescriptorSetAllocateInfo(descriptorPool, &graphics.descriptorSetLayout, 1);
-
-    VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPreCompute));
-    std::vector<VkWriteDescriptorSet> baseImageWriteDescriptorSets = {
-        //vkbase::writeDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &graphics.uniformBuffer.descriptor),
-        vkbase::vkWriteDescriptorSet(graphics.descriptorSetPreCompute, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textureColorMap.vkDescriptor)
-    };
-    vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(baseImageWriteDescriptorSets.size()), baseImageWriteDescriptorSets.data(), 0, nullptr);
-
-    VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &graphics.descriptorSetPostCompute));
-    std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
-    };
-    vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
-
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkbase::vkPipelineLayoutCreateInfo(&graphics.descriptorSetLayout, 1);
-    VK_CHECK_RESULT(vkCreatePipelineLayoutGS(device, &pipelineLayoutCreateInfo, nullptr, &graphics.pipelineLayout));
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = vkbase::vkPipelineInputAssemblyStateCreateInfo(
-        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
-    VkPipelineRasterizationStateCreateInfo rasterizationState = vkbase::vkPipelineRasterizationStateCreateInfo(
-        VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
-    VkPipelineColorBlendAttachmentState blendAttachmentState = vkbase::vkPipelineColorBlendAttachmentState(
-        0xf, VK_FALSE);
-    VkPipelineColorBlendStateCreateInfo colorBlendState = vkbase::vkPipelineColorBlendStateCreateInfo(
-        1, &blendAttachmentState);
-    VkPipelineDepthStencilStateCreateInfo depthStencilState = vkbase::vkPipelineDepthStencilStateCreateInfo(
-        VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
-    VkPipelineViewportStateCreateInfo viewportState = vkbase::vkPipelineViewportStateCreateInfo(
-        1, 1, 0);
-    VkPipelineMultisampleStateCreateInfo multisampleState = vkbase::vkPipelineMultisampleStateCreateInfo(
-        VK_SAMPLE_COUNT_1_BIT, 0);
-    std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-    VkPipelineDynamicStateCreateInfo dynamicState = vkbase::vkPipelineDynamicStateCreateInfo(
-        dynamicStateEnables);
-    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-
-    // std::string vshader_file = FileOperator::GetInstance()->GetFileAbsolutePath("shader/computeshader/texture.vert.spv");
-    // std::string fshader_file = FileOperator::GetInstance()->GetFileAbsolutePath("shader/computeshader/texture.frag.spv");
-    std::string vshader_file  = getPath("shader/computeshader/texture.vert.spv");
-    std::string fshader_file  = getPath("shader/computeshader/texture.frag.spv");
-#ifdef VULKAN_PC
-    vshader_file = "../../shaders/glsl/computeshader/texture.vert.spv";
-    fshader_file = "../../shaders/glsl/computeshader/texture.frag.spv";
-    std::cout << "[prepareGraphics 385] vshader_file: " << vshader_file << std::endl;
-    std::cout << "[prepareGraphics 386] fshader_file: " << fshader_file << std::endl;
-#endif
-    shaderStages[0] = loadShader(vshader_file, VK_SHADER_STAGE_VERTEX_BIT);
-    shaderStages[1] = loadShader(fshader_file, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
-        vkbase::vkVertexInputBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX)
-    };
-    std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
-        vkbase::vkVertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)),
-        vkbase::vkVertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv)),
-    };
-    VkPipelineVertexInputStateCreateInfo vertexInputState = vkbase::vkPipelineVertexInputStateCreateInfo();
-    vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindings.size());
-    vertexInputState.pVertexBindingDescriptions = vertexInputBindings.data();
-    vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
-    vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
-
-    VkGraphicsPipelineCreateInfo pipelineCreateInfo = vkbase::vkPipelineCreateInfo(
-        graphics.pipelineLayout, renderPass, 0);
-    pipelineCreateInfo.pVertexInputState = &vertexInputState;
-    pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
-    pipelineCreateInfo.pRasterizationState = &rasterizationState;
-    pipelineCreateInfo.pColorBlendState = &colorBlendState;
-    pipelineCreateInfo.pMultisampleState = &multisampleState;
-    pipelineCreateInfo.pViewportState = &viewportState;
-    pipelineCreateInfo.pDepthStencilState = &depthStencilState;
-    pipelineCreateInfo.pDynamicState = &dynamicState;
-    pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-    pipelineCreateInfo.pStages = shaderStages.data();
-    VK_CHECK_RESULT(vkCreateGraphicsPipelinesGS(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &graphics.pipeline));
 }
 
 template <typename T>
@@ -3744,7 +3647,7 @@ bool VulkanComputeExample::prepare()
     loadAssets(WIDTH, HEIGHT, low_resolotion_scale);
 
     setupDescriptorPool();
-    prepareGraphics();
+    prepareSyncSemaphore();
     prepareCompute();
 
     // 3dgs specific
@@ -3949,7 +3852,7 @@ void VulkanComputeExample::executeComputeCommand()
     computeSubmitInfo.commandBufferCount = 1;
     computeSubmitInfo.pCommandBuffers = &compute.commandBuffer;
     computeSubmitInfo.waitSemaphoreCount = 1;
-    computeSubmitInfo.pWaitSemaphores = &graphics.semaphore;
+    computeSubmitInfo.pWaitSemaphores = &syncSemaphore;
     computeSubmitInfo.pWaitDstStageMask = &waitStageMask;
     computeSubmitInfo.signalSemaphoreCount = 1;
     computeSubmitInfo.pSignalSemaphores = &compute.semaphore;
@@ -3975,7 +3878,7 @@ void VulkanComputeExample::executeTransCommand()
     computeSubmitInfo.commandBufferCount = 1;
     computeSubmitInfo.pCommandBuffers = &compute.commandBuffer;
     computeSubmitInfo.waitSemaphoreCount = 1;
-    computeSubmitInfo.pWaitSemaphores = &graphics.semaphore;
+    computeSubmitInfo.pWaitSemaphores = &syncSemaphore;
     computeSubmitInfo.pWaitDstStageMask = &waitStageMask;
     computeSubmitInfo.signalSemaphoreCount = 1;
     computeSubmitInfo.pSignalSemaphores = &compute.semaphore;
