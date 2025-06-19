@@ -806,7 +806,6 @@ VulkanComputeGS::VulkanComputeGS() : VulkanComputeBase()
     compute.descriptorSetLayout = VK_NULL_HANDLE;
     compute.descriptorSet = VK_NULL_HANDLE;
     compute.pipelineLayout = VK_NULL_HANDLE;
-    compute.pipelineIndex = 0;
 }
 
 
@@ -849,7 +848,6 @@ void VulkanComputeGS::DestoryBuffers()
     
     vkDestroyBufferGS(device, sort_buffers.densify_idx, nullptr);
     vkDestroyBufferGS(device, sort_buffers.splat_visible_point_count, nullptr);
-    vkDestroyBufferGS(device, sort_buffers.splat_visible_point_count_cpu, nullptr);
     
     vkDestroyBufferGS(device, sort_buffers.sortKBufferEven, nullptr);
     vkDestroyBufferGS(device, sort_buffers.sortKBufferOdd, nullptr);
@@ -2684,10 +2682,6 @@ void VulkanComputeGS::setSortPipeline()
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
     );
 
-    sort_buffers.splat_visible_point_count_cpu = vkgs::CpuBuffer(
-        allocator, sizeof(uint32_t)
-    );
-    
     sort_buffers.unsort_index = vkgs::Buffer(
         allocator, 
         MAX_SPLAT_COUNT * sizeof(uint32_t) * SORT_SIZE,
@@ -4017,3 +4011,131 @@ const void* VulkanComputeGS::getArrayFromGpuBuffer(const vkgs::Buffer& buffer)
 VULKAN_EXAMPLE_MAIN()
 #endif
 
+
+void VulkanComputeGS::initBuffersValues() {
+    if (!prepared) {
+        return;
+    }
+
+    buildComputeCommandBuffer([this]() { encodeInitBuffersValues2CommandBuffer(); });
+
+    executeComputeCommand();
+    // draw();
+    queryEventTime();
+
+//         if (training_step < max_training_step) {
+//             training_step++;
+//         }
+}
+
+void VulkanComputeGS::renderImage(int index) {
+    if (!prepared) {
+        return;
+    }
+
+    selected_image_index = index;
+
+    buildComputeCommandBuffer([this]() { encoderenderSelectedImage(); });
+
+    executeComputeCommand();
+}
+
+void VulkanComputeGS::renderRGB2Cpu(int i, std::string &dataFolder, int width, int height) {
+    if (!prepared) {
+        return;
+    }
+
+    buildComputeCommandBuffer([this]() { encodeGetImageBuffer(); });
+
+    executeComputeCommand();
+
+    const float *num = reinterpret_cast<const float *>(getArrayFromGpuBuffer(splat_buffers.rfeat));
+    int point_num = splat_buffers.rfeat.size() / 3 / sizeof(float);
+
+    // Create OpenCV Mat for the image (8-bit, 3 channels)
+    cv::Mat image(height, width, CV_8UC3);
+    cv::Mat gt = cv::imread(inputGaussian.img_list[i]);
+    cv::resize(gt, gt, cv::Size(WIDTH, HEIGHT));
+    float MSE[3] = {0, 0, 0};
+    float MSE_mask[3] = {0, 0, 0};
+    int mask_pixel = 0;
+
+    std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
+    std::string mask_path = dataFolder + "/segmented/" + imgname;
+    cv::Mat mask = cv::imread(mask_path, 0);
+    bool hasmask = true;
+    if (mask.rows == 0 || mask.cols == 0) {
+        hasmask = false;
+    }
+    if (hasmask) {
+        cv::resize(mask, mask, cv::Size(WIDTH, HEIGHT));
+    }
+
+    // Convert from planar format (RRRGGGBBB) to interleaved format (BGR for OpenCV)
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int pixelIndex = y * width + x;
+
+            // Make sure we don't go out of bounds
+            if (pixelIndex < point_num) {
+                // Get RGB values from planar format
+                float r = num[pixelIndex];                 // R value
+                float g = num[point_num + pixelIndex];     // G value
+                float b = num[2 * point_num + pixelIndex]; // B value
+
+                float r_gt = gt.at<cv::Vec3b>(y, x)[2] / 255.0;
+                float g_gt = gt.at<cv::Vec3b>(y, x)[1] / 255.0;
+                float b_gt = gt.at<cv::Vec3b>(y, x)[0] / 255.0;
+                MSE[0] += (r - r_gt) * (r - r_gt);
+                MSE[1] += (g - g_gt) * (g - g_gt);
+                MSE[2] += (b - b_gt) * (b - b_gt);
+
+                if (hasmask) {
+                    if (mask.at<uchar>(y, x) > 128) {
+                        MSE_mask[0] += (r - r_gt) * (r - r_gt);
+                        MSE_mask[1] += (g - g_gt) * (g - g_gt);
+                        MSE_mask[2] += (b - b_gt) * (b - b_gt);
+                        mask_pixel++;
+                    }
+                }
+
+
+                // Convert float values [0,1] to uchar [0,255]
+                uchar r_uchar = static_cast<uchar>(std::min(std::max(r * 255.0f, 0.0f), 255.0f));
+                uchar g_uchar = static_cast<uchar>(std::min(std::max(g * 255.0f, 0.0f), 255.0f));
+                uchar b_uchar = static_cast<uchar>(std::min(std::max(b * 255.0f, 0.0f), 255.0f));
+
+                // OpenCV uses BGR format
+                image.at<cv::Vec3b>(y, x) = cv::Vec3b(b_uchar, g_uchar, r_uchar);
+            }
+        }
+    }
+    float psnr_each = calculatePSNR(MSE, WIDTH, HEIGHT, this->total_psnr);
+    float psnr_mask = 0;
+    if (hasmask && mask_pixel > 0) {
+        psnr_mask = calculatePSNR(MSE_mask, WIDTH, HEIGHT, this->total_psnr_mask);
+        total_psnr_mask_num++;
+    }
+
+    std::string save_dir_debug = dataFolder + "/temp";
+    std::filesystem::create_directories(save_dir_debug);
+    std::string filename = save_dir_debug + "/" + imgname;
+    LOGI("Saving rendered image to: %{public}s", filename.c_str());
+    LOGI("PSNR: %{public}f;   PSNR_mask: %{public}f", psnr_each, psnr_mask);
+
+    cv::imwrite(filename, image);
+}
+
+void VulkanComputeGS::render() {
+    if (!prepared) {
+        return;
+    }
+    buildComputeCommandBuffer([this]() { encodePipeline2CommandBuffer(); });
+
+    executeComputeCommand();
+    printLog(true);
+
+    if (training_step < max_training_step) {
+        training_step++;
+    }
+}

@@ -69,15 +69,10 @@ public:
     ~VulkanComputeGS();
     void DestoryBuffers();  
 
-    Timer timer;
-
     VmaAllocator allocator;
 
     std::string basepath = "";
     DataLoader::InputInitStruct inputGaussian;
-    std::vector<float> extr_tmp;
-    std::vector<float> intr_tmp; 
-    std::vector<float> intr_render_tmp;
 
     // Predefine 3DGS hyperparameters
     int MAX_SPLAT_COUNT = 300000;
@@ -86,11 +81,8 @@ public:
     int splat_count = 10000;
     int training_step = 0;
     int max_training_step = 10000;
-    int last_step_tag = 0;
-    int render_index = 0;
     
     float low_resolotion_scale = 0.25;
-
     int low_resolution_steps = 500;
     int sh_degree = 1;
     
@@ -98,16 +90,11 @@ public:
     int current_img_idx = 0;
     
     struct sortBuffers {
-        vkgs::Buffer key;
-        vkgs::Buffer index;
         vkgs::Buffer unsort_index;
         vkgs::Buffer sorted_idx_array;
-        vkgs::Buffer sort_storage;
         vkgs::Buffer densify_idx;
         vkgs::Buffer splat_visible_point_count;
         vkgs::CpuBuffer splat_visible_point_count_cpu;
-        std::vector<uint32_t> sorted_key;
-        std::vector<uint32_t> sorted_index;
         
         // 3DGS.cpp sort buffer
         vkgs::Buffer sortKBufferEven;
@@ -117,7 +104,6 @@ public:
         vkgs::Buffer sortHistBuffer;
         vkgs::Buffer sortHistOffsets;
         
-        VkQueryPool queryPool = VK_NULL_HANDLE;
     } sort_buffers;
 
     struct SplatBuffers {
@@ -232,7 +218,6 @@ public:
     
     // Input image
     vkbase::Texture2DGS textureColorMap;
-    VmaAllocation storageImageAllocation;
     
     VkSemaphore syncSemaphore;
 
@@ -245,8 +230,6 @@ public:
         VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
         VkDescriptorSet descriptorSet;                // Compute shader bindings
         VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
-        std::vector<VkPipeline> pipelines;            // Compute pipelines for image filters
-        int32_t pipelineIndex;                        // Current image filtering compute pipeline index
         
         VkQueryPool queryPool;
     } compute;
@@ -295,7 +278,6 @@ public:
     Compute3DGS pipe_extr_process;
     Compute3DGS pipe_extr_process_render;
     
-    
     Compute3DGS pipe_knn;
     Compute3DGS pipe_prune;
     
@@ -304,9 +286,6 @@ public:
     Compute3DGS pipe_hist_even;
     Compute3DGS pipe_hist_odd;
     Compute3DGS pipe_hist_offset;
-    
-    uint32_t indexCount;
-    uint32_t vertexBufferSize;
     
     float total_psnr = 0;
     float total_psnr_mask = 0;
@@ -317,12 +296,7 @@ public:
 
     int image_height;
     int image_width;
-    
-    
-    int use_method = 0;
-    int cur_method = 0;
 
-    // Redundant vulkan create methos
     void createPipelineLayout(    
         Compute3DGS& pipe_3dgs,
         uint32_t numBindings, 
@@ -336,12 +310,6 @@ public:
     );
 
     void bindPipeline2CommandBuffer(
-        const VulkanComputeGS::Compute3DGS& pipe, 
-        const int PIPELINE_INDEX,
-        uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
-        bool float_constant = false
-    );
-    void bindPipeline2CommandBuffer2(
         const VulkanComputeGS::Compute3DGS& pipe, 
         const int PIPELINE_INDEX,
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
@@ -404,7 +372,6 @@ public:
     void setExtrProcessPipeline();
     void setExtrProcessRenderPipeline();
     
-    
     // 3dgs command buffer
     void forwardCmd();
     void forwardCmdTime();
@@ -454,146 +421,16 @@ public:
     
     virtual void getEnabledFeatures() override;
     virtual void getEnabledExtensionsGS() override;
-    
-    virtual void render()
-    {
-        if (!prepared) {
-            return;
-        }
-        buildComputeCommandBuffer([this]() { 
-            encodePipeline2CommandBuffer(); 
-        });
-        
-        executeComputeCommand();
-        printLog(true);
 
-        if (training_step < max_training_step){
-            training_step++;
-        }
-    }
+    virtual void render();
     int selected_image_index = 0;
-    virtual void initBuffersValues()
-    {
-        if (!prepared) { return; }
+    virtual void initBuffersValues();
+    virtual void renderImage(int index);
 
-        buildComputeCommandBuffer([this]() { 
-            encodeInitBuffersValues2CommandBuffer(); 
-         });
-
-        executeComputeCommand();
-        //draw();
-        queryEventTime();
-
-//         if (training_step < max_training_step) {
-//             training_step++;
-//         }
-    }
-    virtual void renderImage(int index)
-    {
-        if (!prepared) {
-            return;
-        }
-
-        selected_image_index = index;
-
-        buildComputeCommandBuffer([this]() {
-            encoderenderSelectedImage();
-            });
-
-        executeComputeCommand();
-    }
-    
     const void* getArrayFromGpuBuffer(const vkgs::Buffer& buffer);
-    
-    void renderRGB2Cpu(int i, std::string& dataFolder, int width=480, int height=640)
-    {
-        if (!prepared) {
-            return;
-        }
 
-        buildComputeCommandBuffer([this]() {
-            encodeGetImageBuffer();
-        });
+    void renderRGB2Cpu(int i, std::string &dataFolder, int width = 480, int height = 640);
 
-        executeComputeCommand();
-        
-        const float* num= reinterpret_cast<const float*> (getArrayFromGpuBuffer(splat_buffers.rfeat));
-        int point_num = splat_buffers.rfeat.size() / 3 / sizeof(float);
-        
-        // Create OpenCV Mat for the image (8-bit, 3 channels)
-        cv::Mat image(height, width, CV_8UC3);
-        cv::Mat gt = cv::imread(inputGaussian.img_list[i]);
-        cv::resize(gt, gt, cv::Size(WIDTH, HEIGHT));
-        float MSE[3] = {0,0,0};
-        float MSE_mask[3] = {0,0,0};
-        int mask_pixel = 0;
-        
-        std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
-        std::string mask_path = dataFolder + "/segmented/" + imgname;
-        cv::Mat mask = cv::imread(mask_path, 0);
-        bool hasmask = true;
-        if (mask.rows == 0 || mask.cols == 0) {
-            hasmask = false;
-        }
-        if (hasmask){
-            cv::resize(mask, mask, cv::Size(WIDTH, HEIGHT));
-        }
-        
-        // Convert from planar format (RRRGGGBBB) to interleaved format (BGR for OpenCV)
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int pixelIndex = y * width + x;
-                
-                // Make sure we don't go out of bounds
-                if (pixelIndex < point_num) {
-                    // Get RGB values from planar format
-                    float r = num[pixelIndex];                // R value
-                    float g = num[point_num + pixelIndex];    // G value
-                    float b = num[2 * point_num + pixelIndex]; // B value
-                    
-                    float r_gt = gt.at<cv::Vec3b>(y, x)[2] / 255.0;
-                    float g_gt = gt.at<cv::Vec3b>(y, x)[1] / 255.0;
-                    float b_gt = gt.at<cv::Vec3b>(y, x)[0] / 255.0;
-                    MSE[0] += (r - r_gt) * (r - r_gt);
-                    MSE[1] += (g - g_gt) * (g - g_gt);
-                    MSE[2] += (b - b_gt) * (b - b_gt);
-                    
-                    if (hasmask){
-                        if (mask.at<uchar>(y, x) > 128){
-                            MSE_mask[0] += (r - r_gt) * (r - r_gt);
-                            MSE_mask[1] += (g - g_gt) * (g - g_gt);
-                            MSE_mask[2] += (b - b_gt) * (b - b_gt);
-                            mask_pixel++;
-                        }
-                    }
-
-                    
-                    // Convert float values [0,1] to uchar [0,255]
-                    uchar r_uchar = static_cast<uchar>(std::min(std::max(r * 255.0f, 0.0f), 255.0f));
-                    uchar g_uchar = static_cast<uchar>(std::min(std::max(g * 255.0f, 0.0f), 255.0f));
-                    uchar b_uchar = static_cast<uchar>(std::min(std::max(b * 255.0f, 0.0f), 255.0f));
-                    
-                    // OpenCV uses BGR format
-                    image.at<cv::Vec3b>(y, x) = cv::Vec3b(b_uchar, g_uchar, r_uchar);
-                }
-            }
-        }
-        float psnr_each = calculatePSNR(MSE, WIDTH, HEIGHT, this->total_psnr);
-        float psnr_mask = 0;
-        if (hasmask && mask_pixel > 0){
-            psnr_mask = calculatePSNR(MSE_mask, WIDTH, HEIGHT, this->total_psnr_mask);
-            total_psnr_mask_num++;
-        }
-        
-        std::string save_dir_debug = dataFolder + "/temp";
-        std::filesystem::create_directories(save_dir_debug);
-        std::string filename = save_dir_debug + "/" + imgname;
-        LOGI("Saving rendered image to: %{public}s", filename.c_str());
-        LOGI("PSNR: %{public}f;   PSNR_mask: %{public}f", psnr_each, psnr_mask);
-        
-        cv::imwrite(filename, image);
-    }
-    
     template<typename T>
     void printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum = 50, int length = 3, int offset = 0);
 private:
