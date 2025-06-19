@@ -272,15 +272,7 @@ public:
     vkbase::Texture2DGS textureColorMap;
     VmaAllocation storageImageAllocation;
 
-    // Resources for the graphics part of the example
-    struct Graphics {
-        VkDescriptorSetLayout descriptorSetLayout;    // Image display shader binding layout
-        VkDescriptorSet descriptorSetPreCompute;      // Image display shader bindings before compute shader image manipulation
-        VkDescriptorSet descriptorSetPostCompute;     // Image display shader bindings after compute shader image manipulation
-        VkPipeline pipeline;                          // Image display pipeline
-        VkPipelineLayout pipelineLayout;              // Layout of the graphics pipeline
-        VkSemaphore semaphore;                        // Execution dependency between compute & graphic submission
-    } graphics;
+    VkSemaphore syncSemaphore;
 
     // Resources for the compute part of the example
     struct Compute {
@@ -491,7 +483,7 @@ public:
     void buildComputeCommandBuffer(std::function<void()> func);
     
     void setupDescriptorPool();
-    void prepareGraphics();
+    void prepareSyncSemaphore();
     void prepareCompute();
 
     virtual bool prepare();
