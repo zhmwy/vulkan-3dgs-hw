@@ -25,7 +25,7 @@ add_library(3dgs SHARED
 #    render/render_to_cv_mat.cpp
 #    napi_init.cpp
 #    render/vulkanRender.cpp
-    manager/plugin_manager.cpp
+#    manager/plugin_manager.cpp
     vulkanbase/VulkanOhos.cpp
 #    vulkanbase/VulkanBuffer.cpp
     vulkanbase/VulkanDevice.cpp
