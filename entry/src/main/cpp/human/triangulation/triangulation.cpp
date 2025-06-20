@@ -9,25 +9,35 @@ void readKeypoints(const std::string& filename, std::map<std::string, FrameData>
         OH_LOG_ERROR(LOG_APP, "Cannot open keypoints file: %{public}s", filename.c_str());
         return;
     }
+    
     std::string line;
     std::string current_image;
+    
     while (std::getline(infile, line)) {
         if (line.empty())
             continue;
+            
         if (line.find(".jpg") != std::string::npos) {
             current_image = line;
             FrameData frame;
             frame.imageName = current_image;
             frames[current_image] = frame;
+            
+            // Skip the next line (bounding box line)
+            if (std::getline(infile, line)) {
+                // Line is read and discarded
+            }
         } else {
             if (current_image.empty())
                 continue;
+                
             std::stringstream ss(line);
             KeyPoint2D kp;
             ss >> kp.x >> kp.y >> kp.confidence;
             frames[current_image].keypoints.push_back(kp);
         }
     }
+    
     infile.close();
 }
 

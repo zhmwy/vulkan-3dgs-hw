@@ -190,6 +190,8 @@ int ProcessKeypoints(const std::string& inputPath) {
             // 累积关键点数据到 keypoints_outputs
             for (size_t i = 0; i < 1; ++i) {
                 string data = imgName + "\n";
+                data += to_string(result[0].box.x / ratio) + " " + to_string(result[0].box.y / ratio) + " " + 
+                        to_string(result[0].box.width / ratio) + " " + to_string(result[0].box.height / ratio) + "\n";
                 for (size_t k = 0; k < result[i].kps.size(); k += 3) {
                     float x = result[0].kps[k] / ratio;        
                     float y = result[0].kps[k + 1] / ratio;
@@ -330,6 +332,8 @@ int ProcessKeypoints(const std::string& inputPath) {
                             keypoints_outputs.resize(1);
                         string file_name = image_paths[neighbor];
                         string data = file_name + "\n";
+                        data += to_string(result[0].box.x / ratio) + " " + to_string(result[0].box.y / ratio) + " " + 
+                                to_string(result[0].box.width / ratio) + " " + to_string(result[0].box.height / ratio) + "\n";
                         for (size_t k = 0; k < result[0].kps.size(); k += 3) {
                             float x = result[0].kps[k] / ratio;
                             float y = result[0].kps[k+1] / ratio;
