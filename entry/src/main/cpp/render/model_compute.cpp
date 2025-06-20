@@ -893,7 +893,7 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
     bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
 
 //     if (training_step >= 500 && training_step % 100 == 0 && splat_count * 1.06 < MAX_SPLAT_COUNT && training_step <= flow_steps)
-    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0 && splat_count * 1.11 < MAX_SPLAT_COUNT)
+    if (training_step >= 250 && training_step <= flow_steps && (training_step - 50) % 100 == 0 && splat_count * 1.11 < MAX_SPLAT_COUNT)
     {
         densifyCmd();
     }
@@ -4312,13 +4312,15 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     
     buildComputeCommandBuffer([this]() { 
         createGpu2CpuCopy(splat_buffers.xyz_array);
+        createGpu2CpuCopy(splat_buffers.xyz_base_array);
         createGpu2CpuCopy(splat_buffers.scale_array);
         createGpu2CpuCopy(splat_buffers.rotate_array);
+        createGpu2CpuCopy(splat_buffers.rot_base_array);
         createGpu2CpuCopy(splat_buffers.sh_coeff);
         createGpu2CpuCopy(splat_buffers.opacity);
     });
     executeTransCommand();
-    
+
     LOGI("Saving start!");
     std::vector<float> positionData;
     std::vector<float> rotationData;
