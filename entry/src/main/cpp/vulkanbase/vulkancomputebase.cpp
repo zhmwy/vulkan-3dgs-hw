@@ -351,3 +351,64 @@ void VulkanComputeBase::queryEventTime(int training_step)
         elapsedTimeSum.clear();
     }
 }
+
+void VulkanComputeBase::createPipelineLayout(
+    STComputePipeLine& pipe_3dgs,
+    uint32_t numBindings, 
+    bool usePushConstant,
+    uint32_t pushConstantSize
+) {
+    // Define descriptor set bindings
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(numBindings);
+    
+    for (uint32_t i = 0; i < numBindings; ++i) {
+        setLayoutBindings[i] = vkbase::vkDescriptorSetLayoutBinding(
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,              // descriptor type
+            VK_SHADER_STAGE_COMPUTE_BIT,                    // shader stage
+            i                                               // binding number
+        );
+    }
+
+    // Create descriptor set layout
+    VkDescriptorSetLayoutCreateInfo layoutInfo = vkbase::vkDescriptorSetLayoutCreateInfo(setLayoutBindings);
+
+    VK_CHECK_RESULT(
+        vkCreateDescriptorSetLayoutGS(device, &layoutInfo, nullptr, &pipe_3dgs.descriptorSetLayout)
+    );
+
+    // Define push constant range (optional)
+    VkPushConstantRange pushConstantRange = {};
+    if (usePushConstant) {
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        pushConstantRange.offset = 0;
+        pushConstantRange.size = pushConstantSize;  // Example push constant size
+    }
+
+    // Create pipeline layout
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &pipe_3dgs.descriptorSetLayout;
+
+    if (usePushConstant) {
+        pipelineLayoutInfo.pushConstantRangeCount = 1;
+        pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+    } else {
+        pipelineLayoutInfo.pushConstantRangeCount = 0;
+        pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    }
+
+    VK_CHECK_RESULT(
+        vkCreatePipelineLayoutGS(device, &pipelineLayoutInfo, nullptr, &pipe_3dgs.pipelineLayout)
+    );
+
+    // Allocate descriptor set
+    VkDescriptorSetAllocateInfo allocInfo = vkbase::vkDescriptorSetAllocateInfo(
+        descriptorPool, 
+        &pipe_3dgs.descriptorSetLayout, 1
+    );
+
+    VK_CHECK_RESULT(
+        vkAllocateDescriptorSetsGS(device, &allocInfo, &pipe_3dgs.descriptorSet)
+    );
+}

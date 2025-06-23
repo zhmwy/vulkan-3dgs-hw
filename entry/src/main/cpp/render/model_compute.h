@@ -213,51 +213,45 @@ public:
 
     bool hasKNN = false;
     
-    struct Compute3DGS {
-        VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
-        VkDescriptorSet descriptorSet;                // Compute shader bindings
-        VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
-        std::vector<VkPipeline> pipelines;
-    };
-    Compute3DGS pipe_project, pipe_project_render;
-    Compute3DGS pipe_compute_key;
-    Compute3DGS pipe_compute_tile;
-    Compute3DGS pipe_inverse;
-    Compute3DGS pipe_blending;
+    STComputePipeLine pipe_project, pipe_project_render;
+    STComputePipeLine pipe_compute_key;
+    STComputePipeLine pipe_compute_tile;
+    STComputePipeLine pipe_inverse;
+    STComputePipeLine pipe_blending;
     
-    Compute3DGS pipe_blending_int;
-    Compute3DGS pipe_int2float;
+    STComputePipeLine pipe_blending_int;
+    STComputePipeLine pipe_int2float;
     
-    Compute3DGS pipe_optimize;
-    Compute3DGS pipe_optimize_extr;
+    STComputePipeLine pipe_optimize;
+    STComputePipeLine pipe_optimize_extr;
     
-    Compute3DGS pipe_loss;
-    Compute3DGS pipe_ssim;
-    Compute3DGS pipe_copy_img2buffer;
-    Compute3DGS pipe_copy_buffer2img; 
-    Compute3DGS pipe_buffer_fill;
-    Compute3DGS pipe_sh;
-    Compute3DGS pipe_sh_render;
+    STComputePipeLine pipe_loss;
+    STComputePipeLine pipe_ssim;
+    STComputePipeLine pipe_copy_img2buffer;
+    STComputePipeLine pipe_copy_buffer2img; 
+    STComputePipeLine pipe_buffer_fill;
+    STComputePipeLine pipe_sh;
+    STComputePipeLine pipe_sh_render;
     
-    Compute3DGS pipe_densification_stats;
-    Compute3DGS pipe_mean_grad;
-    Compute3DGS pipe_clone;
-    Compute3DGS pipe_split;
-    Compute3DGS pipe_clone_3dgs;
-    Compute3DGS pipe_split_3dgs;
+    STComputePipeLine pipe_densification_stats;
+    STComputePipeLine pipe_mean_grad;
+    STComputePipeLine pipe_clone;
+    STComputePipeLine pipe_split;
+    STComputePipeLine pipe_clone_3dgs;
+    STComputePipeLine pipe_split_3dgs;
     
-    Compute3DGS pipe_reset_opacity;
-    Compute3DGS pipe_extr_process;
-    Compute3DGS pipe_extr_process_render;
+    STComputePipeLine pipe_reset_opacity;
+    STComputePipeLine pipe_extr_process;
+    STComputePipeLine pipe_extr_process_render;
     
-    Compute3DGS pipe_knn;
-    Compute3DGS pipe_prune;
+    STComputePipeLine pipe_knn;
+    STComputePipeLine pipe_prune;
     
-    Compute3DGS pipe_sort_even;
-    Compute3DGS pipe_sort_odd;
-    Compute3DGS pipe_hist_even;
-    Compute3DGS pipe_hist_odd;
-    Compute3DGS pipe_hist_offset;
+    STComputePipeLine pipe_sort_even;
+    STComputePipeLine pipe_sort_odd;
+    STComputePipeLine pipe_hist_even;
+    STComputePipeLine pipe_hist_odd;
+    STComputePipeLine pipe_hist_offset;
     
     float total_psnr = 0;
     float total_psnr_mask = 0;
@@ -269,26 +263,19 @@ public:
     int image_height;
     int image_width;
 
-    void createPipelineLayout(    
-        Compute3DGS& pipe_3dgs,
-        uint32_t numBindings, 
-        bool usePushConstant,
-        uint32_t pushConstantSize=0
-    );
-
     void updateDescriptorSet(
         VkDescriptorSet& descriptorSet,
         std::vector<vkgs::Buffer*>& buffers
     );
 
     void bindPipeline2CommandBuffer(
-        const VulkanComputeGS::Compute3DGS& pipe, 
+        const VulkanComputeGS::STComputePipeLine& pipe, 
         const int PIPELINE_INDEX,
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         bool float_constant = false
     );
     void bindPipeline2CommandBufferPushConstants(
-        const VulkanComputeGS::Compute3DGS& pipe, 
+        const VulkanComputeGS::STComputePipeLine& pipe, 
         const int PIPELINE_INDEX,
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         std::vector<uint32_t>& pushConstants

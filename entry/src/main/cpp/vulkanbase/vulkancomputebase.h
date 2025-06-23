@@ -47,6 +47,20 @@ protected:
     void queryEventTime(int training_step);
     void queryCmdTimeStart(std::string enventName);
     void queryCmdTimeEnd(std::string enventName);
+    
+    struct STComputePipeLine {
+        VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
+        VkDescriptorSet descriptorSet;                // Compute shader bindings
+        VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
+        std::vector<VkPipeline> pipelines;
+    };
+    
+    void createPipelineLayout(    
+        STComputePipeLine& pipe_3dgs,
+        uint32_t numBindings, 
+        bool usePushConstant,
+        uint32_t pushConstantSize=0
+    );
 
     struct Compute {
         VkQueue queue;                                // Separate queue for compute commands
