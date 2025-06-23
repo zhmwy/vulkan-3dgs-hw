@@ -20,23 +20,16 @@ include_directories(
 
 add_library(3dgs SHARED
     interface.cpp
-#    render/plugin_render.cpp
-#    render/algorithm/fsr.cpp
-#    render/render_to_cv_mat.cpp
-#    napi_init.cpp
-#    render/vulkanRender.cpp
-#    manager/plugin_manager.cpp
     vulkanbase/VulkanOhos.cpp
-#    vulkanbase/VulkanBuffer.cpp
     vulkanbase/VulkanDevice.cpp
     vulkanbase/vulkancomputebase.cpp
     vulkanbase/VulkanInitializers.hpp
-#    vulkanbase/VulkanSwapChain.cpp
     vulkanbase/VulkanTools.cpp
     vulkanbase/VulkanTexture.cpp
     file/file_operator.cpp
     file/file.cpp
     render/model_compute.cpp
+    patch/patch_compute.cpp
     cores/buffer.cpp
     cores/cpu_buffer.cpp
     cores/dataloader.cpp

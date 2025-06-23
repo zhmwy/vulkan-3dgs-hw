@@ -21,7 +21,7 @@ public:
 
 	virtual VkResult createInstance();
     
-	virtual void render() = 0;
+	virtual void compute() = 0;
     
     virtual void getEnabledFeatures();
 	virtual void getEnabledExtensionsGS();

@@ -1004,6 +1004,98 @@ void prependSkyboxPoints(
     data.colors.insert(data.colors.begin(), skyColors.begin(), skyColors.end());
 }
 
+void DataLoader::loadPatchInput(const std::string scenepath, DataLoader::InputInitStruct &data, int height, int width)
+{
+    std::string imagesFilePath = scenepath + "/images.txt";
+    std::string cameraFilePath = scenepath + "/cameras.txt"; 
+    
+    std::string line;
+    std::ifstream camerasFile(cameraFilePath);
+    if (!camerasFile.is_open()){
+        LOGE("Cannot open cameras.txt!");
+        return;
+    }
+    while (std::getline(camerasFile, line)) {
+        if (line.empty() || line[0] == '#')
+            continue;
+        std::istringstream iss(line);
+        int cameraId;
+        std::string camera_type;
+        float fx, fy, cx, cy;
+
+        if (cameraFilePath == scenepath + "/cameras.txt") {
+            if (!(iss >> cameraId >> camera_type >> data.height >> data.width >> fx >> fy >> cy >> cx)) {
+                continue;
+            }
+        }
+            
+        // width = 480, height = 640
+        float ratiox = 1.0 * width / data.width;
+        float ratioy = 1.0 * height / data.height;
+        fx *= ratiox;
+        fy *= ratioy;
+        cx *= ratiox;
+        cy *= ratioy;
+        data.width = width;
+        data.height = height;
+
+        assert(camera_type == "PINHOLE" || camera_type == "pinhole");
+
+        std::vector<float> intr = { fx,fy,cx,cy };
+        data.intr_tmp.push_back(intr);
+    }
+    
+    // 3. Load image file names and extrinsics from images.txt
+    std::unordered_set<std::string> uniqueImages;
+    std::string ext;
+    std::ifstream imagesFile(imagesFilePath);
+    if (!imagesFile.is_open()){
+        throw std::runtime_error("Cannot open images.txt!");
+    }
+    
+    int idx = 0;
+    while (std::getline(imagesFile, line)) {
+        if (line.empty() || line[0] == '#')
+            continue;
+        std::istringstream iss(line);
+        int frameId;
+        float qw, qx, qy, qz;
+        float tx, ty, tz;
+        int camera_id;
+        std::string imageName;
+        
+        if (!(iss >> frameId >> qw >> qx >> qy >> qz >> tx >> ty >> tz >> camera_id >> imageName)) {
+            continue;
+        }
+        
+        if (uniqueImages.find(imageName) != uniqueImages.end()) {
+            continue;
+        }
+        uniqueImages.insert(imageName);
+        
+        if(!std::filesystem::exists(scenepath + "/images/" + imageName))
+            continue;
+            
+        float norm = sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
+        DataLoader::InputInitStruct::DataExtr extr = { qw / norm, qx / norm, qy / norm, qz / norm, tx, ty, tz };
+        data.extr_tmp.push_back(extr);
+        data.img_list.push_back(scenepath + "/images/" + imageName);
+        ++idx;
+
+        if (ext.size() == 0) {
+            size_t dotPos = imageName.rfind('.');
+            if (dotPos != std::string::npos) {
+                ext = imageName.substr(dotPos);
+            }
+        }
+        std::getline(imagesFile, line);
+    }
+    
+    data.extr_tmp_test = data.extr_tmp;
+    assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
+
+}
+
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height, int width)
 {
     std::string basePath = data.basepath;

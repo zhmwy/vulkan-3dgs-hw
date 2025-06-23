@@ -232,7 +232,7 @@ public:
         VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
         
         VkQueryPool queryPool;
-    } compute;
+    } computeRes;
 
     struct QueryTime {
         uint32_t startIndex; // Start index in the query pool
@@ -422,7 +422,7 @@ public:
     virtual void getEnabledFeatures() override;
     virtual void getEnabledExtensionsGS() override;
 
-    virtual void render();
+    virtual void compute();
     int selected_image_index = 0;
     virtual void initBuffersValues();
     virtual void renderImage(int index);

@@ -81,6 +81,8 @@ public:
     static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height = 640, int width = 480);
     static void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, std::vector<cv::Point>& faceCenters);
     
+    static void loadPatchInput(const std::string _scenepath, DataLoader::InputInitStruct& data, int height = 640, int width = 480);
+    
     static std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);
     
     static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head = false);
