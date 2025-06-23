@@ -69,15 +69,12 @@ public:
     ~VulkanComputeGS();
     void DestoryBuffers();  
 
-    VmaAllocator allocator;
-
     std::string basepath = "";
     DataLoader::InputInitStruct inputGaussian;
 
     // Predefine 3DGS hyperparameters
     int MAX_SPLAT_COUNT = 300000;
-    static const int MAX_TIME_QUERY_NUM = 100;
-    static const int QUERY_TIME_RANGE = 500;
+    
     int splat_count = 10000;
     int training_step = 0;
     int max_training_step = 10000;
@@ -215,31 +212,6 @@ public:
     } splat_buffers;
 
     bool hasKNN = false;
-    
-    // Input image
-    vkbase::Texture2DGS textureColorMap;
-    
-    VkSemaphore syncSemaphore;
-
-    // Resources for the compute part of the example
-    struct Compute {
-        VkQueue queue;                                // Separate queue for compute commands
-        VkCommandPool commandPool;                    // Use a separate command pool
-        VkCommandBuffer commandBuffer;                // Command buffer storing the dispatch commands and barriers
-        VkSemaphore semaphore;                        // Execution dependency between compute & graphic submission
-        VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
-        VkDescriptorSet descriptorSet;                // Compute shader bindings
-        VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
-        
-        VkQueryPool queryPool;
-    } computeRes;
-
-    struct QueryTime {
-        uint32_t startIndex; // Start index in the query pool
-        uint32_t endIndex;   // End index in the query pool
-    };
-    std::map<std::string, QueryTime> queryTime;
-    std::map<std::string, float> elapsedTimeSum;
     
     struct Compute3DGS {
         VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
@@ -391,18 +363,13 @@ public:
     }
     void radixSortCmd(uint32_t numInstances);
     void copyExtrCmd();
-    
-    // Methods
-    void prepreAllocator();
 
     void loadAssets(int origin_width, int origin_height, float scale);
     
     virtual void encodePipeline2CommandBuffer();
     void buildComputeCommandBuffer(std::function<void()> func);
     
-    void setupDescriptorPool();
     void prepareSyncSemaphore();
-    void prepareCompute();
 
     virtual bool prepare();
     float calculatePSNR(float* mse, int width, int height, float& psnr_total);
@@ -410,10 +377,6 @@ public:
     virtual void printLog(bool train = true);
     void executeComputeCommand();
     void executeTransCommand();
-
-    void queryEventTime();
-    void queryCmdTimeStart(std::string enventName);
-    void queryCmdTimeEnd(std::string enventName);
     
     void printGpuBuffers();
     void saveGaussians(std::string dataPath, bool save_head = false);

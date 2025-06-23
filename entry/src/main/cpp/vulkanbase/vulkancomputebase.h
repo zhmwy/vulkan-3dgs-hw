@@ -1,9 +1,11 @@
 #pragma once
 
+#include <map>
 #include <vector>
 
 #include <string>
 #include "VulkanOhos.h"
+#include "vk_mem_alloc.h"
 #include "vulkan/vulkan.h"
 
 #include "VulkanDevice.h"
@@ -34,8 +36,35 @@ public:
 	void createCommandPool();
     
 protected:
+    void prepreAllocator();
+    
+    void setupDescriptorPool();
+    
+    void prepareCompute();
+    
+    void prepareSyncSemaphore();
+
+    void queryEventTime(int training_step);
+    void queryCmdTimeStart(std::string enventName);
+    void queryCmdTimeEnd(std::string enventName);
+
+    struct Compute {
+        VkQueue queue;                                // Separate queue for compute commands
+        VkCommandPool commandPool;                    // Use a separate command pool
+        VkCommandBuffer commandBuffer;                // Command buffer storing the dispatch commands and barriers
+        VkSemaphore semaphore;                        // Execution dependency between compute & graphic submission
+        VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout
+        VkDescriptorSet descriptorSet;                // Compute shader bindings
+        VkPipelineLayout pipelineLayout;              // Layout of the compute pipeline
+        
+        VkQueryPool queryPool;
+    } computeRes;
+    
+    VkSemaphore syncSemaphore;
 
 	bool prepared = false;
+
+    VmaAllocator allocator;
 
 	std::shared_ptr<vkbase::VulkanDevice> vulkanDevice;
     
@@ -68,5 +97,15 @@ protected:
 	VkPipelineCache pipelineCache;
 
 	bool libLoaded = false;
+    
+    static const int MAX_TIME_QUERY_NUM = 100;
+    static const int QUERY_TIME_RANGE = 500;
+
+    struct QueryTime {
+        uint32_t startIndex; // Start index in the query pool
+        uint32_t endIndex;   // End index in the query pool
+    };
+    std::map<std::string, QueryTime> queryTime;
+    std::map<std::string, float> elapsedTimeSum;
 
 };

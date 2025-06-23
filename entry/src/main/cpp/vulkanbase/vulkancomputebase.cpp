@@ -71,11 +71,12 @@ void VulkanComputeBase::createPipelineCache()
 bool VulkanComputeBase::prepare()
 {
 	createCommandPool();
-// 	createCommandBuffers();
-//	createSynchronizationPrimitives();
-//	setupRenderPass();
 	createPipelineCache();
-// 	setupFrameBuffer();
+    prepreAllocator();
+    setupDescriptorPool();
+    prepareCompute();
+    prepareSyncSemaphore();
+    
     LOGI("VulkanComputeBase prepare end");
     return true;
 }
@@ -214,4 +215,139 @@ std::string VulkanComputeBase::getPath(std::string path)
 {
 	std::string fileName = FileOperator::GetInstance()->GetFileAbsolutePath(path);
 	return fileName;
+}
+
+void VulkanComputeBase::prepreAllocator()
+{
+    VmaVulkanFunctions vulkanFunctions = {};
+    vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddrGS;
+    vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddrGS;
+    
+    VmaAllocatorCreateInfo allocatorCreateInfo = {};
+    allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+    allocatorCreateInfo.physicalDevice = physicalDevice;
+    allocatorCreateInfo.device = device;
+    allocatorCreateInfo.instance = instance;
+    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+    
+    vmaCreateAllocator(&allocatorCreateInfo, &allocator);
+}
+
+void VulkanComputeBase::setupDescriptorPool()
+{
+    std::vector<VkDescriptorPoolSize> poolSizes = {
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2048),
+        vkbase::vkDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 64),
+    };
+    VkDescriptorPoolCreateInfo descriptorPoolInfo = vkbase::vkDescriptorPoolCreateInfo(poolSizes, 2048);
+    VK_CHECK_RESULT(vkCreateDescriptorPoolGS(device, &descriptorPoolInfo, nullptr, &descriptorPool));
+}
+
+
+void VulkanComputeBase::prepareCompute()
+{
+    vkGetDeviceQueueGS(device, vulkanDevice->queueFamilyIndices.compute, 0, &computeRes.queue);
+
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+        vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 0),
+        vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 1),
+    };
+
+    VkDescriptorSetLayoutCreateInfo descriptorLayout = vkbase::vkDescriptorSetLayoutCreateInfo(setLayoutBindings);
+    VK_CHECK_RESULT(vkCreateDescriptorSetLayoutGS(device, &descriptorLayout, nullptr, &computeRes.descriptorSetLayout));
+
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkbase::vkPipelineLayoutCreateInfo(&computeRes.descriptorSetLayout, 1);
+    VK_CHECK_RESULT(vkCreatePipelineLayoutGS(device, &pipelineLayoutCreateInfo, nullptr, &computeRes.pipelineLayout));
+
+    VkDescriptorSetAllocateInfo allocInfo = vkbase::vkDescriptorSetAllocateInfo(
+        descriptorPool, &computeRes.descriptorSetLayout, 1);
+    VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &computeRes.descriptorSet));
+
+    std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
+        //vkbase::vkWriteDescriptorSet(computeRes.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.vkDescriptor),
+        //vkbase::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.vkDescriptor)
+    };
+    vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, nullptr);
+
+    VkComputePipelineCreateInfo computePipelineCreateInfo = vkbase::vkComputePipelineCreateInfo(
+        computeRes.pipelineLayout, 0);
+
+    VkCommandPoolCreateInfo cmdPoolInfo = {};
+    cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cmdPoolInfo.queueFamilyIndex = vulkanDevice->queueFamilyIndices.compute;
+    cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    VK_CHECK_RESULT(vkCreateCommandPoolGS(device, &cmdPoolInfo, nullptr, &computeRes.commandPool));
+
+    VkCommandBufferAllocateInfo cmdBufAllocateInfo = vkbase::vkCommandBufferAllocateInfo(
+        computeRes.commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+    VK_CHECK_RESULT(vkAllocateCommandBuffersGS(device, &cmdBufAllocateInfo, &computeRes.commandBuffer));
+
+    VkSemaphoreCreateInfo semaphoreCreateInfo = vkbase::vkSemaphoreCreateInfo();
+    VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &computeRes.semaphore));
+
+    VkQueryPoolCreateInfo queryPoolInfo = {};
+    queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+    queryPoolInfo.queryCount = MAX_TIME_QUERY_NUM * 2; // Two timestamps: start and end
+    VK_CHECK_RESULT(vkCreateQueryPoolGS(device, &queryPoolInfo, nullptr, &computeRes.queryPool));
+    // buildComputeCommandBuffer();
+}
+
+void VulkanComputeBase::prepareSyncSemaphore()
+{
+    VkSemaphoreCreateInfo semaphoreCreateInfo = vkbase::vkSemaphoreCreateInfo();
+    VK_CHECK_RESULT(vkCreateSemaphoreGS(device, &semaphoreCreateInfo, nullptr, &syncSemaphore));
+    
+    VkSubmitInfo submitInfo = vkbase::vkSubmitInfo();
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &syncSemaphore;
+    VK_CHECK_RESULT(vkQueueSubmitGS(computeRes.queue, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_CHECK_RESULT(vkQueueWaitIdleGS(computeRes.queue));
+}
+
+void VulkanComputeBase::queryCmdTimeStart(std::string eventName)
+{
+    if (queryTime.find(eventName) != queryTime.end())
+    {
+        throw std::runtime_error("Time Query Event existed!");
+    }
+    unsigned int queryIndex = queryTime.size();
+    queryTime[eventName] = { queryIndex * 2, queryIndex * 2 + 1 };
+    vkCmdWriteTimestampGS(computeRes.commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, computeRes.queryPool, queryTime[eventName].startIndex);
+}
+
+void VulkanComputeBase::queryCmdTimeEnd(std::string eventName)
+{
+    if (queryTime.find(eventName) == queryTime.end()) {
+        throw std::runtime_error("Can Not Find Time Query Event!");
+    }
+    vkCmdWriteTimestampGS(computeRes.commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, computeRes.queryPool, queryTime[eventName].endIndex);
+}
+
+void VulkanComputeBase::queryEventTime(int training_step)
+{
+    uint64_t timestamps[MAX_TIME_QUERY_NUM * 2];
+    vkGetQueryPoolResultsGS(device, computeRes.queryPool, 0, 2 * queryTime.size(), sizeof(timestamps), timestamps, sizeof(uint64_t),
+        VK_QUERY_RESULT_64_BIT);
+
+    double timestampPeriod = deviceProperties.limits.timestampPeriod; 
+    
+    for (const auto & query: queryTime)
+    {
+        elapsedTimeSum[query.first] += (timestamps[query.second.endIndex] - timestamps[query.second.startIndex]) * timestampPeriod / 1e6;
+    }
+    queryTime.clear();
+
+    if ((training_step + 1) % QUERY_TIME_RANGE == 0)
+    {
+        for (const auto& query : elapsedTimeSum)
+        {
+            LOGI("[%{public}s] execution time : %{public}f ms.", query.first.c_str(), query.second / QUERY_TIME_RANGE);
+        }
+        elapsedTimeSum.clear();
+    }
 }
