@@ -100,6 +100,11 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
     float3 scale_act_reg = exp(scale_reg);
     opacity_act_array[idx] = 1 / (1 + exp(-opacity_array[idx]));
+    if (opacity_act_array[idx] < min_opacity) {
+        visible_array[idx] = 0;
+        return;
+    }
+
 
     // if (training_step >= 501 && (training_step - 1) % 100 == 0) {
     //     if (opacity_act_array[idx] < min_opacity) {

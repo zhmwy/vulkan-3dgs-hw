@@ -18,6 +18,7 @@ static const float densify_grad_threshold = 0.0002;
 static const int skybox_num = 10000;
 
 
+
 uint t2i(uint i, uint j, uint width) {
     return i * width + j;
 }

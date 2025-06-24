@@ -52,6 +52,8 @@ float3 normalRandomXYZ(float3 xyz, float3 std) {
 [[vk::binding(15)]] RWStructuredBuffer<float> scale_array_avg;
 [[vk::binding(16)]] RWStructuredBuffer<float> rotate_array_avg;
 
+[[vk::binding(17)]] RWStructuredBuffer<float> grads;
+
 [[vk::push_constant]]
 cbuffer PushConstants
 {
@@ -77,6 +79,9 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     if (1 / (1 + exp(-opacity_array[toDensifyIdx_reg])) < min_opacity) {
         return;
     }
+
+    if (grads[toDensifyIdx_reg] < densify_grad_threshold)
+        return;
 
     float3 scale_act = {
         exp(scale_array[t2i(toDensifyIdx_reg, 0, 3)]),

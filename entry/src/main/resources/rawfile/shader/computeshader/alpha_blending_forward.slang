@@ -3,10 +3,10 @@
 #define SHARE_CHUNK_SIZE 32
 
 groupshared int32_t shared_idx[SHARE_CHUNK_SIZE];
-groupshared half2 shared_uvd[SHARE_CHUNK_SIZE];
-groupshared half3 shared_invcov[SHARE_CHUNK_SIZE];
-groupshared half shared_opacity[SHARE_CHUNK_SIZE];
-groupshared half3 shared_feature[SHARE_CHUNK_SIZE];
+groupshared float3 shared_uvd[SHARE_CHUNK_SIZE];
+groupshared float3 shared_invcov[SHARE_CHUNK_SIZE];
+groupshared float shared_opacity[SHARE_CHUNK_SIZE];
+groupshared float3 shared_feature[SHARE_CHUNK_SIZE];
 
 // uint t2i(uint a, uint b, uint x) // tuple to index
 // {
@@ -52,9 +52,9 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     int32_t tile_idx = tile_idx_y * gridDim_x + tile_idx_x;
 
     // index of shared gaussian in a chunk
-    int32_t local_x = dispatchThreadID.x % BLOCK_X; 
-    int32_t local_y = dispatchThreadID.y % BLOCK_Y; 
-    int32_t item_idx = local_x + local_y * BLOCK_X; 
+    int32_t local_x = dispatchThreadID.x % BLOCK_X;
+    int32_t local_y = dispatchThreadID.y % BLOCK_Y;
+    int32_t item_idx = local_x + local_y * BLOCK_X;
 
     // pixel col and row in the image
     uint2 p = {
@@ -71,40 +71,41 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         tile_range_array[2 * tile_idx],
         tile_range_array[2 * tile_idx + 1]
     };
-    int16_t gaussian_num = gaussian_range.y - gaussian_range.x;
-    int16_t num_chunk = (gaussian_num + SHARE_CHUNK_SIZE - 1) / SHARE_CHUNK_SIZE;
+    int32_t gaussian_num = gaussian_range.y - gaussian_range.x;
+    int32_t num_chunk = (gaussian_num + SHARE_CHUNK_SIZE - 1) / SHARE_CHUNK_SIZE;
 
-    half trans = 1.0f;
+    float trans = 1.0f;
     uint32_t last_involved = 0;
     uint32_t current_process_idx = 0;
 
-    half3 Feat = { 0.0, 0.0, 0.0 };
-    int16_t remain_gaussian_num = gaussian_num;
+    float3 Feat = { 0.0, 0.0, 0.0 };
+    int32_t remain_gaussian_num = gaussian_num;
 
     // process in chunks if there are too many Gaussians in a single tile
-    for (int16_t i = 0; i < num_chunk; i++, remain_gaussian_num -= SHARE_CHUNK_SIZE) {
+    for (int32_t i = 0; i < num_chunk; i++, remain_gaussian_num -= SHARE_CHUNK_SIZE) {
         // Collectively fetch per-Gaussian data from global to shared
         AllMemoryBarrierWithGroupSync();
-        int16_t num_loaded = i * SHARE_CHUNK_SIZE + item_idx;
+        int32_t num_loaded = i * SHARE_CHUNK_SIZE + item_idx;
         if (gaussian_range.x + num_loaded < gaussian_range.y && item_idx < SHARE_CHUNK_SIZE) {
             // item_idx: index of gaussian in the chunk
             // gidx: gaussian index in the global array
             int32_t gidx = sort_idx_array[gaussian_range.x + num_loaded];
             shared_idx[item_idx] = gidx;
             // shared_uvd[item_idx] = uvd_array[gidx];
-            shared_uvd[item_idx] = half2(
+            shared_uvd[item_idx] = float3(
                 uvd_array[3 * gidx],
-                uvd_array[3 * gidx + 1]
+                uvd_array[3 * gidx + 1],
+                uvd_array[3 * gidx + 2]
             );
             // shared_invcov[item_idx] = conic_array[gidx];
-            shared_invcov[item_idx] = half3(
+            shared_invcov[item_idx] = float3(
                 conic_array[3 * gidx],
                 conic_array[3 * gidx + 1],
                 conic_array[3 * gidx + 2]
             );
             shared_opacity[item_idx] = opacity_array[gidx];
             // shared_feature[item_idx] = feature_array[gidx];
-            shared_feature[item_idx] = half3(
+            shared_feature[item_idx] = float3(
                 feature_array[3 * gidx],
                 feature_array[3 * gidx + 1],
                 feature_array[3 * gidx + 2]
@@ -115,31 +116,31 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         int32_t num_to_process = min(SHARE_CHUNK_SIZE, remain_gaussian_num);
 
         if (thread_active) {
-            for (int16_t j = 0; j < num_to_process; j++) {
+            for (int32_t j = 0; j < num_to_process; j++) {
 
-                current_process_idx++; 
-                half2 vec = {
+                current_process_idx++;
+                float2 vec = {
                     shared_uvd[j].x - p.x,
                     shared_uvd[j].y - p.y
                 };
 
                 // squared Mahalanobis distance
-                half maha_distance = shared_invcov[j].x * vec.x * vec.x
+                float maha_distance = shared_invcov[j].x * vec.x * vec.x
                                     + shared_invcov[j].y * vec.x * vec.y * 2
                                     + shared_invcov[j].z * vec.y * vec.y;
 
-                half power = -0.5h * maha_distance;
+                float power = -0.5f * maha_distance;
 
-                if (power > 0.0h)
+                if (power > 0.0f)
                     continue;
 
                 // alpha pruning
-                half alpha = min(0.99h, shared_opacity[j] * exp(power));
-                if (alpha < 1.0 / 255.0h)
+                float alpha = min(0.99f, shared_opacity[j] * exp(power));
+                if (alpha < 1.0 / 255.0f)
                     continue;
 
-                half next_trans = trans * (1 - alpha);
-                if (next_trans < 0.0001h) {
+                float next_trans = trans * (1 - alpha);
+                if (next_trans < 0.0001f) {
                     thread_active = false;
                     break;
                 }

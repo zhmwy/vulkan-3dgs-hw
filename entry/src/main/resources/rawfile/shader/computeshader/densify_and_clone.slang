@@ -34,6 +34,9 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         return;
     }
 
+    if (grads[toDensifyIdx_reg] < densify_grad_threshold)
+        return;
+
     float3 scale_act = {
         exp(scale_array[t2i(toDensifyIdx_reg, 0, 3)]),
         exp(scale_array[t2i(toDensifyIdx_reg, 1, 3)]),

@@ -78,7 +78,7 @@ void VulkanComputeGS::encoderenderSelectedImage()
     bindPipeline2CommandBuffer(pipe_project_render, FORWARD_PIPE, X, 1, 1);
     bindPipeline2CommandBuffer(pipe_sh_render, FORWARD_PIPE, X, 1, 1, true);
     forwardCmd();
-//    bufferToImageCmd();
+
 //     createGpu2CpuCopys();
     
 }
@@ -542,11 +542,14 @@ void VulkanComputeGS::zeroGradCmd()
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
     
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dmap, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dmu1, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma1_sq, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma12, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.ssim_map, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dmap, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dmu1, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma1_sq, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma12, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.ssim_map, 0, VK_WHOLE_SIZE, 0);
+    
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.tile_range, 0, VK_WHOLE_SIZE, 0);
+    
 //     TransComputeBarrierBlock();
 }
 
@@ -625,8 +628,8 @@ void VulkanComputeGS::forwardCmdTime()
     ComputeTransBarrierBlock();
     queryCmdTimeEnd("09. forward_compute_key");
     
-    queryCmdTimeStart("10. forward_copy_index");
-    queryCmdTimeEnd("10. forward_copy_index");
+//     queryCmdTimeStart("10. forward_copy_index");
+//     queryCmdTimeEnd("10. forward_copy_index");
     
     queryCmdTimeStart("11. forward_sort");
     radixSortCmd(0);
@@ -739,43 +742,10 @@ void VulkanComputeGS::densifyCmd()
     copyRegionBB.dstOffset = 0; // Start at the beginning of the destination buffer
     copyRegionBB.size = splat_count * sizeof(uint32_t); // Size of data to copy
     
-//     vkCmdCopyBufferGS(
-//         compute.commandBuffer,
-//         splat_buffers.xyz_gradient_mean_int,
-//         sort_buffers.sortKBufferEven,
-//         1,            // Number of regions to copy
-//         &copyRegionBB   // Pointer to the copy region
-//     );
-//     vkCmdCopyBufferGS(
-//         compute.commandBuffer,
-//         sort_buffers.densify_idx,
-//         sort_buffers.sortVBufferEven,
-//         1,            // Number of regions to copy
-//         &copyRegionBB   // Pointer to the copy region
-//     );
-//     TransComputeBarrierBlock();
-    
     radixSortCmd(splat_count);
     ComputeShaderMemoryBarrierBlock();
     
-//     vkCmdCopyBufferGS(
-//         compute.commandBuffer,
-//         sort_buffers.sortKBufferEven,
-//         splat_buffers.xyz_gradient_mean_int,
-//         1,            // Number of regions to copy
-//         &copyRegionBB   // Pointer to the copy region
-//     );
-//     vkCmdCopyBufferGS(
-//         compute.commandBuffer,
-//         sort_buffers.sortVBufferEven,
-//         sort_buffers.densify_idx,
-//         1,            // Number of regions to copy
-//         &copyRegionBB   // Pointer to the copy region
-//     );
-//     TransComputeBarrierBlock();
-    
-//     return;
-    
+
 //     bindPipeline2CommandBuffer(pipe_prune, FORWARD_PIPE, X, 1, 1, true);
     bindPipeline2CommandBuffer(pipe_clone, FORWARD_PIPE, X, 1, 1, true);
     bindPipeline2CommandBuffer(pipe_split, FORWARD_PIPE, X, 1, 1, true);
@@ -785,6 +755,8 @@ void VulkanComputeGS::densifyCmd()
 //     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.sortKBufferEven, 0, VK_WHOLE_SIZE, 0);
 //     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.sortVBufferEven, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.max_radii2D, 0, VK_WHOLE_SIZE, 0);
+    TransComputeBarrierBlock();
+    
 }
 
 void VulkanComputeGS::updRenderCmd(int index)
@@ -883,20 +855,25 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
         X = (splat_count + 256 - 1) / 256; // Ceiling division
         bindPipeline2CommandBuffer(pipe_flow, BACKWARD_PIPE, X, 1, 1);
     }
-    queryCmdTimeStart("20. training optimize");
+    queryCmdTimeStart("20. training_optimize");
     optimizeStepCmd();
     if (training_step > flow_steps) {
         X = (splat_count + 256 - 1) / 256; // Ceiling division
         bindPipeline2CommandBuffer(pipe_optimize_flow, FORWARD_PIPE, X, 1, 1, true);
     }
-    queryCmdTimeEnd("20. training optimize");
+    queryCmdTimeEnd("20. training_optimize");
     bindPipeline2CommandBuffer(pipe_densification_stats, FORWARD_PIPE, X, 1, 1);
 
 //     if (training_step >= 500 && training_step % 100 == 0 && splat_count * 1.06 < MAX_SPLAT_COUNT && training_step <= flow_steps)
-    if (training_step >= 250 && training_step <= flow_steps && (training_step - 50) % 100 == 0 && splat_count * 1.11 < MAX_SPLAT_COUNT)
+    if (training_step >= densify_start_step && 
+        training_step <= flow_steps && 
+        (training_step - 50) % densify_interval_step == 0 && 
+        splat_count * 1.11 < MAX_SPLAT_COUNT && 
+        training_step < densify_end_step)
     {
         densifyCmd();
     }
+    
     if (training_step % 1000 == 0 && training_step > 3000)
     {
         bindPipeline2CommandBuffer(pipe_reset_opacity, FORWARD_PIPE, X, 1, 1);
@@ -907,9 +884,7 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
 //     if (training_step >= 499) {
 //         createGpu2CpuCopys();
 //     }
-        
-//     createGpu2CpuCopy(splat_buffers.curPointsNum);
-//     createGpu2CpuCopy(splat_buffers.psnr_sum);
+    
     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
 }
 
@@ -2960,7 +2935,7 @@ void VulkanComputeGS::setPrunePipeline()
 
 void VulkanComputeGS::setSplitPipeline()
 {
-    const uint32_t bindingCount = 17;
+    const uint32_t bindingCount = 18;
     createPipelineLayout(
         pipe_split,
         bindingCount,  // Number of descriptor set bindings
@@ -2987,7 +2962,9 @@ void VulkanComputeGS::setSplitPipeline()
         &splat_buffers.feature_array_avg,
         &splat_buffers.opacity_array_avg,
         &splat_buffers.scale_array_avg,
-        &splat_buffers.rotate_array_avg
+        &splat_buffers.rotate_array_avg,
+        
+        &splat_buffers.xyz_gradient_mean
     };
 
     updateDescriptorSet(pipe_split.descriptorSet, splatBuffers);
@@ -3730,8 +3707,6 @@ void VulkanComputeGS::bindPipeline2CommandBuffer(
     vkCmdDispatchGS(compute.commandBuffer, dispatchX, dispatchY, dispatchZ);
 
     ComputeShaderMemoryBarrierBlock();
-//     ComputeTransBarrierBlock();
-//     TransComputeBarrierBlock();
 }
 
 void VulkanComputeGS::bindPipeline2CommandBufferPushConstants(
@@ -4152,7 +4127,10 @@ void copyGpuBufferToVector(const vkgs::Buffer& buffer, std::vector<T>& destVecto
 
 void VulkanComputeGS::printLog(bool train)
 {
-    if (training_step >= 250 && training_step <= 1300 && (training_step - 50) % 100 == 0) {
+    if (training_step >= densify_start_step && 
+        training_step <= densify_end_step && 
+        (training_step - 50) % densify_interval_step == 0)
+    {
         buildComputeCommandBuffer([this](){
             createGpu2CpuCopy(splat_buffers.curPointsNum);
         });
