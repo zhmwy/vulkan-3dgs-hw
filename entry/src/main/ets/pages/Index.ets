@@ -13,7 +13,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-const caseName: string = "small_dragon";
+const caseName: string = "colmap";
 
 @Entry
 @Component

@@ -1048,7 +1048,15 @@ void DataLoader::loadPatchInput(const std::string scenepath, DataLoader::InputIn
     // 3. Load image file names and extrinsics from images.txt
     std::unordered_set<std::string> uniqueImages;
     std::string ext;
-    std::ifstream imagesFile(imagesFilePath);
+    
+    
+    const size_t buffer_size = 1024*1024; // 1MB
+    std::unique_ptr<char[]> file_buffer(new char[buffer_size]);
+    
+    std::ifstream imagesFile;
+    imagesFile.rdbuf()->pubsetbuf(file_buffer.get(), buffer_size);
+    imagesFile.open(imagesFilePath);
+    
     if (!imagesFile.is_open()){
         throw std::runtime_error("Cannot open images.txt!");
     }
@@ -1088,7 +1096,15 @@ void DataLoader::loadPatchInput(const std::string scenepath, DataLoader::InputIn
                 ext = imageName.substr(dotPos);
             }
         }
-        std::getline(imagesFile, line);
+        std::getline(imagesFile,line);
+        
+        std::istringstream iss2(line);
+        int imageX, imageY, pointId;
+        std::vector<int> pointIds;
+        while ((iss2 >> imageX >> imageY >> pointId)) {
+            pointIds.push_back(pointId);
+        }
+        data.pointsOnImage.push_back(pointIds);
     }
     
     data.extr_tmp_test = data.extr_tmp;

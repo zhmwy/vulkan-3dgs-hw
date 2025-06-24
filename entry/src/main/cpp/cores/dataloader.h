@@ -36,6 +36,8 @@ public:
         struct DataExtr{
             float values[7];  
         };
+        
+        std::vector<std::vector<int>> pointsOnImage;
 
         
         std::vector<Data> colors;         // RGB colors (r, g, b)
