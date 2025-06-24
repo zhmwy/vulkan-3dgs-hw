@@ -42,7 +42,8 @@ bool VulkanComputePatch::prepare()
 	VulkanComputeBase::prepare();
     
     loadAssets(image_width,image_height);
-    std::vector<std::vector<int>> pairs = selectViewPair();
+    std::vector<int> pairs = selectViewPair();
+    std::vector<float> zRange = calcDepthRange();
     
     preparePatchBuffers();
     
@@ -136,6 +137,38 @@ void VulkanComputePatch::setupRandomInitializationPipeline()
     ;
 }
 
+std::vector<float> VulkanComputePatch::calcDepthRange()
+{
+    std::vector<float> result(inputGaussian.images.size()*2, -1);
+    
+    for (int image=0; image<inputGaussian.images.size(); ++image) {
+        Base::Math::Mat4X4 W2C = DataLoader::InputInitStruct::quat2matrix(inputGaussian.extr_tmp[image]);
+        Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
+        
+        float zMax = -FLT_MAX;
+        float zMin = FLT_MAX;
+        
+        std::vector<int> pIds = inputGaussian.pointsOnImage[image];
+        std::vector<float> zs;
+        for (int pid: pIds) {
+            if (pid < 0) {
+                continue;
+            }
+            Base::Math::Vec3 vPoint = inputGaussian.positions[inputGaussian.point3DMap[pid]];
+            
+            Base::Math::Vec3 pc = Base::Math::MultiplyPoint3X4(Base::Math::Transpose(W2C), vPoint);
+            Base::Math::Vec3 pc2 = Base::Math::MultiplyPoint3X4(C2W, vPoint);
+            zs.push_back(pc.z);
+        }
+        
+        std::sort(zs.begin(), zs.end());
+        result[2*image+0] = zs[int(zs.size() * 0.01)] * 0.75;
+        result[2*image+1] = zs[int(zs.size() * 0.99)] * 1.25;
+    }
+    
+    return result;
+}
+
 int VulkanComputePatch::calcScore(int image1, int image2)
 {
     if (image1 == image2) {
@@ -196,7 +229,7 @@ int VulkanComputePatch::calcScore(int image1, int image2)
     return score;
 }
 
-std::vector<std::vector<int>> VulkanComputePatch::selectViewPair()
+std::vector<int> VulkanComputePatch::selectViewPair()
 {
     std::vector<std::vector<int>> vScore(inputGaussian.images.size());    
     for(size_t i=0; i<vScore.size(); ++i)
@@ -214,7 +247,7 @@ std::vector<std::vector<int>> VulkanComputePatch::selectViewPair()
         }
     }
     
-    std::vector<std::vector<int>> vPairs(vScore.size());
+    std::vector<int> vPairs(vScore.size()*params.srcCount, -1);
     for(size_t i=0; i<vScore.size(); ++i)
     {
         std::vector<size_t> indices(vScore.size());
@@ -223,12 +256,11 @@ std::vector<std::vector<int>> VulkanComputePatch::selectViewPair()
                   [&i, &vScore](size_t i1, size_t i2) { return vScore[i][i1] > vScore[i][i2]; });
         
         size_t minK = std::min((size_t)params.srcCount, vScore.size());
-        vPairs[i].resize(minK, -1);
         for (int k=0; k<minK; ++k) {
             if (indices[i] < 0) {
                 break;
             }
-            vPairs[i][k] = indices[k];
+            vPairs[i*params.srcCount + k] = indices[k];
         }
     }
     

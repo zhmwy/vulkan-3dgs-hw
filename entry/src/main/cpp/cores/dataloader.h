@@ -30,6 +30,7 @@ public:
         std::vector<Base::Math::Vec3> scales;         // Scaling factors (scale_x, scale_y, scale_z)
         std::vector<Base::Math::Vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
         std::vector<float> opacities;          // Opacity
+        std::map<int, int> point3DMap;
 
         struct Data {
             float values[48];  // 48维浮点数组

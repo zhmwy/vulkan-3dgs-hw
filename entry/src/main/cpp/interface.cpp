@@ -187,7 +187,7 @@ float PatchImpVulkan::GetProcessVulkan() {
 
 
 extern "C" InterfaceVulkan* createInstanceVulkan() {
-    return new InterfaceImplVulkan();
+    return new PatchImpVulkan();
 }
 
 extern "C" void destoryInstanceVulkan(InterfaceVulkan* instance) {

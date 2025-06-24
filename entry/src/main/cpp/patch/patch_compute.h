@@ -60,8 +60,9 @@ protected:
     void loadAssets(int origin_width, int origin_height);
     void preparePatchBuffers();
     
+    std::vector<float> calcDepthRange();
     int calcScore(int image1, int image2);
-    std::vector<std::vector<int>> selectViewPair();
+    std::vector<int> selectViewPair();
 };
 
 #endif //VULKAN_3DGS_HW_PATCH_COMPUTE_H

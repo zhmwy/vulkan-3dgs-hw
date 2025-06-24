@@ -864,6 +864,7 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
         
         // Store the point position.
         data.positions.push_back(pos);
+        data.point3DMap[pointId] = data.positions.size()-1;
         
         // Default attributes (scales, rotations, opacities) to zeros.
         data.scales.push_back(Base::Math::Vec3(-4.5f, -4.5f, -4.5f));
@@ -1050,7 +1051,7 @@ void DataLoader::loadPatchInput(const std::string scenepath, DataLoader::InputIn
     std::string ext;
     
     
-    const size_t buffer_size = 1024*1024; // 1MB
+    const size_t buffer_size = 5*1024*1024; // 1MB
     std::unique_ptr<char[]> file_buffer(new char[buffer_size]);
     
     std::ifstream imagesFile;
