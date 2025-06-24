@@ -52,9 +52,6 @@
 #define HEIGHT 640
 #define WIDTH  480
 
-#define VULKAN_HW
-// #define VULKAN_PC
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
@@ -281,11 +278,6 @@ public:
         std::vector<uint32_t>& pushConstants
     );
 
-    void ComputeMemoryBarrierBlock();
-    void ComputeShaderMemoryBarrierBlock();
-    void ComputeTransBarrierBlock();
-    void TransComputeBarrierBlock();
-
     void createGpu2CpuCopy(vkgs::Buffer &buffer);
 
     // 3dgs compute pipelines
@@ -354,7 +346,6 @@ public:
     void loadAssets(int origin_width, int origin_height, float scale);
     
     virtual void encodePipeline2CommandBuffer();
-    void buildComputeCommandBuffer(std::function<void()> func);
     
     void prepareSyncSemaphore();
 
@@ -362,8 +353,6 @@ public:
     float calculatePSNR(float* mse, int width, int height, float& psnr_total);
     virtual void draw(){};
     virtual void printLog(bool train = true);
-    void executeComputeCommand();
-    void executeTransCommand();
     
     void printGpuBuffers();
     void saveGaussians(std::string dataPath, bool save_head = false);

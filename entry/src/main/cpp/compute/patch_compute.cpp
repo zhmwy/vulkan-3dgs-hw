@@ -14,7 +14,9 @@ VulkanComputePatch::VulkanComputePatch()
 
 VulkanComputePatch::~VulkanComputePatch()
 {
-    ;
+    if (device) {
+        DestoryPatchBuffers();
+    }
 }
 
 void VulkanComputePatch::loadPatchData(std::string& dataFolder)
@@ -87,6 +89,18 @@ void VulkanComputePatch::loadAssets(int origin_width, int origin_height)
         
         inputGaussian.images.push_back(texture_original);
     }
+}
+
+void VulkanComputePatch::DestoryPatchBuffers()
+{
+    vkDestroyBufferGS(device, patchBuffers.intrParams, nullptr);
+    vkDestroyBufferGS(device, patchBuffers.cameraR, nullptr);
+    vkDestroyBufferGS(device, patchBuffers.cameraT, nullptr);
+    vkDestroyBufferGS(device, patchBuffers.depthRanges, nullptr);
+    vkDestroyBufferGS(device, patchBuffers.planeHypotheses, nullptr);
+    vkDestroyBufferGS(device, patchBuffers.costs, nullptr);
+    vkDestroyBufferGS(device, patchBuffers.selectedViews, nullptr);
+    vkDestroyBufferGS(device, patchBuffers.srcPairs, nullptr);
 }
 
 void VulkanComputePatch::preparePatchBuffers()

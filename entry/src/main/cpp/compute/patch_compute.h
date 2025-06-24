@@ -59,6 +59,7 @@ protected:
     
     void loadAssets(int origin_width, int origin_height);
     void preparePatchBuffers();
+    void DestoryPatchBuffers();
     
     std::vector<float> calcDepthRange();
     int calcScore(int image1, int image2);

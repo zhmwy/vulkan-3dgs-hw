@@ -13,6 +13,9 @@
 #include "VulkanInitializers.hpp"
 #include "VulkanTools.h"
 
+#define VULKAN_HW
+// #define VULKAN_PC
+
 class VulkanComputeBase
 {
 public:
@@ -47,6 +50,15 @@ protected:
     void queryEventTime(int training_step);
     void queryCmdTimeStart(std::string enventName);
     void queryCmdTimeEnd(std::string enventName);
+    
+    void buildComputeCommandBuffer(std::function<void()> func);
+    void executeComputeCommand();
+    void executeTransCommand();
+
+    void ComputeMemoryBarrierBlock();
+    void ComputeShaderMemoryBarrierBlock();
+    void ComputeTransBarrierBlock();
+    void TransComputeBarrierBlock();
     
     struct STComputePipeLine {
         VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout

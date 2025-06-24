@@ -421,3 +421,141 @@ void VulkanComputeBase::createPipelineLayout(
         vkAllocateDescriptorSetsGS(device, &allocInfo, &pipe_3dgs.descriptorSet)
     );
 }
+
+void VulkanComputeBase::buildComputeCommandBuffer(std::function<void()> func)
+{
+    vkQueueWaitIdleGS(computeRes.queue);
+
+    VkCommandBufferBeginInfo cmdBufInfo = vkbase::vkCommandBufferBeginInfo();
+    VK_CHECK_RESULT(vkBeginCommandBufferGS(computeRes.commandBuffer, &cmdBufInfo));
+    
+    func();
+
+    VK_CHECK_RESULT(vkEndCommandBufferGS(computeRes.commandBuffer));
+}
+
+void VulkanComputeBase::executeComputeCommand()
+{
+    VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+    VkSubmitInfo computeSubmitInfo = vkbase::vkSubmitInfo();
+    computeSubmitInfo.commandBufferCount = 1;
+    computeSubmitInfo.pCommandBuffers = &computeRes.commandBuffer;
+    computeSubmitInfo.waitSemaphoreCount = 1;
+    computeSubmitInfo.pWaitSemaphores = &syncSemaphore;
+    computeSubmitInfo.pWaitDstStageMask = &waitStageMask;
+    computeSubmitInfo.signalSemaphoreCount = 1;
+    computeSubmitInfo.pSignalSemaphores = &computeRes.semaphore;
+    VkResult res = vkQueueSubmitGS(computeRes.queue, 1, &computeSubmitInfo, VK_NULL_HANDLE);
+
+    if (res != VK_SUCCESS) {
+#ifdef VULKAN_HW
+        LOGE("VulkanExample Fatal : VkResult is %s", vkbase::getErrorString(res).c_str());
+#elif defined(VULKAN_PC)
+        std::cerr << "VulkanExample Fatal : VkResult is " << vkbase::errorString(res) << std::endl;
+#endif
+    }
+    
+    vkQueueWaitIdleGS(computeRes.queue);
+}
+
+void VulkanComputeBase::executeTransCommand()
+{
+    VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+    VkSubmitInfo computeSubmitInfo = vkbase::vkSubmitInfo();
+    computeSubmitInfo.commandBufferCount = 1;
+    computeSubmitInfo.pCommandBuffers = &computeRes.commandBuffer;
+    computeSubmitInfo.waitSemaphoreCount = 1;
+    computeSubmitInfo.pWaitSemaphores = &syncSemaphore;
+    computeSubmitInfo.pWaitDstStageMask = &waitStageMask;
+    computeSubmitInfo.signalSemaphoreCount = 1;
+    computeSubmitInfo.pSignalSemaphores = &computeRes.semaphore;
+    VkResult res = vkQueueSubmitGS(computeRes.queue, 1, &computeSubmitInfo, VK_NULL_HANDLE);
+
+    if (res != VK_SUCCESS) {
+#ifdef VULKAN_HW
+        LOGE("VulkanExample Fatal : VkResult is %s", vkbase::getErrorString(res).c_str());
+#elif defined(VULKAN_PC)
+        std::cerr << "VulkanExample Fatal : VkResult is " << vkbase::errorString(res) << std::endl;
+#endif
+    }
+    
+    vkQueueWaitIdleGS(computeRes.queue);
+}
+
+void VulkanComputeBase::ComputeMemoryBarrierBlock()
+{
+    // Add memory barrier to ensure writes are visible
+    VkMemoryBarrier memoryBarrier = {};
+    memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrierGS(
+        computeRes.commandBuffer,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        1, &memoryBarrier,
+        0, nullptr,
+        0, nullptr
+    );
+}
+
+void VulkanComputeBase::TransComputeBarrierBlock()
+{
+    // Add memory barrier to ensure writes are visible
+    VkMemoryBarrier memoryBarrier = {};
+    memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrierGS(
+        computeRes.commandBuffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0,
+        1, &memoryBarrier,
+        0, nullptr,
+        0, nullptr
+    );
+}
+
+void VulkanComputeBase::ComputeTransBarrierBlock()
+{
+    // Add memory barrier to ensure writes are visible
+    VkMemoryBarrier memoryBarrier = {};
+    memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    memoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+    vkCmdPipelineBarrierGS(
+        computeRes.commandBuffer,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        1, &memoryBarrier,
+        0, nullptr,
+        0, nullptr
+    );
+}
+
+void VulkanComputeBase::ComputeShaderMemoryBarrierBlock()
+{
+    // Add memory barrier to ensure writes are visible
+    VkMemoryBarrier memoryBarrier = {};
+    memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+
+    vkCmdPipelineBarrierGS(
+        computeRes.commandBuffer,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0,
+        1, &memoryBarrier,
+        0, nullptr,
+        0, nullptr
+    );
+}
