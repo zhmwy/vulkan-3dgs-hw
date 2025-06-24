@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include "base/math/matrix.h"
 #include "tinyply.h"
 #include "vulkancomputebase.h"
 #include <opencv2/opencv.hpp>
@@ -67,6 +68,9 @@ public:
         
         void denormalizeExtr();
         void denormalizePoints();
+        
+        
+        static Base::Math::Mat4X4 quat2matrix(InputInitStruct::DataExtr& extr);
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);

@@ -2,6 +2,7 @@
 #ifndef VULKAN_3DGS_HW_PATCH_COMPUTE_H
 #define VULKAN_3DGS_HW_PATCH_COMPUTE_H
 
+#include "base/math/matrix.h"
 #include "vulkancomputebase.h"
 #include "cores/dataloader.h"
 #include "cores/buffer.h"
@@ -18,6 +19,8 @@ public:
     {
         uint32_t width  = 480;
         uint32_t height = 640;
+        
+        uint32_t srcCount = 20;
     }params;
     
     void loadPatchData(std::string& dataFolder);
@@ -29,6 +32,7 @@ public:
 protected:
     
     struct PatchBuffers {
+        
         vkgs::Buffer intrParams;
         vkgs::Buffer cameraR;
         vkgs::Buffer cameraT;
@@ -55,6 +59,9 @@ protected:
     
     void loadAssets(int origin_width, int origin_height);
     void preparePatchBuffers();
+    
+    int calcScore(int image1, int image2);
+    std::vector<std::vector<int>> selectViewPair();
 };
 
 #endif //VULKAN_3DGS_HW_PATCH_COMPUTE_H

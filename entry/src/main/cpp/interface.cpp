@@ -168,6 +168,8 @@ void PatchImpVulkan::TrainVulkan() {
         
     }
     
+    
+    updateProgress(100);
 }
 
 void PatchImpVulkan::updateProgress(float value){
@@ -186,7 +188,7 @@ float PatchImpVulkan::GetProcessVulkan() {
 
 
 extern "C" InterfaceVulkan* createInstanceVulkan() {
-    return new InterfaceImplVulkan();
+    return new PatchImpVulkan();
 }
 
 extern "C" void destoryInstanceVulkan(InterfaceVulkan* instance) {

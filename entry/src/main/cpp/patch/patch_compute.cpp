@@ -1,8 +1,9 @@
 #include "patch_compute.h"
+#include "base/math/matrix_util.h"
+#include <numeric>
 
 VulkanComputePatch::VulkanComputePatch()
 {
-    
 #ifdef VULKAN_HW
     enabledInstanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
     enabledDeviceExtensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
@@ -41,9 +42,13 @@ bool VulkanComputePatch::prepare()
 	VulkanComputeBase::prepare();
     
     loadAssets(image_width,image_height);
+    std::vector<std::vector<int>> pairs = selectViewPair();
+    
     preparePatchBuffers();
     
     setupRandomInitializationPipeline();
+    
+    return true;
 }
 
 void VulkanComputePatch::compute()
@@ -129,4 +134,103 @@ void VulkanComputePatch::preparePatchBuffers()
 void VulkanComputePatch::setupRandomInitializationPipeline()
 {
     ;
+}
+
+int VulkanComputePatch::calcScore(int image1, int image2)
+{
+    if (image1 == image2) {
+        LOGE("Calc Same Image Score");
+        return 0;
+    }
+    Base::Math::Mat4X4 W2C1 = DataLoader::InputInitStruct::quat2matrix(inputGaussian.extr_tmp[image1]);
+    Base::Math::Mat4X4 C2W1 = Base::Math::Inverse(W2C1);
+    Base::Math::Vec3 cam_center1(C2W1[0][3], C2W1[1][3], C2W1[2][3]);
+    
+    Base::Math::Mat4X4 W2C2 = DataLoader::InputInitStruct::quat2matrix(inputGaussian.extr_tmp[image2]);
+    Base::Math::Mat4X4 C2W2 = Base::Math::Inverse(W2C2);
+    Base::Math::Vec3 cam_center2(C2W2[0][3], C2W2[1][3], C2W2[2][3]);
+    
+    std::vector<int> sorted1 = inputGaussian.pointsOnImage[image1];
+    std::vector<int> sorted2 = inputGaussian.pointsOnImage[image2];
+    
+    std::sort(sorted1.begin(), sorted1.end());
+    std::sort(sorted2.begin(), sorted2.end());
+    
+    std::vector<int> interPoints;
+    std::set_intersection(
+        sorted1.begin(), sorted1.end(),
+        sorted2.begin(), sorted2.end(),
+        std::back_inserter(interPoints)
+    );
+    
+    std::vector<float> angles;
+    int score = 0;
+    for (size_t i=0; i<interPoints.size(); ++i) {
+        int pid = interPoints[i];
+        if (pid == -1) {
+            continue;
+        }
+        
+        Base::Math::Vec3 vPoint = inputGaussian.positions[pid];
+        
+        float theta = (180.0 / M_PI) * 
+                        std::acos(Base::Math::Dot(cam_center1-vPoint, cam_center2-vPoint) / 
+                                  Base::Math::Magnitude(cam_center1-vPoint) / 
+                                  Base::Math::Magnitude(cam_center2-vPoint));
+        
+        angles.push_back(theta);
+        score += 1;        
+    }
+    
+    if (!angles.empty()) {
+        const double percentile = 0.75;
+        const size_t n = angles.size();
+        size_t pos = static_cast<size_t>(percentile * n);
+        
+        std::nth_element(angles.begin(), angles.begin() + pos, angles.end());
+        if (angles[pos] < 1) {
+            score = 0;
+        }
+    }
+    
+    return score;
+}
+
+std::vector<std::vector<int>> VulkanComputePatch::selectViewPair()
+{
+    std::vector<std::vector<int>> vScore(inputGaussian.images.size());    
+    for(size_t i=0; i<vScore.size(); ++i)
+    {
+        vScore[i].resize(vScore.size(), 0);
+    }
+    
+    for(size_t i=0; i<vScore.size(); ++i)
+    {
+        for (size_t j=i+1; j<vScore.size(); ++j)
+        {
+            int score = calcScore(i, j);
+            vScore[i][j] = score;
+            vScore[j][i] = score;
+        }
+    }
+    
+    std::vector<std::vector<int>> vPairs(vScore.size());
+    for(size_t i=0; i<vScore.size(); ++i)
+    {
+        std::vector<size_t> indices(vScore.size());
+        std::iota(indices.begin(), indices.end(), 0); 
+        std::sort(indices.begin(), indices.end(),
+                  [&i, &vScore](size_t i1, size_t i2) { return vScore[i][i1] > vScore[i][i2]; });
+        
+        size_t minK = std::min((size_t)params.srcCount, vScore.size());
+        vPairs[i].resize(minK, -1);
+        for (int k=0; k<minK; ++k) {
+            if (indices[i] < 0) {
+                break;
+            }
+            vPairs[i][k] = indices[k];
+        }
+    }
+    
+    return vPairs;
 }

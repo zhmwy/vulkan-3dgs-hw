@@ -219,7 +219,7 @@ struct Vec3Equal {
     }
 };
 
-Base::Math::Mat4X4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
+Base::Math::Mat4X4 DataLoader::InputInitStruct::quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
     Base::Math::Mat4X4 W2C(1.0f);
     double w = extr.values[0], x = extr.values[1], y = extr.values[2], z = extr.values[3];
     double tx = extr.values[4], ty = extr.values[5], tz = extr.values[6];
@@ -1107,9 +1107,13 @@ void DataLoader::loadPatchInput(const std::string scenepath, DataLoader::InputIn
         data.pointsOnImage.push_back(pointIds);
     }
     
+    {
+        std::string pointsFilePath = scenepath + "/points3D.txt";
+        load3DPoints(pointsFilePath, data);
+    }
+    
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
-
 }
 
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height, int width)
