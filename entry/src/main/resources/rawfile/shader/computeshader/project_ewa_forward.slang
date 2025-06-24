@@ -144,15 +144,22 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         xc.z
     );
 
-    float x_limit_min = -0.15 * width;
-    float x_limit_max = 1.15 * width;
-    float y_limit_min = -0.15 * height;
-    float y_limit_max = 1.15 * height;
-    if (uvd_reg.x < x_limit_min || uvd_reg.x > x_limit_max ||
-        uvd_reg.y < y_limit_min || uvd_reg.y > y_limit_max) {
+    // float x_limit_min = -0.15 * width;
+    // float x_limit_max = 1.15 * width;
+    // float y_limit_min = -0.15 * height;
+    // float y_limit_max = 1.15 * height;
+    // if (uvd_reg.x < x_limit_min || uvd_reg.x > x_limit_max ||
+    //     uvd_reg.y < y_limit_min || uvd_reg.y > y_limit_max) {
+    //     visible_array[idx] = 0;
+    //     return;
+    // }
+
+    if (uvd_reg.x < 0 || uvd_reg.x >= width ||
+        uvd_reg.y < 0 || uvd_reg.y >= height) {
         visible_array[idx] = 0;
         return;
     }
+
 
     uvd_array[3 * idx] = uvd_reg.x;
     uvd_array[3 * idx + 1] = uvd_reg.y;
