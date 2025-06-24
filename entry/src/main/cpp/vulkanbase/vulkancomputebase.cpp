@@ -106,6 +106,15 @@ VulkanComputeBase::VulkanComputeBase()
 
 VulkanComputeBase::~VulkanComputeBase()
 {
+    if (device) {
+        vkDestroySemaphoreGS(device, syncSemaphore, nullptr);
+        
+        vkDestroyPipelineLayoutGS(device, computeRes.pipelineLayout, nullptr);
+        vkDestroyDescriptorSetLayoutGS(device, computeRes.descriptorSetLayout, nullptr);
+        vkDestroySemaphoreGS(device, computeRes.semaphore, nullptr);
+        vkDestroyCommandPoolGS(device, computeRes.commandPool, nullptr);
+    }
+    
 	// Clean up Vulkan resources
 	if (descriptorPool != VK_NULL_HANDLE)
 	{

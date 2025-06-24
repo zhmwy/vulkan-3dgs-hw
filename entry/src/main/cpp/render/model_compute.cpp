@@ -813,13 +813,6 @@ VulkanComputeGS::~VulkanComputeGS()
 {
     if (device) {
 
-        vkDestroySemaphoreGS(device, syncSemaphore, nullptr);
-        
-        vkDestroyPipelineLayoutGS(device, computeRes.pipelineLayout, nullptr);
-        vkDestroyDescriptorSetLayoutGS(device, computeRes.descriptorSetLayout, nullptr);
-        vkDestroySemaphoreGS(device, computeRes.semaphore, nullptr);
-        vkDestroyCommandPoolGS(device, computeRes.commandPool, nullptr);
-
         this->DestoryBuffers();
         
 //         vmaDestroyImage(allocator, storageImage.image, storageImageAllocation);
