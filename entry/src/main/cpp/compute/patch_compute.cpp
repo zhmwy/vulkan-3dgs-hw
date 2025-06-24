@@ -106,7 +106,7 @@ void VulkanComputePatch::preparePatchBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
-    patchBuffers.depthRange = vkgs::Buffer(
+    patchBuffers.depthRanges = vkgs::Buffer(
         allocator, inputGaussian.images.size() * 2 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
@@ -127,7 +127,7 @@ void VulkanComputePatch::preparePatchBuffers()
     );
     
     patchBuffers.srcPairs = vkgs::Buffer(
-        allocator, inputGaussian.images.size() * 32 * sizeof(uint32_t),
+        allocator, inputGaussian.images.size() * params.srcCount * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 }

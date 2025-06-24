@@ -36,7 +36,7 @@ protected:
         vkgs::Buffer intrParams;
         vkgs::Buffer cameraR;
         vkgs::Buffer cameraT;
-        vkgs::Buffer depthRange;
+        vkgs::Buffer depthRanges;
         
         vkgs::Buffer costs;
         vkgs::Buffer planeHypotheses;

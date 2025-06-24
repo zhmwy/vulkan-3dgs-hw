@@ -28,8 +28,8 @@ add_library(3dgs SHARED
     vulkanbase/VulkanTexture.cpp
     file/file_operator.cpp
     file/file.cpp
-    render/model_compute.cpp
-    patch/patch_compute.cpp
+    compute/model_compute.cpp
+    compute/patch_compute.cpp
     cores/buffer.cpp
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
