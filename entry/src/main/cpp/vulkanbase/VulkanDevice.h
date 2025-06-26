@@ -26,7 +26,7 @@ struct VulkanDevice
 		uint32_t graphics;
 		uint32_t compute;
 		uint32_t transfer;
-	} queueFamilyIndices;
+	} qFamilyIndices;
     
 	explicit VulkanDevice(VkPhysicalDevice physicalDevice);
 	~VulkanDevice();

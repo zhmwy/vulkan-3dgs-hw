@@ -64,34 +64,34 @@ namespace vkbase
 		memcpy(data, buffer, bufferSize);
 		vkUnmapMemoryGS(device->vdLogicalDevice, stagingMemory);
 
-		VkBufferImageCopy bufferCopyRegion = {};
-		bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		bufferCopyRegion.imageSubresource.mipLevel = 0;
-		bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
-		bufferCopyRegion.imageSubresource.layerCount = 1;
-		bufferCopyRegion.imageExtent.width = width;
-		bufferCopyRegion.imageExtent.height = height;
-		bufferCopyRegion.imageExtent.depth = 1;
-		bufferCopyRegion.bufferOffset = 0;
+		VkBufferImageCopy copyRegion = {};
+		copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		copyRegion.imageSubresource.mipLevel = 0;
+		copyRegion.imageSubresource.baseArrayLayer = 0;
+		copyRegion.imageSubresource.layerCount = 1;
+		copyRegion.imageExtent.width = width;
+		copyRegion.imageExtent.height = height;
+		copyRegion.imageExtent.depth = 1;
+		copyRegion.bufferOffset = 0;
 
 		// Create optimal tiled target image
-		VkImageCreateInfo imageCreateInfo = vkbase::vkImageCreateInfo();
-		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-		imageCreateInfo.format = format;
-		imageCreateInfo.mipLevels = texMipLevels;
-		imageCreateInfo.arrayLayers = 1;
-		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageCreateInfo.extent = { width, height, 1 };
-		imageCreateInfo.usage = imageUsageFlags;
+		VkImageCreateInfo iCreateInfo = vkbase::vkImageCreateInfo();
+		iCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+		iCreateInfo.format = format;
+		iCreateInfo.mipLevels = texMipLevels;
+		iCreateInfo.arrayLayers = 1;
+		iCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		iCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		iCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		iCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		iCreateInfo.extent = { width, height, 1 };
+		iCreateInfo.usage = imageUsageFlags;
 		// Ensure that the TRANSFER_DST bit is set for staging
-		if (!(imageCreateInfo.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT))
+		if (!(iCreateInfo.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT))
 		{
-			imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			iCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		}
-		VK_CHECK_RESULT(vkCreateImageGS(device->vdLogicalDevice, &imageCreateInfo, nullptr, &vkImage));
+		VK_CHECK_RESULT(vkCreateImageGS(device->vdLogicalDevice, &iCreateInfo, nullptr, &vkImage));
 
 		vkGetImageMemoryRequirementsGS(device->vdLogicalDevice, vkImage, &memReqs);
 
@@ -123,7 +123,7 @@ namespace vkbase
 			vkImage,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1,
-			&bufferCopyRegion
+			&copyRegion
 		);
 
 		// Change texture image layout to shader read after all mip levels have been copied
@@ -142,20 +142,20 @@ namespace vkbase
 		vkDestroyBufferGS(device->vdLogicalDevice, stagingBuffer, nullptr);
 
 		// Create sampler
-		VkSamplerCreateInfo samplerCreateInfo = {};
-		samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerCreateInfo.magFilter = filter;
-		samplerCreateInfo.minFilter = filter;
-		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.mipLodBias = 0.0f;
-		samplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
-		samplerCreateInfo.minLod = 0.0f;
-		samplerCreateInfo.maxLod = 0.0f;
-		samplerCreateInfo.maxAnisotropy = 1.0f;
-		VK_CHECK_RESULT(vkCreateSamplerGS(device->vdLogicalDevice, &samplerCreateInfo, nullptr, &vkSampler));
+		VkSamplerCreateInfo sCreateInfo = {};
+		sCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		sCreateInfo.magFilter = filter;
+		sCreateInfo.minFilter = filter;
+		sCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		sCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		sCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		sCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		sCreateInfo.mipLodBias = 0.0f;
+		sCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
+		sCreateInfo.minLod = 0.0f;
+		sCreateInfo.maxLod = 0.0f;
+		sCreateInfo.maxAnisotropy = 1.0f;
+		VK_CHECK_RESULT(vkCreateSamplerGS(device->vdLogicalDevice, &sCreateInfo, nullptr, &vkSampler));
 
 		// Create image view
 		VkImageViewCreateInfo viewCreateInfo = {};

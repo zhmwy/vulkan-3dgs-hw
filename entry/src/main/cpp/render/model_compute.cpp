@@ -3527,7 +3527,7 @@ void VulkanComputeGS::printGpuBuffer(const std::string& varName, const vkgs::Buf
 
 void VulkanComputeGS::prepareCompute()
 {
-    vkGetDeviceQueueGS(device, vulkanDevice->queueFamilyIndices.compute, 0, &compute.queue);
+    vkGetDeviceQueueGS(device, vulkanDevice->qFamilyIndices.compute, 0, &compute.queue);
 
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
         vkbase::vkDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, 0),
@@ -3555,7 +3555,7 @@ void VulkanComputeGS::prepareCompute()
 
     VkCommandPoolCreateInfo cmdPoolInfo = {};
     cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    cmdPoolInfo.queueFamilyIndex = vulkanDevice->queueFamilyIndices.compute;
+    cmdPoolInfo.queueFamilyIndex = vulkanDevice->qFamilyIndices.compute;
     cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VK_CHECK_RESULT(vkCreateCommandPoolGS(device, &cmdPoolInfo, nullptr, &compute.commandPool));
 

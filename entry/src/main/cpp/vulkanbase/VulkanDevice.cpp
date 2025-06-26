@@ -51,7 +51,7 @@ namespace vkbase
 		}
 	}
 
-	uint32_t VulkanDevice::vdGetMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound) const
+	uint32_t VulkanDevice::vdGetMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *isTypeFound) const
 	{
 		for (uint32_t i = 0; i < vdMemoryProperties.memoryTypeCount; i++)
 		{
@@ -59,9 +59,9 @@ namespace vkbase
 			{
 				if ((vdMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
 				{
-					if (memTypeFound)
+					if (isTypeFound)
 					{
-						*memTypeFound = true;
+						*isTypeFound = true;
 					}
 					return i;
 				}
@@ -69,9 +69,9 @@ namespace vkbase
 			typeBits >>= 1;
 		}
 
-		if (memTypeFound)
+		if (isTypeFound)
 		{
-			*memTypeFound = false;
+			*isTypeFound = false;
 			return 0;
 		}
 		else
@@ -123,80 +123,73 @@ namespace vkbase
 		return -1;
 	}
 
-	VkResult VulkanDevice::vdCreateLogicalDevice(VkPhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, void* pNextChain, bool useSwapChain, VkQueueFlags requestedQueueTypes)
-	{			
-
-		// Desired queues need to be requested upon logical device creation
-		// Due to differing queue family configurations of Vulkan implementations this can be a bit tricky, especially if the application
-		// requests different queue types
+	VkResult VulkanDevice::vdCreateLogicalDevice(VkPhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, void* pNextChain, bool useSwapChain, VkQueueFlags requestedTypes)
+	{
         LOGI("VulkanDevice::createLogicalDevice");
-		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
-
-		// Get queue family indices for the requested queue family types
-		// Note that the indices may overlap depending on the implementation
+		std::vector<VkDeviceQueueCreateInfo> qCreateInfos{};
 
 		const float defaultQueuePriority(0.0f);
 
 		// Graphics queue
-		if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
+		if (requestedTypes & VK_QUEUE_GRAPHICS_BIT)
 		{
-			queueFamilyIndices.graphics = vdGetQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
-			VkDeviceQueueCreateInfo queueInfo{};
-			queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queueInfo.queueFamilyIndex = queueFamilyIndices.graphics;
-			queueInfo.queueCount = 1;
-			queueInfo.pQueuePriorities = &defaultQueuePriority;
-			queueCreateInfos.push_back(queueInfo);
+			qFamilyIndices.graphics = vdGetQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
+			VkDeviceQueueCreateInfo qInfo{};
+			qInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			qInfo.queueFamilyIndex = qFamilyIndices.graphics;
+			qInfo.queueCount = 1;
+			qInfo.pQueuePriorities = &defaultQueuePriority;
+			qCreateInfos.push_back(qInfo);
 		}
 		else
 		{
-			queueFamilyIndices.graphics = 0;
+			qFamilyIndices.graphics = 0;
 		}
 
 		// Dedicated compute queue
-		if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
+		if (requestedTypes & VK_QUEUE_COMPUTE_BIT)
 		{
-			queueFamilyIndices.compute = vdGetQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
-			if (queueFamilyIndices.compute != queueFamilyIndices.graphics)
+			qFamilyIndices.compute = vdGetQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
+			if (qFamilyIndices.compute != qFamilyIndices.graphics)
 			{
 				// If compute family index differs, we need an additional queue create info for the compute queue
-				VkDeviceQueueCreateInfo queueInfo{};
-				queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				queueInfo.queueFamilyIndex = queueFamilyIndices.compute;
-				queueInfo.queueCount = 1;
-				queueInfo.pQueuePriorities = &defaultQueuePriority;
-				queueCreateInfos.push_back(queueInfo);
+				VkDeviceQueueCreateInfo qInfo{};
+				qInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+				qInfo.queueFamilyIndex = qFamilyIndices.compute;
+				qInfo.queueCount = 1;
+				qInfo.pQueuePriorities = &defaultQueuePriority;
+				qCreateInfos.push_back(qInfo);
 			}
 		}
 		else
 		{
 			// Else we use the same queue
-			queueFamilyIndices.compute = queueFamilyIndices.graphics;
+			qFamilyIndices.compute = qFamilyIndices.graphics;
 		}
 
 		// Dedicated transfer queue
-		if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
+		if (requestedTypes & VK_QUEUE_TRANSFER_BIT)
 		{
-			queueFamilyIndices.transfer = vdGetQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT);
-			if ((queueFamilyIndices.transfer != queueFamilyIndices.graphics) && (queueFamilyIndices.transfer != queueFamilyIndices.compute))
+			qFamilyIndices.transfer = vdGetQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT);
+			if ((qFamilyIndices.transfer != qFamilyIndices.graphics) && (qFamilyIndices.transfer != qFamilyIndices.compute))
 			{
 				// If compute family index differs, we need an additional queue create info for the compute queue
-				VkDeviceQueueCreateInfo queueInfo{};
-				queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				queueInfo.queueFamilyIndex = queueFamilyIndices.transfer;
-				queueInfo.queueCount = 1;
-				queueInfo.pQueuePriorities = &defaultQueuePriority;
-				queueCreateInfos.push_back(queueInfo);
+				VkDeviceQueueCreateInfo qInfo{};
+				qInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+				qInfo.queueFamilyIndex = qFamilyIndices.transfer;
+				qInfo.queueCount = 1;
+				qInfo.pQueuePriorities = &defaultQueuePriority;
+				qCreateInfos.push_back(qInfo);
 			}
 		}
 		else
 		{
 			// Else we use the same queue
-			queueFamilyIndices.transfer = queueFamilyIndices.graphics;
+			qFamilyIndices.transfer = qFamilyIndices.graphics;
 		}
-		LOGD("VulkanDevice: queueFamilyIndices.compute = %{public}d", queueFamilyIndices.compute);
-		LOGD("VulkanDevice: queueFamilyIndices.graphics = %{public}d", queueFamilyIndices.graphics);
-		LOGD("VulkanDevice: queueFamilyIndices.transfer = %{public}d", queueFamilyIndices.transfer);
+		LOGD("VulkanDevice: queueFamilyIndices.compute = %{public}d", qFamilyIndices.compute);
+		LOGD("VulkanDevice: queueFamilyIndices.graphics = %{public}d", qFamilyIndices.graphics);
+		LOGD("VulkanDevice: queueFamilyIndices.transfer = %{public}d", qFamilyIndices.transfer);
 
 		// Create the logical device representation
 		std::vector<const char*> deviceExtensions(enabledExtensions);
@@ -207,20 +200,20 @@ namespace vkbase
 		}
 		deviceExtensions.push_back("VK_OHOS_native_buffer"); //todo
 
-		VkDeviceCreateInfo deviceCreateInfo = {};
-		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());;
-		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-		deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
+		VkDeviceCreateInfo dCreateInfo = {};
+		dCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		dCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(qCreateInfos.size());;
+		dCreateInfo.pQueueCreateInfos = qCreateInfos.data();
+		dCreateInfo.pEnabledFeatures = &enabledFeatures;
 		
 		// If a pNext(Chain) has been passed, we need to add it to the device creation info
-		VkPhysicalDeviceFeatures2 physicalDeviceFeatures2{};
+		VkPhysicalDeviceFeatures2 physicalFeatures2{};
 		if (pNextChain) {
-			physicalDeviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-			physicalDeviceFeatures2.features = enabledFeatures;
-			physicalDeviceFeatures2.pNext = pNextChain;
-			deviceCreateInfo.pEnabledFeatures = nullptr;
-			deviceCreateInfo.pNext = &physicalDeviceFeatures2;
+			physicalFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+			physicalFeatures2.features = enabledFeatures;
+			physicalFeatures2.pNext = pNextChain;
+			dCreateInfo.pEnabledFeatures = nullptr;
+			dCreateInfo.pNext = &physicalFeatures2;
 		}
 
 		if (deviceExtensions.size() > 0)
@@ -233,14 +226,14 @@ namespace vkbase
 				}
 			}
 
-			deviceCreateInfo.enabledExtensionCount = (uint32_t)deviceExtensions.size();
-			deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+			dCreateInfo.enabledExtensionCount = (uint32_t)deviceExtensions.size();
+			dCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 		}
 
 		this->vdEnabledFeatures = enabledFeatures;
 
-        LOGI("VulkanDevice: vkCreateDevice device: &deviceCreateInfo :p %{public}p", &deviceCreateInfo);
-        VkResult result = vkCreateDeviceGS(vdPhysicalDevice, &deviceCreateInfo, nullptr, &vdLogicalDevice);
+        LOGI("VulkanDevice: vkCreateDevice device: &deviceCreateInfo :p %{public}p", &dCreateInfo);
+        VkResult result = vkCreateDeviceGS(vdPhysicalDevice, &dCreateInfo, nullptr, &vdLogicalDevice);
         LOGI("VulkanDevice: vkCreateDevice device: &logicalDevice :p %{public}p", &vdLogicalDevice);
         LOGI("VulkanDevice: vkCreateDevice device: logicalDevice :p %{public}p", vdLogicalDevice);
         if (result != VK_SUCCESS) 
@@ -250,7 +243,7 @@ namespace vkbase
 		}
 
 		// Create a default command pool for graphics command buffers
-		cdCommandPool = vdCreateCommandPool(queueFamilyIndices.graphics);
+		cdCommandPool = vdCreateCommandPool(qFamilyIndices.graphics);
 
 		return result;
 	}
