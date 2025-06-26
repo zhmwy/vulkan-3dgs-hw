@@ -1,6 +1,7 @@
 #include "patch_compute.h"
 #include "base/math/matrix_util.h"
 #include <numeric>
+#include <unistd.h>
 
 VulkanComputePatch::VulkanComputePatch()
 {
@@ -51,6 +52,8 @@ bool VulkanComputePatch::prepare()
     
     setupRandomInitializationPipeline();
     
+    prepared = true;
+    
     return true;
 }
 
@@ -61,7 +64,46 @@ void VulkanComputePatch::compute()
 
 void VulkanComputePatch::initBuffersValues()
 {
-    ;
+    if (!prepared) {
+        return;
+    }
+    
+    buildComputeCommandBuffer([this]() {
+        
+        {
+            ///暂时使用所有图像公用一个内存
+            std::vector<float> vIntr;
+            for (int i=0; i<inputGaussian.extr_tmp.size(); i++) {
+                vIntr.insert(vIntr.end(), inputGaussian.intr_tmp[0].data(), inputGaussian.intr_tmp[0].data()+4);
+            }
+            
+            patchBuffers.intrParams.FromCpu(computeRes.commandBuffer, vIntr.data());
+        }
+    
+        {
+            std::vector<float> result;
+            result.reserve(inputGaussian.extr_tmp.size() * 9);
+            for(size_t i=0; i<inputGaussian.extr_tmp.size(); ++i)
+            {
+                Base::Math::Mat3X3 rmat = inputGaussian.quat2matrix3(inputGaussian.extr_tmp[i]);
+                result.insert(result.end(), rmat.data, rmat.data+9);
+            }
+            patchBuffers.cameraR.FromCpu(computeRes.commandBuffer, result);
+        }
+        
+        {
+            std::vector<float> vTrans;
+            for (int i=0; i<inputGaussian.extr_tmp.size(); i++) {
+                vTrans.insert(vTrans.end(), inputGaussian.extr_tmp[i].values+4, inputGaussian.extr_tmp[i].values+7);
+            }
+            patchBuffers.cameraT.FromCpu(computeRes.commandBuffer, vTrans.data());
+        }
+    
+        patchBuffers.depthRanges.FromCpu(computeRes.commandBuffer, calcDepthRange());
+        
+        patchBuffers.srcPairs.FromCpu(computeRes.commandBuffer, selectViewPair());
+    });
+    executeComputeCommand();
 }
 
 void VulkanComputePatch::loadAssets(int origin_width, int origin_height) 
@@ -136,7 +178,7 @@ void VulkanComputePatch::preparePatchBuffers()
     );
     
     patchBuffers.selectedViews = vkgs::Buffer(
-        allocator, image_height * image_width * sizeof(uint32_t),
+        allocator, image_height * image_width * params.srcCount * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
@@ -156,7 +198,7 @@ std::vector<float> VulkanComputePatch::calcDepthRange()
     std::vector<float> result(inputGaussian.images.size()*2, -1);
     
     for (int image=0; image<inputGaussian.images.size(); ++image) {
-        Base::Math::Mat4X4 W2C = DataLoader::InputInitStruct::quat2matrix(inputGaussian.extr_tmp[image]);
+        Base::Math::Mat4X4 W2C = DataLoader::InputInitStruct::quat2matrix4(inputGaussian.extr_tmp[image]);
         Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
         
         float zMax = -FLT_MAX;
@@ -171,7 +213,6 @@ std::vector<float> VulkanComputePatch::calcDepthRange()
             Base::Math::Vec3 vPoint = inputGaussian.positions[inputGaussian.point3DMap[pid]];
             
             Base::Math::Vec3 pc = Base::Math::MultiplyPoint3X4(Base::Math::Transpose(W2C), vPoint);
-            Base::Math::Vec3 pc2 = Base::Math::MultiplyPoint3X4(C2W, vPoint);
             zs.push_back(pc.z);
         }
         
@@ -189,11 +230,11 @@ int VulkanComputePatch::calcScore(int image1, int image2)
         LOGE("Calc Same Image Score");
         return 0;
     }
-    Base::Math::Mat4X4 W2C1 = DataLoader::InputInitStruct::quat2matrix(inputGaussian.extr_tmp[image1]);
+    Base::Math::Mat4X4 W2C1 = DataLoader::InputInitStruct::quat2matrix4(inputGaussian.extr_tmp[image1]);
     Base::Math::Mat4X4 C2W1 = Base::Math::Inverse(W2C1);
     Base::Math::Vec3 cam_center1(C2W1[0][3], C2W1[1][3], C2W1[2][3]);
     
-    Base::Math::Mat4X4 W2C2 = DataLoader::InputInitStruct::quat2matrix(inputGaussian.extr_tmp[image2]);
+    Base::Math::Mat4X4 W2C2 = DataLoader::InputInitStruct::quat2matrix4(inputGaussian.extr_tmp[image2]);
     Base::Math::Mat4X4 C2W2 = Base::Math::Inverse(W2C2);
     Base::Math::Vec3 cam_center2(C2W2[0][3], C2W2[1][3], C2W2[2][3]);
     

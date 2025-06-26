@@ -219,7 +219,7 @@ struct Vec3Equal {
     }
 };
 
-Base::Math::Mat4X4 DataLoader::InputInitStruct::quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
+Base::Math::Mat4X4 DataLoader::InputInitStruct::quat2matrix4(DataLoader::InputInitStruct::DataExtr& extr) {
     Base::Math::Mat4X4 W2C(1.0f);
     double w = extr.values[0], x = extr.values[1], y = extr.values[2], z = extr.values[3];
     double tx = extr.values[4], ty = extr.values[5], tz = extr.values[6];
@@ -238,6 +238,25 @@ Base::Math::Mat4X4 DataLoader::InputInitStruct::quat2matrix(DataLoader::InputIni
     W2C[2][1] = 2 * (y * z + w * x);
     W2C[2][2] = 1 - 2 * (x * x + y * y);
     W2C[2][3] = tz;
+
+    return W2C;
+}
+
+Base::Math::Mat3X3 DataLoader::InputInitStruct::quat2matrix3(DataLoader::InputInitStruct::DataExtr& extr) {
+    Base::Math::Mat3X3 W2C(1.0f);
+    double w = extr.values[0], x = extr.values[1], y = extr.values[2], z = extr.values[3];
+    
+    W2C[0][0] = 1 - 2 * (y * y + z * z);
+    W2C[0][1] = 2 * (x * y - w * z);
+    W2C[0][2] = 2 * (x * z + w * y);
+
+    W2C[1][0] = 2 * (x * y + w * z);
+    W2C[1][1] = 1 - 2 * (x * x + z * z);
+    W2C[1][2] = 2 * (y * z - w * x);
+
+    W2C[2][0] = 2 * (x * z - w * y);
+    W2C[2][1] = 2 * (y * z + w * x);
+    W2C[2][2] = 1 - 2 * (x * x + y * y);
 
     return W2C;
 }
@@ -299,7 +318,7 @@ void DataLoader::InputInitStruct::normalizeData() {
 void DataLoader::InputInitStruct::denormalizeExtr() {
     float stddev = sqrt(variance) + 1e-6f;
     for (auto& extr: extr_tmp) {
-        Base::Math::Mat4X4 W2C = quat2matrix(extr);
+        Base::Math::Mat4X4 W2C = quat2matrix4(extr);
         Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
         Base::Math::Vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
         
@@ -359,7 +378,7 @@ void DataLoader::InputInitStruct::getNerfppNorm() {
     this->radius = -1.0;
     Base::Math::Vec3 cam_centers = Base::Math::Vec3(0, 0, 0);
     for (auto& extr : extr_tmp) {
-        Base::Math::Mat4X4 W2C = quat2matrix(extr);
+        Base::Math::Mat4X4 W2C = quat2matrix4(extr);
         Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
         Base::Math::Vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
         cam_centers += cam_center;
@@ -367,7 +386,7 @@ void DataLoader::InputInitStruct::getNerfppNorm() {
     cam_centers /= extr_tmp.size();
     
     for (auto& extr : extr_tmp) {
-    	Base::Math::Mat4X4 W2C = quat2matrix(extr);
+    	Base::Math::Mat4X4 W2C = quat2matrix4(extr);
         Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
         Base::Math::Vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
         Base::Math::Vec3 dist = cam_centers - cam_center;

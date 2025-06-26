@@ -64,6 +64,7 @@ protected:
     std::vector<float> calcDepthRange();
     int calcScore(int image1, int image2);
     std::vector<int> selectViewPair();
+    
 };
 
 #endif //VULKAN_3DGS_HW_PATCH_COMPUTE_H

@@ -71,7 +71,8 @@ public:
         void denormalizePoints();
         
         
-        static Base::Math::Mat4X4 quat2matrix(InputInitStruct::DataExtr& extr);
+        static Base::Math::Mat4X4 quat2matrix4(InputInitStruct::DataExtr& extr);
+        static Base::Math::Mat3X3 quat2matrix3(InputInitStruct::DataExtr& extr);
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);
