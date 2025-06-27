@@ -29,9 +29,13 @@ public:
 	virtual bool prepare();
     virtual void initBuffersValues();
     
+    void debugOutputs(std::string dataPath);
+    
 protected:
     
     struct PatchBuffers {
+        
+        vkgs::Buffer image_arrays;
         
         vkgs::Buffer intrParams;
         vkgs::Buffer cameraR;

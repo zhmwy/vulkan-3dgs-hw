@@ -5,6 +5,7 @@
 
 #include <string>
 #include "VulkanOhos.h"
+#include "cores/buffer.h"
 #include "vk_mem_alloc.h"
 #include "vulkan/vulkan.h"
 
@@ -59,6 +60,8 @@ protected:
     void ComputeShaderMemoryBarrierBlock();
     void ComputeTransBarrierBlock();
     void TransComputeBarrierBlock();
+
+    void createGpu2CpuCopy(vkgs::Buffer &buffer);
     
     struct STComputePipeLine {
         VkDescriptorSetLayout descriptorSetLayout;    // Compute shader binding layout

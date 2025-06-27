@@ -3208,22 +3208,6 @@ void VulkanComputeGS::bindPipeline2CommandBufferPushConstants(
     ComputeShaderMemoryBarrierBlock();
 }
 
-void VulkanComputeGS::createGpu2CpuCopy(vkgs::Buffer &buffer)
-{
-    vkgs::CpuBuffer cpu_buffer = buffer.cpu_buffer;
-    VkBufferCopy region = {};
-    region.srcOffset = 0;
-    region.dstOffset = 0;
-    region.size = buffer.size();
-    vkCmdCopyBufferGS(
-        computeRes.commandBuffer,
-        buffer,
-        cpu_buffer,
-        1, &region
-    );
-    TransComputeBarrierBlock();
-}
-
 template <typename T>
 void VulkanComputeGS::printGpuBuffer(const std::string& varName, const vkgs::Buffer& buffer, int pointNum, int length, int offset)
 {

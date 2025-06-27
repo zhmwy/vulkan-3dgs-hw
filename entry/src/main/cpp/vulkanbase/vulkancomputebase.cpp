@@ -559,3 +559,19 @@ void VulkanComputeBase::ComputeShaderMemoryBarrierBlock()
         0, nullptr
     );
 }
+
+void VulkanComputeBase::createGpu2CpuCopy(vkgs::Buffer &buffer)
+{
+    vkgs::CpuBuffer cpu_buffer = buffer.cpu_buffer;
+    VkBufferCopy region = {};
+    region.srcOffset = 0;
+    region.dstOffset = 0;
+    region.size = buffer.size();
+    vkCmdCopyBufferGS(
+        computeRes.commandBuffer,
+        buffer,
+        cpu_buffer,
+        1, &region
+    );
+    TransComputeBarrierBlock();
+}

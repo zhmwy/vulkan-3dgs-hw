@@ -1,5 +1,7 @@
 #include "patch_compute.h"
 #include "base/math/matrix_util.h"
+
+#include <opencv2/opencv.hpp>
 #include <numeric>
 #include <unistd.h>
 
@@ -57,6 +59,21 @@ bool VulkanComputePatch::prepare()
     return true;
 }
 
+void VulkanComputePatch::debugOutputs(std::string dataPath)
+{
+    
+    buildComputeCommandBuffer([this](){
+        createGpu2CpuCopy(patchBuffers.image_arrays);
+    });
+    executeComputeCommand();
+    ComputeMemoryBarrierBlock();
+    
+    cv::Mat img(image_height, image_width, CV_8UC3, 
+                (uint8_t *)patchBuffers.image_arrays.cpu_buffer.data() + 15*image_width*image_height);
+    cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
+    cv::imwrite(dataPath + "/test.png", img);
+}
+
 void VulkanComputePatch::compute()
 {
     ;
@@ -69,6 +86,28 @@ void VulkanComputePatch::initBuffersValues()
     }
     
     buildComputeCommandBuffer([this]() {
+        
+        for (int i=0; i<inputGaussian.images.size(); ++i) {
+            VkBufferImageCopy copyRegionI = {};
+            copyRegionI.bufferOffset = i * image_width * image_height * 3 * sizeof(uint8_t);
+            copyRegionI.bufferRowLength = 0;         // Tightly packed
+            copyRegionI.bufferImageHeight = 0;       // Tightly packed
+            copyRegionI.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            copyRegionI.imageSubresource.mipLevel = 0;
+            copyRegionI.imageSubresource.baseArrayLayer = 0;
+            copyRegionI.imageSubresource.layerCount = 1;
+            copyRegionI.imageOffset = { 0, 0, 0 };
+            copyRegionI.imageExtent = {(unsigned int)(image_width), (unsigned int)(image_height), 1 };
+            
+            vkCmdCopyImageToBufferGS(
+                computeRes.commandBuffer,
+                inputGaussian.images[i].vkImage,
+                inputGaussian.images[i].vkImageLayout,
+                patchBuffers.image_arrays,
+                1,
+                &copyRegionI
+            );
+        }
         
         {
             ///暂时使用所有图像公用一个内存
@@ -117,13 +156,13 @@ void VulkanComputePatch::loadAssets(int origin_width, int origin_height)
             return;
         }
         cv::resize(img, img, cv::Size(origin_width, origin_height));
-        cv::cvtColor(img, img, cv::COLOR_BGR2RGBA);
+        cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
         
         vkbase::Texture2DGS texture_original;
         texture_original.fromImageBuffer(
             img.data,
-            origin_width * origin_height * 4,
-            VK_FORMAT_R8G8B8A8_UNORM,
+            origin_width * origin_height * 3,
+            VK_FORMAT_R8G8B8_UNORM,
             origin_width, origin_height, 
             vulkanDevice, computeRes.queue,
             VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
@@ -147,6 +186,10 @@ void VulkanComputePatch::DestoryPatchBuffers()
 
 void VulkanComputePatch::preparePatchBuffers()
 {
+    patchBuffers.image_arrays = vkgs::Buffer(
+        allocator, inputGaussian.images.size() * image_width * image_height * 3 * sizeof(uint8_t),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
     patchBuffers.intrParams = vkgs::Buffer(
         allocator, inputGaussian.images.size() * 4 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT

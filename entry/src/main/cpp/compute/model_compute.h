@@ -278,8 +278,6 @@ public:
         std::vector<uint32_t>& pushConstants
     );
 
-    void createGpu2CpuCopy(vkgs::Buffer &buffer);
-
     // 3dgs compute pipelines
     void setBufferFillPipeline();
     void setResetPSNRPipeline();

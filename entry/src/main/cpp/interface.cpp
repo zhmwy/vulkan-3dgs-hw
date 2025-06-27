@@ -162,6 +162,8 @@ void PatchImpVulkan::TrainVulkan() {
         
     _isTraining = true;
     GetProcessVulkan();
+    
+    _renderer->debugOutputs(_dataPath);
 
     try {
     } catch (...) {
@@ -187,7 +189,7 @@ float PatchImpVulkan::GetProcessVulkan() {
 
 
 extern "C" InterfaceVulkan* createInstanceVulkan() {
-    return new InterfaceImplVulkan();
+    return new PatchImpVulkan();
 }
 
 extern "C" void destoryInstanceVulkan(InterfaceVulkan* instance) {
