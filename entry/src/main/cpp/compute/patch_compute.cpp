@@ -1,5 +1,6 @@
 #include "patch_compute.h"
 #include "base/math/matrix_util.h"
+#include "opencv2/imgproc.hpp"
 
 #include <opencv2/opencv.hpp>
 #include <numeric>
@@ -63,20 +64,44 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
 {
     
     buildComputeCommandBuffer([this](){
-        createGpu2CpuCopy(patchBuffers.image_arrays);
+        //createGpu2CpuCopy(patchBuffers.image_arrays);
+        createGpu2CpuCopy(patchBuffers.planeHypotheses);
     });
     executeComputeCommand();
     ComputeMemoryBarrierBlock();
     
-    cv::Mat img(image_height, image_width, CV_8UC3, 
-                (uint8_t *)patchBuffers.image_arrays.cpu_buffer.data() + 15*image_width*image_height);
-    cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
-    cv::imwrite(dataPath + "/test.png", img);
+    //cv::Mat img(image_height, image_width, CV_8UC3, 
+    //                (uint8_t *)patchBuffers.image_arrays.cpu_buffer.data() + 15*image_width*image_height);
+    //cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
+    //cv::imwrite(dataPath + "/test.png", img);
+    
+    cv::Mat floatMat(image_height, image_width, CV_32FC4, 
+                (float *)patchBuffers.planeHypotheses.cpu_buffer.data());
+    cv::Mat ucharMat;
+    
+    std::stringstream ss;
+    ss  << "Matrix values:" << floatMat << std::endl;
+    
+    floatMat.convertTo(ucharMat, CV_8UC4, 255.0);
+    
+    cv::cvtColor(ucharMat, ucharMat, cv::COLOR_RGBA2BGR);
+    cv::imwrite(dataPath + "/test.png", ucharMat);
 }
 
 void VulkanComputePatch::compute()
 {
-    ;
+    buildComputeCommandBuffer([this](){
+        std::vector<uint32_t> pushConstants;
+        pushConstants.push_back(image_width);
+        pushConstants.push_back(image_height);
+        pushConstants.push_back(params.srcCount);
+        pushConstants.push_back(0);
+        
+        int X = ((int)(image_width) + 16 - 1) / 16; // Ceiling division
+        int Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
+        bindPipeline2CommandBufferPushConstants(pipeRandomInitialization, 0, X, Y, 1, pushConstants);
+    });
+    executeComputeCommand();
 }
 
 void VulkanComputePatch::initBuffersValues()
@@ -139,8 +164,9 @@ void VulkanComputePatch::initBuffersValues()
         }
     
         patchBuffers.depthRanges.FromCpu(computeRes.commandBuffer, calcDepthRange());
-        
         patchBuffers.srcPairs.FromCpu(computeRes.commandBuffer, selectViewPair());
+        
+        vkCmdFillBufferGS(computeRes.commandBuffer, patchBuffers.planeHypotheses, 0, VK_WHOLE_SIZE, 0);
     });
     executeComputeCommand();
 }
@@ -233,7 +259,40 @@ void VulkanComputePatch::preparePatchBuffers()
 
 void VulkanComputePatch::setupRandomInitializationPipeline()
 {
-    ;
+    const uint32_t bindingCount = 5;
+    createPipelineLayout(
+        pipeRandomInitialization,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4
+    );
+
+    std::vector<vkgs::Buffer*> pBuffers = {
+        &patchBuffers.image_arrays,
+        &patchBuffers.srcPairs,
+        &patchBuffers.intrParams,
+        &patchBuffers.depthRanges,
+        &patchBuffers.planeHypotheses
+    };
+
+    updateDescriptorSet(pipeRandomInitialization.descriptorSet, pBuffers);
+
+    pipeRandomInitialization.pipelines.resize(1);
+
+    std::string shaderCode = getPath("shader/patch/initialization.comp.spv");
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);
+    pipelineInfo.layout = pipeRandomInitialization.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeRandomInitialization.pipelines[0]
+        )
+    );
+
+    LOGI("[setupRandomInitializationPipeline] Random Initialization pipeline set");
 }
 
 std::vector<float> VulkanComputePatch::calcDepthRange()

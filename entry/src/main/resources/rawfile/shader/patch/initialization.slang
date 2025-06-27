@@ -26,7 +26,7 @@ float4 GenerateRandomPlaneHypothesis(float4 cameraK, const int2 p, const float d
 }
 
 [shader("compute")]
-[numthreads(BLOCK_X, BLOCK_Y, 1)]
+[numthreads(16, 16, 1)]
 void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 {
     uint2 p = {
@@ -49,6 +49,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float depth_max = depthRanges[currentImage*2+1];
 
     planeHypotheses[p.y * width + p.x] = GenerateRandomPlaneHypothesis(cameraK, p, depth_min, depth_max);
+    planeHypotheses[p.y * width + p.x] = {1.0, 0.0, 0.0, 1.0};
 }
 
 

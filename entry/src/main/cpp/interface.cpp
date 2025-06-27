@@ -162,14 +162,14 @@ void PatchImpVulkan::TrainVulkan() {
         
     _isTraining = true;
     GetProcessVulkan();
-    
-    _renderer->debugOutputs(_dataPath);
 
     try {
+        _renderer->compute();
     } catch (...) {
         
     }
     
+    _renderer->debugOutputs(_dataPath);
     updateProgress(100);
 }
 

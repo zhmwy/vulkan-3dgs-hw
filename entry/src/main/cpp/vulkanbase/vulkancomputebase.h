@@ -76,6 +76,15 @@ protected:
         bool usePushConstant,
         uint32_t pushConstantSize=0
     );
+    
+    void updateDescriptorSet(VkDescriptorSet& descriptorSet, std::vector<vkgs::Buffer*>& buffers);
+    
+    void bindPipeline2CommandBufferPushConstants(
+        const STComputePipeLine& pipe, 
+        const int PIPELINE_INDEX,
+        uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
+        std::vector<uint32_t>& pushConstants
+    );
 
     struct Compute {
         VkQueue queue;                                // Separate queue for compute commands

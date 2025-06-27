@@ -260,22 +260,11 @@ public:
     int image_height;
     int image_width;
 
-    void updateDescriptorSet(
-        VkDescriptorSet& descriptorSet,
-        std::vector<vkgs::Buffer*>& buffers
-    );
-
     void bindPipeline2CommandBuffer(
         const VulkanComputeGS::STComputePipeLine& pipe, 
         const int PIPELINE_INDEX,
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         bool float_constant = false
-    );
-    void bindPipeline2CommandBufferPushConstants(
-        const VulkanComputeGS::STComputePipeLine& pipe, 
-        const int PIPELINE_INDEX,
-        uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
-        std::vector<uint32_t>& pushConstants
     );
 
     // 3dgs compute pipelines

@@ -575,3 +575,53 @@ void VulkanComputeBase::createGpu2CpuCopy(vkgs::Buffer &buffer)
     );
     TransComputeBarrierBlock();
 }
+
+void VulkanComputeBase::updateDescriptorSet(
+    VkDescriptorSet& descriptorSet,
+    std::vector<vkgs::Buffer*>& buffers
+) {
+
+    // Prepare buffer info
+    std::unique_ptr<VkDescriptorBufferInfo[]> bufferInfos = std::make_unique<VkDescriptorBufferInfo[]>(buffers.size());
+    for (int i = 0; i < buffers.size(); ++i) {
+        bufferInfos[i] = { *buffers[i], 0, buffers[i]->size() };
+    }
+
+    // Write descriptor sets
+    std::vector<VkWriteDescriptorSet> descriptorWrites(buffers.size());
+
+    for (int i = 0; i < buffers.size(); ++i) {
+        descriptorWrites[i] = {};
+        descriptorWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[i].dstSet = descriptorSet;
+        descriptorWrites[i].dstBinding = i;
+        descriptorWrites[i].descriptorCount = 1;
+        descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[i].pBufferInfo = &bufferInfos[i];
+    }
+
+    vkUpdateDescriptorSetsGS(device, buffers.size(), descriptorWrites.data(), 0, nullptr);
+}
+
+void VulkanComputeBase::bindPipeline2CommandBufferPushConstants(
+    const STComputePipeLine& pipe, 
+    const int PIPELINE_INDEX,
+    uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
+    std::vector<uint32_t>& pushConstants
+) {
+    vkCmdBindPipelineGS(computeRes.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelines[PIPELINE_INDEX]);
+    vkCmdBindDescriptorSetsGS(computeRes.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.pipelineLayout, 0, 1, &pipe.descriptorSet, 0, nullptr);
+
+    // Push constants
+    vkCmdPushConstantsGS(
+        computeRes.commandBuffer, 
+        pipe.pipelineLayout, 
+        VK_SHADER_STAGE_COMPUTE_BIT, 
+        0, sizeof(uint32_t) * pushConstants.size(), 
+        pushConstants.data()
+    );
+
+    vkCmdDispatchGS(computeRes.commandBuffer, dispatchX, dispatchY, dispatchZ);
+
+    ComputeShaderMemoryBarrierBlock();
+}
