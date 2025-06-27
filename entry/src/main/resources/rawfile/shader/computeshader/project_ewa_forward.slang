@@ -200,8 +200,16 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     );
 
     float det = cov.x * cov.z - cov.y * cov.y;
-    if (det < EPS)
+    if (det < EPS) {
+        radius[idx] = 0;
+        tiles_torched[idx] = 0;
+        tiles_range[4 * idx] = 0;
+        tiles_range[4 * idx + 1] = 0;
+        tiles_range[4 * idx + 2] = 0;
+        tiles_range[4 * idx + 3] = 0;
         return;
+    }
+        
 
     cov2d_array[3 * idx] = cov.x;
     cov2d_array[3 * idx + 1] = cov.y;
@@ -211,13 +219,21 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float mid = 0.5f * (cov.x + cov.z);
     float lambda1 = mid + sqrt(max(0.1f, mid * mid - det));
     float lambda2 = mid - sqrt(max(0.1f, mid * mid - det));
-    float my_radius = ceil(3.f * sqrt(max(lambda1, lambda2)));
+    float my_radius = ceil(1.f * sqrt(max(lambda1, lambda2)));
     int2 grid = int2((width + BLOCK_X - 1) / BLOCK_X, (height + BLOCK_Y - 1) / BLOCK_Y);
     // int2 grid = int2(width, height);
     int4 range = get_rect(uvd_reg, int(my_radius), grid);
 
-    if ((range[2] - range[0]) * (range[3] - range[1]) <= 0)
+    if ((range[2] - range[0]) * (range[3] - range[1]) <= 0) {
+        radius[idx] = int32_t(my_radius);
+        tiles_torched[idx] = 0;
+        tiles_range[4 * idx] = 0;
+        tiles_range[4 * idx + 1] = 0;
+        tiles_range[4 * idx + 2] = 0;
+        tiles_range[4 * idx + 3] = 0;
         return;
+    }
+        
     radius[idx] = int32_t(my_radius);
     tiles_torched[idx] = ((range[2] - range[0]) * (range[3] - range[1]));
 
