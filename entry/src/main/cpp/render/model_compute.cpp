@@ -871,7 +871,7 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
         splat_count * 1.11 < MAX_SPLAT_COUNT && 
         training_step < densify_end_step)
     {
-        densifyCmd();
+//         densifyCmd();
     }
     
     if (training_step % 1000 == 0 && training_step > 3000)
