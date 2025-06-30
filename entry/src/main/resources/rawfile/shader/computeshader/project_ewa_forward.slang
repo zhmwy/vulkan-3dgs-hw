@@ -100,6 +100,11 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
     float3 scale_act_reg = exp(scale_reg);
     opacity_act_array[idx] = 1 / (1 + exp(-opacity_array[idx]));
+    if (opacity_act_array[idx] < min_opacity) {
+        visible_array[idx] = 0;
+        return;
+    }
+
 
     // if (training_step >= 501 && (training_step - 1) % 100 == 0) {
     //     if (opacity_act_array[idx] < min_opacity) {
@@ -139,15 +144,22 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         xc.z
     );
 
-    float x_limit_min = -0.15 * width;
-    float x_limit_max = 1.15 * width;
-    float y_limit_min = -0.15 * height;
-    float y_limit_max = 1.15 * height;
-    if (uvd_reg.x < x_limit_min || uvd_reg.x > x_limit_max ||
-        uvd_reg.y < y_limit_min || uvd_reg.y > y_limit_max) {
+    // float x_limit_min = -0.15 * width;
+    // float x_limit_max = 1.15 * width;
+    // float y_limit_min = -0.15 * height;
+    // float y_limit_max = 1.15 * height;
+    // if (uvd_reg.x < x_limit_min || uvd_reg.x > x_limit_max ||
+    //     uvd_reg.y < y_limit_min || uvd_reg.y > y_limit_max) {
+    //     visible_array[idx] = 0;
+    //     return;
+    // }
+
+    if (uvd_reg.x < 0 || uvd_reg.x >= width ||
+        uvd_reg.y < 0 || uvd_reg.y >= height) {
         visible_array[idx] = 0;
         return;
     }
+
 
     uvd_array[3 * idx] = uvd_reg.x;
     uvd_array[3 * idx + 1] = uvd_reg.y;
@@ -188,8 +200,16 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     );
 
     float det = cov.x * cov.z - cov.y * cov.y;
-    if (det < EPS)
+    if (det < EPS) {
+        radius[idx] = 0;
+        tiles_torched[idx] = 0;
+        tiles_range[4 * idx] = 0;
+        tiles_range[4 * idx + 1] = 0;
+        tiles_range[4 * idx + 2] = 0;
+        tiles_range[4 * idx + 3] = 0;
         return;
+    }
+        
 
     cov2d_array[3 * idx] = cov.x;
     cov2d_array[3 * idx + 1] = cov.y;
@@ -199,13 +219,21 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float mid = 0.5f * (cov.x + cov.z);
     float lambda1 = mid + sqrt(max(0.1f, mid * mid - det));
     float lambda2 = mid - sqrt(max(0.1f, mid * mid - det));
-    float my_radius = ceil(3.f * sqrt(max(lambda1, lambda2)));
+    float my_radius = ceil(1.f * sqrt(max(lambda1, lambda2)));
     int2 grid = int2((width + BLOCK_X - 1) / BLOCK_X, (height + BLOCK_Y - 1) / BLOCK_Y);
     // int2 grid = int2(width, height);
     int4 range = get_rect(uvd_reg, int(my_radius), grid);
 
-    if ((range[2] - range[0]) * (range[3] - range[1]) <= 0)
+    if ((range[2] - range[0]) * (range[3] - range[1]) <= 0) {
+        radius[idx] = int32_t(my_radius);
+        tiles_torched[idx] = 0;
+        tiles_range[4 * idx] = 0;
+        tiles_range[4 * idx + 1] = 0;
+        tiles_range[4 * idx + 2] = 0;
+        tiles_range[4 * idx + 3] = 0;
         return;
+    }
+        
     radius[idx] = int32_t(my_radius);
     tiles_torched[idx] = ((range[2] - range[0]) * (range[3] - range[1]));
 

@@ -82,10 +82,14 @@ public:
     int training_step = 0;
     int max_training_step = 10000;
     
+    int densify_start_step = 350;
+    int densify_end_step = 1300;
+    int densify_interval_step = 100;
+    
     float low_resolotion_scale = 0.25;
 
-    int flow_steps = 1300;
-    int low_resolution_steps = 1000;
+    int flow_steps = 200000;
+    int low_resolution_steps = 500;
     int sh_degree = 1;
     
     RandomGenerator random_generator;
