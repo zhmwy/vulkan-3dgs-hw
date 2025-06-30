@@ -109,3 +109,10 @@ void testHomoGraphy()
     //  [ 0.  1.  0.]
     //  [ 0.  0.  1.]]
 }
+
+void testBilateray()
+{
+    float w1 = ComputeBilateralWeight(0, 0, 0.5, 0.5, 1.0, 0.1);    // 1
+    float w2 = ComputeBilateralWeight(2.0, 0, 0.5, 0.5, 1.0, 0.1);  // 0.367887948
+    float w3 = ComputeBilateralWeight(0, 0, 0.6, 0.5, 1.0, 0.1);    // 0.006737939
+}

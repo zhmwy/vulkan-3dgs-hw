@@ -175,3 +175,10 @@ void ComputeHomography(Camera ref_camera, Camera src_camera, float4 plane_hypoth
     H[7] = tmp[7];
     H[8] = tmp[8];
 }
+
+float ComputeBilateralWeight(float x_dist, float y_dist, float pix, float center_pix, float sigma_spatial, float sigma_color) {
+    float spatial_dist = sqrt(x_dist * x_dist + y_dist * y_dist);
+    float color_dist = abs(pix - center_pix);
+    return exp(-spatial_dist / (2.0 * sigma_spatial * sigma_spatial) -
+               color_dist / (2.0 * sigma_color * sigma_color));
+}
