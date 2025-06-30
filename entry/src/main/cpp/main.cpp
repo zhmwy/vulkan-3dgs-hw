@@ -219,6 +219,7 @@ struct AsyncContext {
 void ExecuteTraining(napi_env env, void* data) {
     AsyncContext* context = static_cast<AsyncContext*>(data);
     context->impl->InitVulkan(context->datapath, context->outputpath, g_progress_cb_train);
+//     context->impl->InitVulkan(context->datapath, context->outputpath, nullptr);
     context->impl->TrainVulkan();
 }
 

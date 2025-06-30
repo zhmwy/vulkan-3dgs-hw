@@ -550,7 +550,7 @@ void VulkanComputeGS::zeroGradCmd()
     
 //     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.tile_range, 0, VK_WHOLE_SIZE, 0);
     
-//     TransComputeBarrierBlock();
+    TransComputeBarrierBlock();
 }
 
 void VulkanComputeGS::forwardCmd()
@@ -607,7 +607,6 @@ void VulkanComputeGS::forwardCmdTime()
     bindPipeline2CommandBuffer(pipe_inverse, FORWARD_PIPE, X, 1, 1);
     queryCmdTimeEnd("07. forward_inverse");
     /********************* Inverse index gaussian point ***********************/
-
     
     queryCmdTimeStart("08. forward_fill_tile_range");
     uint32_t grid_width = (int)(current_scale * image_width) / 16;
@@ -641,6 +640,10 @@ void VulkanComputeGS::forwardCmdTime()
 
     bindPipeline2CommandBuffer(pipe_compute_tile, FORWARD_PIPE, X, 1, 1);
     queryCmdTimeEnd("12. forward_compute_tile");
+    
+    queryCmdTimeStart("02. reset_grad");
+    zeroGradCmd();
+    queryCmdTimeEnd("02. reset_grad");
     
     /*********************  Alpha blending ***********************/
     queryCmdTimeStart("13. forward_blend");
@@ -817,10 +820,7 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
     queryCmdTimeStart("01. image_to_buffer");
     imageToBufferCmd();
     queryCmdTimeEnd("01. image_to_buffer");
-
-    queryCmdTimeStart("02. reset_grad");
-    zeroGradCmd();
-    queryCmdTimeEnd("02. reset_grad");
+    
 
     queryCmdTimeStart("03. forward_fill_visible_point");
     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.splat_visible_point_count, 0, size, 0);
@@ -871,7 +871,7 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
         splat_count * 1.11 < MAX_SPLAT_COUNT && 
         training_step < densify_end_step)
     {
-//         densifyCmd();
+        densifyCmd();
     }
     
     if (training_step % 1000 == 0 && training_step > 3000)

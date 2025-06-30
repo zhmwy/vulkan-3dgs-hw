@@ -2,22 +2,11 @@
 
 #define SHARE_CHUNK_SIZE 32
 
-groupshared int32_t shared_idx[SHARE_CHUNK_SIZE];
+// groupshared int32_t shared_idx[SHARE_CHUNK_SIZE];
 groupshared float3 shared_uvd[SHARE_CHUNK_SIZE];
 groupshared float3 shared_invcov[SHARE_CHUNK_SIZE];
 groupshared float shared_opacity[SHARE_CHUNK_SIZE];
 groupshared float3 shared_feature[SHARE_CHUNK_SIZE];
-
-// uint t2i(uint a, uint b, uint x) // tuple to index
-// {
-//     return a * x + b;
-// }
-
-// uint t2i(uint a, uint b, uint c, uint x, uint y) // tuple to index
-// {
-//     return a * x * y + b * y;
-// }
-
 
 // Buffer bindings
 [[vk::binding(0)]] StructuredBuffer<float> uvd_array;
@@ -89,22 +78,25 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         if (gaussian_range.x + num_loaded < gaussian_range.y && item_idx < SHARE_CHUNK_SIZE) {
             // item_idx: index of gaussian in the chunk
             // gidx: gaussian index in the global array
+
             int32_t gidx = sort_idx_array[gaussian_range.x + num_loaded];
-            shared_idx[item_idx] = gidx;
-            // shared_uvd[item_idx] = uvd_array[gidx];
+
+            // shared_idx[item_idx] = gidx;
+
             shared_uvd[item_idx] = float3(
                 uvd_array[3 * gidx],
                 uvd_array[3 * gidx + 1],
                 uvd_array[3 * gidx + 2]
             );
-            // shared_invcov[item_idx] = conic_array[gidx];
+
             shared_invcov[item_idx] = float3(
                 conic_array[3 * gidx],
                 conic_array[3 * gidx + 1],
                 conic_array[3 * gidx + 2]
             );
+
             shared_opacity[item_idx] = opacity_array[gidx];
-            // shared_feature[item_idx] = feature_array[gidx];
+
             shared_feature[item_idx] = float3(
                 feature_array[3 * gidx],
                 feature_array[3 * gidx + 1],
