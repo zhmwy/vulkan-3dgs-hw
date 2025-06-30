@@ -16,7 +16,6 @@ const TAG: string = "ImageSegmentationSample";
 const caseName: string = "human_bie";
 
 
-
 @Entry
 @Component
 struct Index {

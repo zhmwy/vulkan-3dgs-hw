@@ -73,7 +73,7 @@ void VulkanComputeGS::encoderenderSelectedImage()
     bindPipeline2CommandBuffer(pipe_buffer_fill, 0, X, 1, 1);
     if(training_step > flow_steps){
         copyBaseCmd();
-        bindPipeline2CommandBuffer(pipe_flow, FORWARD_PIPE, X, 1, 1);
+//         bindPipeline2CommandBuffer(pipe_flow, FORWARD_PIPE, X, 1, 1);
     }
     bindPipeline2CommandBuffer(pipe_project_render, FORWARD_PIPE, X, 1, 1);
     bindPipeline2CommandBuffer(pipe_sh_render, FORWARD_PIPE, X, 1, 1, true);
