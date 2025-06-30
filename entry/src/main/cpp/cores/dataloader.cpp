@@ -1044,7 +1044,7 @@ void DataLoader::loadPatchInput(const std::string scenepath, DataLoader::InputIn
         float fx, fy, cx, cy;
 
         if (cameraFilePath == scenepath + "/cameras.txt") {
-            if (!(iss >> cameraId >> camera_type >> data.height >> data.width >> fx >> fy >> cy >> cx)) {
+            if (!(iss >> cameraId >> camera_type >> data.width >> data.height >> fx >> fy >> cx >> cy)) {
                 continue;
             }
         }

@@ -1,41 +1,21 @@
 
 
-// 高质量随机数生成器 (输入为归一化坐标)
-// 输入: normCoord - 归一化像素坐标 (范围[0,1])
-//       callCount - 调用次数/帧计数
-// 输出: [0,1)范围内的随机数
-float randomNormalized(float2 normCoord, uint callCount)
-{
-    // 将归一化坐标映射到大整数范围
-    uint2 intCoords = uint2(
-        uint(normCoord.x * 4294967295.0),  // 将[0,1]映射到32位整数范围
-        uint(normCoord.y * 4294967295.0)
-    );
+//float random(float2 st, uint iCall) {
+//    return fract(sin(dot(st, float2(12.9898, 78.233))) * 43758.5453123 * iCall);
+//}
 
-    // PCG哈希算法 (改良版)
-    uint seed = (intCoords.x * 1973) ^ (intCoords.y * 9277) + callCount * 26699;
-    seed = seed * 747796405 + 1;
-    seed = (seed ^ (seed >> 16)) * 277803737;
-    seed = seed ^ (seed >> 16);
-
-    // 转换为[0,1)范围的高精度浮点数
-    return float(seed) * (1.0 / 4294967296.0);
+// 移动端友好的Xorshift随机数
+uint mobileRand(in uint2 coord, in uint frame) {
+    uint seed = (coord.x * 1973u) ^ (coord.y * 9277u) + frame;
+    seed ^= seed << 13u;
+    seed ^= seed >> 17u;
+    seed ^= seed << 5u;
+    return seed;
 }
 
-// 基于像素位置和调用次数的伪随机数生成器
-// 返回值范围: [0.0, 1.0)
-float random(uint2 pixelCoord, uint callCount)
-{
-    // 使用哈希算法混合坐标和调用次数
-    uint seed = (pixelCoord.x * 1973) ^ (pixelCoord.y * 9277) + callCount * 26699;
-
-    // 简单的PCG哈希算法变种
-    seed = seed * 747796405 + 1;
-    uint word = (seed >> ((seed >> 28) + 4)) ^ seed;
-    uint result = (word * 277803737) >> 22;
-
-    // 转换为[0,1)范围的浮点数
-    return fract(float(result) / 4294967296.0);
+float random(in uint2 coord, in uint frame) {
+    uint2 offCoord = {197, 197};
+    return (float(mobileRand(coord, frame)) * (1.0 / 4294967296.0) + float(mobileRand(coord+offCoord, frame)) * (1.0 / 4294967296.0)) / 2.0;
 }
 
 float3 Get3DPoint(float4 cameraK, int2 p, float depth)
@@ -72,9 +52,8 @@ float4 GenerateRandomNormal(float4 cameraK, const int2 p, const float depth)
     float q1 = 1.0f;
     float q2 = 1.0f;
     float s  = 2.0f;
-    int idx = 1;
 
-    // 使用帧索引和像素坐标作为随机种子
+    int idx = currentImage;
     while (s >= 1.0f) {
         q1 = 2.0f * random(p, idx) - 1.0f;
         q2 = 2.0f * random(p + int2(37, 17), idx + 1) - 1.0f;
@@ -82,11 +61,25 @@ float4 GenerateRandomNormal(float4 cameraK, const int2 p, const float depth)
         idx = idx + 1;
     }
 
+    idx = (uint)(random(p + int2(113, 127), currentImage)) * 32771;
+
     const float sq = sqrt(1.0f - s);
     float4 normal;
-    normal.x = 2.0f * q1 * sq;
-    normal.y = 2.0f * q2 * sq;
-    normal.z = 1.0f - 2.0f * s;
+    if (idx % 3 == 0) {
+        normal.x = 2.0f * q1 * sq;
+        normal.y = 2.0f * q2 * sq;
+        normal.z = 1.0f - 2.0f * s;
+    }
+    else if (idx % 3 == 1) {
+        normal.y = 2.0f * q1 * sq;
+        normal.z = 2.0f * q2 * sq;
+        normal.x = 1.0f - 2.0f * s;
+    }
+    else if (idx % 3 == 2) {
+        normal.z = 2.0f * q1 * sq;
+        normal.x = 2.0f * q2 * sq;
+        normal.y = 1.0f - 2.0f * s;
+    }
     normal.w = 0.0f;
 
     float4 view_direction = GetViewDirection(cameraK, p, depth);

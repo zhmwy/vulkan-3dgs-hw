@@ -62,13 +62,15 @@ bool VulkanComputePatch::prepare()
 
 void VulkanComputePatch::debugOutputs(std::string dataPath)
 {
-    
     buildComputeCommandBuffer([this](){
+        ComputeTransBarrierBlock();
         //createGpu2CpuCopy(patchBuffers.image_arrays);
         createGpu2CpuCopy(patchBuffers.planeHypotheses);
+        createGpu2CpuCopy(patchBuffers.depthRanges);
     });
     executeComputeCommand();
-    ComputeMemoryBarrierBlock();
+    
+    VK_CHECK_RESULT(vkQueueWaitIdleGS(computeRes.queue));
     
     //cv::Mat img(image_height, image_width, CV_8UC3, 
     //                (uint8_t *)patchBuffers.image_arrays.cpu_buffer.data() + 15*image_width*image_height);
@@ -77,11 +79,11 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
     
     cv::Mat floatMat(image_height, image_width, CV_32FC4, 
                 (float *)patchBuffers.planeHypotheses.cpu_buffer.data());
-    cv::Mat ucharMat;
     
     std::stringstream ss;
     ss  << "Matrix values:" << floatMat << std::endl;
     
+    cv::Mat ucharMat; 
     floatMat.convertTo(ucharMat, CV_8UC4, 255.0);
     
     cv::cvtColor(ucharMat, ucharMat, cv::COLOR_RGBA2BGR);
