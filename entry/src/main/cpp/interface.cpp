@@ -44,7 +44,7 @@ void InterfaceImplVulkan::TrainVulkan() {
     if (!_isInitialized || _isTraining) return;
         
     _isTraining = true;
-    GetProcessVulkan();
+//     GetProcessVulkan();
 
     try {
         std::vector<int> max_steps = {1499, 500, 500};
@@ -53,8 +53,8 @@ void InterfaceImplVulkan::TrainVulkan() {
         for (int step = 0; step < max_steps[0]; ++step) {
             if (!_isTraining) break;
             _renderer->render();
-            updateProgress(static_cast<float>(step * 100) / max_steps[0]);
-            GetProcessVulkan();
+//             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
+//             GetProcessVulkan();
         }
         
         _renderer->saveCameras(_dataPath);
@@ -72,12 +72,13 @@ void InterfaceImplVulkan::TrainVulkan() {
             LOGI("PSNR: %{public}f", _renderer->total_psnr / _renderer->inputGaussian.img_list.size());
             LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
             
-            updateProgress(100.0f);
-            GetProcessVulkan();
+//             updateProgress(100.0f);
+//             GetProcessVulkan();
         }
     } catch (...) {
         _isTraining = false;
     }
+    
     _isTraining = false;
 }
 

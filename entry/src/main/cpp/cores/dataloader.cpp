@@ -956,51 +956,68 @@ std::vector<cv::Point> DataLoader::projectHeadCenter(DataLoader::InputInitStruct
     return projected_points;
 }
 
-void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, std::vector<cv::Point>& faceCenters){
-           
+void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
+                                   std::vector<cv::Point>& faceCenters) {
+    // Create directories
     std::filesystem::create_directories(scenepath + "/human");
     std::filesystem::create_directories(scenepath + "/human/images");
     
-    // Copy intr_tmp multiple times to support adding face regions. 
+    // Copy intr_tmp multiple times to support adding face regions
     if (data.intr_tmp.size() == 1 && data.extr_tmp.size() > 1) {
-        // Get the number of extrinsics
         size_t N = data.extr_tmp.size();
-        
-        // Use the resize function with a copy of the first element
         std::vector<float> first_intrinsic = data.intr_tmp[0];
         data.intr_tmp.resize(N, first_intrinsic);
     }
     
-    // Double extr_tmp to support adding face regions.
-    data.extr_tmp.insert(data.extr_tmp.end(), data.extr_tmp.begin(), data.extr_tmp.end());
-    data.time_stamps.insert(data.time_stamps.end(), data.time_stamps.begin(), data.time_stamps.end());
-    data.extr_tmp_test = data.extr_tmp;
+    cv::Mat orig_img = cv::imread(data.img_list[0]);
+    float scale_factor = orig_img.size[0] / 640;
     
-    for(int i=0; i<faceCenters.size(); ++i){
-        // Find the position of "images"
+    // Parse keypoints file to calculate optimal face dimensions
+    std::string keypointsPath = scenepath + "/keypoints.txt";
+    std::vector<KeypointData> keypoints = parseKeypointsFile(keypointsPath);
+    cv::Size optimalFaceSize = calculateOptimalFaceDimensions(keypoints);
+    optimalFaceSize = cv::Size(optimalFaceSize.width * scale_factor, optimalFaceSize.height * scale_factor);
+    
+    LOGI("Optimal face dimensions: width=%{public}d, height=%{public}d", 
+         optimalFaceSize.width, optimalFaceSize.height);
+    
+    // Process each face center
+    for (int i = 0; i < faceCenters.size(); ++i) {
+        if(faceCenters[i].x <= 0 || faceCenters[i].y <= 0 || faceCenters[i].x >= orig_img.cols || faceCenters[i].y >= orig_img.rows){
+            continue;
+        }
         std::string path = data.img_list[i];
-        size_t pos = path.find("images");
-                
-        // Check if "images" was found
-//         if (pos != std::string::npos) {
-//             path.replace(pos, 6, "images_orig");
-//         }
-        pos = path.find_last_of('/');
+        size_t pos = path.find_last_of('/');
         std::string basename = path.substr(pos + 1);
-                
-//         LOGI("Reading from %{public}s", path.c_str());
+        
+        // Read original image
         cv::Mat orig_img = cv::imread(path);
-        float scale_factor = orig_img.size[0] / 640;
+        cv::Point scaledFaceCenter = faceCenters[i] * scale_factor;
+        
+        // Schedule 2: Optimal face crops (no intrinsics calculation)
+        auto begin = clk::now();
+        cropAndSaveFace(orig_img, scaledFaceCenter, optimalFaceSize, scenepath + "/images/" + basename);
+        LOGW("Beauty filter takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+        
+        // Schedule 1: Original 480x640 crops with intrinsics calculation
         cv::Point topLeft;
-        cv::Mat cropped_img = cropImage(orig_img, faceCenters[i] * scale_factor, cv::Size(480, 640), topLeft); //Size是width, height的顺序
-        cv::imwrite(scenepath + "/human/images/" + basename, cropped_img);
+        orig_img = cv::imread(path);
+        cv::Mat cropped_img_480x640 = cropImage(orig_img, scaledFaceCenter, 
+                                                cv::Size(480, 640), topLeft);
+        cv::imwrite(scenepath + "/human/images/" + basename, cropped_img_480x640);
         data.img_list.push_back(scenepath + "/human/images/" + basename);
         
+        // Calculate new intrinsics for the 480x640 crop
         std::vector<float> intr = data.intr_tmp[0];
-        std::vector<float> new_intr = calculateNewIntrinsics(intr[0], intr[1], intr[2], intr[3], topLeft, cv::Size(480, 640), scale_factor);
-        LOGI("fx:%{public}f fy:%{public}f cx:%{public}f cy:%{public}f", new_intr[0], new_intr[1], new_intr[2], new_intr[3]);
+        std::vector<float> new_intr = calculateNewIntrinsics(intr[0], intr[1], intr[2], intr[3], 
+                                                            topLeft, cv::Size(480, 640), scale_factor);
+        LOGI("fx:%{public}f fy:%{public}f cx:%{public}f cy:%{public}f", 
+             new_intr[0], new_intr[1], new_intr[2], new_intr[3]);
         data.intr_tmp.push_back(new_intr);
+        data.extr_tmp.push_back(data.extr_tmp[i]);
+        data.time_stamps.push_back(data.time_stamps[i]);
     }
+    data.extr_tmp_test = data.extr_tmp;
 }
 
 // calculate robust min/max
@@ -1245,10 +1262,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
-        bool is_human = HumanPreprocess(scenepath, data.head_bbox, data.body_bbox);
-        
-//         data.body_bbox = std::vector<float>{-10, 10, -10, 10, -10, 10};
-//         bool is_human = false;
+//         bool is_human = HumanPreprocess(scenepath, data.head_bbox, data.body_bbox);
+        bool is_human = false;
         std::string pointsFilePath = slampath + "/points3D.txt";
         load3DPoints(pointsFilePath, data);
         

@@ -78,11 +78,7 @@ std::vector<float> calculateNewIntrinsics(
     const cv::Point& crop_origin, 
     const cv::Size& highres_crop_size,
     float scale_factor) {
-    
-    // Calculate new principal point after cropping
-    // Adjust for the crop offset and scale to high-res
-//     double new_cx = (cx - crop_origin.x) * scale_factor;
-//     double new_cy = (cy - crop_origin.y) * scale_factor;
+
     float new_cx = cx * scale_factor - crop_origin.x;
     float new_cy = cy * scale_factor - crop_origin.y;
     
@@ -90,181 +86,139 @@ std::vector<float> calculateNewIntrinsics(
     float new_fx = fx * scale_factor;
     float new_fy = fy * scale_factor;
     
-    // Format the new intrinsics
-//     std::stringstream ss;
-//     ss << 0 << " PINHOLE " 
-//        << highres_crop_size.width << " " 
-//        << highres_crop_size.height << " "
-//        << new_fx << " "
-//        << new_fy << " "
-//        << new_cx << " "
-//        << new_cy;
-    
     std::vector<float> new_intr = {new_fx, new_fy, new_cx, new_cy};
     
     return new_intr;
 }
-#if 0
-// Process all images
-cv::Size processImages(
-    const std::string& mask_folder, 
-    const std::string& highres_folder,
-    const std::string& images_folder,
-    const std::string& slam_folder,
-    std::vector<float>& intr) {
-    
-    std::string intrinsics_output_file = slam_folder + "/cameras.txt";
-    
-    // Get all mask files
-    std::vector<fs::path> mask_files;
-    for (const auto& entry : fs::directory_iterator(mask_folder)) {
-        if (entry.is_regular_file()) {
-            mask_files.push_back(entry.path());
-        }
-    }
-    
-    // Sort mask files by name
-    std::sort(mask_files.begin(), mask_files.end());
-    
-    // Calculate the scale factor between high-res and mask images
-    const double scale_factor = 2.25; // 1440/480 = 1920/640 = 3
-    
-    // Original camera intrinsics
-    double fx = intr[0];
-    double fy = intr[1];
-    double cx = intr[2];
-    double cy = intr[3];
 
-    // Gather all bounding boxes first to determine final size
-    std::vector<BoundingBox> all_bboxes;
+// Function to parse keypoints.txt file
+std::vector<KeypointData> parseKeypointsFile(const std::string& filepath) {
+    std::vector<KeypointData> keypoints;
+    std::ifstream file(filepath);
     
-    for (const auto& mask_file : mask_files) {
-        // Load mask image
-        cv::Mat mask = cv::imread(mask_file.string(), cv::IMREAD_GRAYSCALE);
-        if (mask.empty()) {
-            LOGE("Failed to load mask from %{public}s", mask_file.string().c_str());
-            continue;
+    if (!file.is_open()) {
+        LOGI("Failed to open keypoints.txt file at %{public}s", filepath.c_str());
+        return keypoints;
+    }
+    
+    std::string line;
+    while (std::getline(file, line)) {
+        // Skip empty lines
+        if (line.empty()) continue;
+        
+        // First line should be filename
+        KeypointData kp;
+        kp.filename = line;
+        
+        // Read bounding box
+        if (!std::getline(file, line)) break;
+        std::istringstream bbox_stream(line);
+        bbox_stream >> kp.bbox.x >> kp.bbox.y >> kp.bbox.width >> kp.bbox.height;
+        
+        // Read 17 keypoints
+        std::vector<cv::Point2f> points(17);
+        std::vector<float> confidences(17);
+        
+        for (int i = 0; i < 17; ++i) {
+            if (!std::getline(file, line)) break;
+            std::istringstream kp_stream(line);
+            kp_stream >> points[i].x >> points[i].y >> confidences[i];
         }
         
-        // Threshold to ensure binary mask
-        cv::threshold(mask, mask, 125, 255, cv::THRESH_BINARY);
+        // Assign specific keypoints we need
+        kp.nose = points[0];
+        kp.leftEye = points[1];
+        kp.rightEye = points[2];
+        kp.leftEar = points[3];
+        kp.rightEar = points[4];
+        kp.leftShoulder = points[5];
+        kp.rightShoulder = points[6];
         
-        // Calculate bounding box
-        BoundingBox bbox = calculateBoundingBox(mask);
-        all_bboxes.push_back(bbox);
+        // Store confidence values for keypoints we use in dimension calculation
+        kp.leftEarConf = confidences[3];
+        kp.rightEarConf = confidences[4];
+        kp.leftShoulderConf = confidences[5];
+        kp.rightShoulderConf = confidences[6];
+        
+        keypoints.push_back(kp);
     }
     
-    if (all_bboxes.empty()) {
-        LOGE("No valid bounding boxes found!");
-    }
-    
-    // Calculate final bounding box size
-    cv::Size final_bbox_size = calculateFinalBoundingBoxSize(all_bboxes);
-    LOGI("Final bounding box size: %{public}d x %{public}d", final_bbox_size.width, final_bbox_size.height);
-    
-    // Scale the final bounding box size for high-res images
-    cv::Size highres_bbox_size(final_bbox_size.width * scale_factor, final_bbox_size.height * scale_factor);
-    
-    // Open file for writing new intrinsics
-    std::ofstream intrinsics_file(intrinsics_output_file);
-    if (!intrinsics_file.is_open()) {
-        LOGE("Failed to open intrinsics output file from %{public}s",intrinsics_output_file.c_str());
-    }
-    
-    // Process each image pair
-    for (size_t i = 0; i < mask_files.size(); ++i) {
-        std::string mask_filename = mask_files[i].filename().string();
-        
-        // Construct high-res filename (assuming same name)
-        std::string highres_path = (fs::path(highres_folder) / mask_filename).string();
-        
-        // Load mask image
-        cv::Mat mask = cv::imread(mask_files[i].string(), cv::IMREAD_GRAYSCALE);
-        if (mask.empty()) {
-            LOGE("Failed to load mask from %{public}s", mask_files[i].string().c_str());
-            continue;
-        }
-        
-        // Threshold to ensure binary mask
-        cv::threshold(mask, mask, 1, 255, cv::THRESH_BINARY);
-        
-        // Load high-res image
-        cv::Mat highres = cv::imread(highres_path);
-        if (highres.empty()) {
-            LOGE("Failed to load high-res image from %{public}s", highres_path.c_str());
-            continue;
-        }
-        
-        // Calculate bounding box for mask
-        BoundingBox bbox = all_bboxes[i];
-        
-        // Crop mask using the final bbox size
-        cv::Point mask_crop_origin;
-        cv::Mat cropped_mask = cropImage(mask, bbox.center, final_bbox_size, mask_crop_origin);
-        
-        // Scale center for high-res image
-        cv::Point highres_center(bbox.center.x * scale_factor, bbox.center.y * scale_factor);
-        cv::Point highres_crop_origin;
-        
-        // Crop high-res image
-        cv::Mat cropped_highres = cropImage(highres, highres_center, highres_bbox_size, highres_crop_origin);
-        
-        // Resize the cropped mask to match the high-res crop
-        cv::Mat resized_mask;
-        cv::resize(cropped_mask, resized_mask, highres_bbox_size, 0, 0, cv::INTER_NEAREST);
-        
-        // Apply mask to high-res image
-        cv::Mat result;
-        cv::bitwise_and(cropped_highres, cropped_highres, result, resized_mask);
-        
-        // Save result
-        std::string output_path = (fs::path(images_folder) / mask_filename).string();
-        cv::imwrite(output_path, result);
-        cv::imwrite("/data/storage/el1/base/haps/entry/files/temp/" + std::to_string(i) + ".jpg", result);
-
-        LOGI("Saving new images to %{public}s.", output_path.c_str());
-        
-        // Calculate new intrinsics
-        std::string new_intrinsics = calculateNewIntrinsics(
-            fx, fy, cx, cy,
-            mask_crop_origin, 
-            highres_bbox_size,
-            scale_factor
-        );
-        
-        // Write to file
-        intrinsics_file << new_intrinsics << std::endl;
-    }
-    
-    intrinsics_file.close();
-    LOGI("Processing completed. Processed %{public}zu images.", mask_files.size());
-    LOGI("Saving intrinsics to %{public}s.", intrinsics_output_file.c_str());
-    
-    return highres_bbox_size;
+    file.close();
+    return keypoints;
 }
 
-void manageHeadMasks(std::string dataPath, int& width, int& height, std::vector<float>& intr) {
-    // Default paths
-    std::string mask_folder = dataPath + "/head/head_masks";
-    std::string highres_folder = dataPath + "/images_orig";
-    std::string output_img_folder = dataPath + "/head/images";
-    std::string output_slam_folder = dataPath + "/head/slam";
+// Calculate optimal face bounding box dimensions based on keypoints
+cv::Size calculateOptimalFaceDimensions(const std::vector<KeypointData>& keypoints) {
+    float maxEarDistance = 0.0f;
+    float maxShoulderToTopDistance = 0.0f;
+    const float confidenceThreshold = 0.7f;
     
-    // Create output folder if it doesn't exist
-    if (!fs::exists(output_img_folder)) {
-        LOGI("Creating %{public}s", output_img_folder.c_str());
-        fs::create_directories(output_img_folder);
+    for (const auto& kp : keypoints) {
+        // Calculate ear-to-ear distance only if both ears have high confidence
+        if (kp.leftEarConf >= confidenceThreshold && kp.rightEarConf >= confidenceThreshold) {
+            float earDistance = std::abs(kp.leftEar.x - kp.rightEar.x);
+            maxEarDistance = std::max(maxEarDistance, earDistance);
+        }
+        
+        // Calculate distance from bbox top to shoulders
+        // Use the shoulder with higher confidence, or both if both are confident
+        float shoulderY = 0.0f;
+        bool validShoulder = false;
+        
+        if (kp.leftShoulderConf >= confidenceThreshold && kp.rightShoulderConf >= confidenceThreshold) {
+            shoulderY = std::max(kp.leftShoulder.y, kp.rightShoulder.y);
+            validShoulder = true;
+        } else if (kp.leftShoulderConf >= confidenceThreshold) {
+            shoulderY = kp.leftShoulder.y;
+            validShoulder = true;
+        } else if (kp.rightShoulderConf >= confidenceThreshold) {
+            shoulderY = kp.rightShoulder.y;
+            validShoulder = true;
+        }
+        
+        if (validShoulder) {
+            float distanceToTop = shoulderY - kp.bbox.y;
+            maxShoulderToTopDistance = std::max(maxShoulderToTopDistance, distanceToTop);
+        }
     }
-    if (!fs::exists(output_slam_folder)) {
-        LOGI("Creating %{public}s", output_slam_folder.c_str());
-        fs::create_directories(output_slam_folder);
-    }
-    std::filesystem::copy_file(dataPath + "/slam/images.txt", output_slam_folder + "/images.txt", std::filesystem::copy_options::overwrite_existing);
-//     std::filesystem::copy_file(slam_folder + "/points3D.txt", output_slam_folder + "/points3D.txt", std::filesystem::copy_options::overwrite_existing);
-
-    cv::Size head_size = processImages(mask_folder, highres_folder, 
-    output_img_folder, output_slam_folder, intr);
-    width = head_size.width;
-    height = head_size.height;
+    // Add some padding (optional)
+    int width = static_cast<int>(maxEarDistance * 1.2);
+    int height = static_cast<int>(maxShoulderToTopDistance * 0.9);
+    
+    return cv::Size(width, height);
 }
-#endif
+
+void cropAndSaveFace(const cv::Mat& orig_img, const cv::Point& faceCenter, 
+                     cv::Size& cropSize, const std::string& outputPath) {
+    // Crop the face region
+    cv::Point topLeft;
+    cv::Mat cropped_img = cropImage(orig_img, faceCenter, cropSize, topLeft);
+    
+    // Apply beauty filters to the cropped face
+    float smoothing_level = 0.3f;  // Adjustable parameter (0.0 to 1.0)
+    float whitening_level = 0.1f;  // Adjustable parameter (0.0 to 1.0)
+    cv::Mat beautified_face = applyBeautyFilters(cropped_img, smoothing_level, whitening_level);
+    
+    // Create a copy of the original image to paste the beautified face onto
+    cv::Mat result_img = orig_img.clone();
+    
+    // Calculate the region where to paste the beautified face
+    cv::Rect face_roi(topLeft.x, topLeft.y, beautified_face.cols, beautified_face.rows);
+    
+    // Ensure the ROI is within image bounds
+    face_roi &= cv::Rect(0, 0, orig_img.cols, orig_img.rows);
+    
+    // If the face ROI is valid, paste the beautified face back
+    if (face_roi.width > 0 && face_roi.height > 0) {
+        // Resize beautified face if needed due to boundary clipping
+        if (face_roi.width != beautified_face.cols || face_roi.height != beautified_face.rows) {
+            cv::resize(beautified_face, beautified_face, cv::Size(face_roi.width, face_roi.height));
+        }
+        
+        // Simply copy the beautified face to the result image
+        beautified_face.copyTo(result_img(face_roi));
+    }
+    
+    // Save the final result
+    cv::imwrite(outputPath, result_img);
+}
