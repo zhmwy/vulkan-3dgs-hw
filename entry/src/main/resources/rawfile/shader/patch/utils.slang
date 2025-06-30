@@ -98,3 +98,80 @@ float GetDistance2Origin(float4 cameraK, int2 p, const float depth, const float4
     float3 X = Get3DPoint(cameraK, p, depth);
     return -(normal.x * X.x + normal.y * X.y + normal.z * X.z);
 }
+
+// Define camera structure to match your CUDA code
+struct Camera {
+    float R[9];  // Rotation matrix (3x3 in row-major order)
+    float t[3];  // Translation vector
+    float K[4];  // Intrinsic matrix parameters (fx, fy, cx, cy)
+};
+
+// Compute homography function in Slang
+void ComputeHomography(Camera ref_camera, Camera src_camera, float4 plane_hypothesis, inout float H[9]) {
+    // Compute camera centers
+    float3 ref_C = float3(
+        -(ref_camera.R[0] * ref_camera.t[0] + ref_camera.R[3] * ref_camera.t[1] + ref_camera.R[6] * ref_camera.t[2]),
+        -(ref_camera.R[1] * ref_camera.t[0] + ref_camera.R[4] * ref_camera.t[1] + ref_camera.R[7] * ref_camera.t[2]),
+        -(ref_camera.R[2] * ref_camera.t[0] + ref_camera.R[5] * ref_camera.t[1] + ref_camera.R[8] * ref_camera.t[2])
+    );
+
+    float3 src_C = float3(
+        -(src_camera.R[0] * src_camera.t[0] + src_camera.R[3] * src_camera.t[1] + src_camera.R[6] * src_camera.t[2]),
+        -(src_camera.R[1] * src_camera.t[0] + src_camera.R[4] * src_camera.t[1] + src_camera.R[7] * src_camera.t[2]),
+        -(src_camera.R[2] * src_camera.t[0] + src_camera.R[5] * src_camera.t[1] + src_camera.R[8] * src_camera.t[2])
+    );
+
+    // Compute relative rotation
+    float R_relative[9];
+    R_relative[0] = src_camera.R[0] * ref_camera.R[0] + src_camera.R[1] * ref_camera.R[1] + src_camera.R[2] * ref_camera.R[2];
+    R_relative[1] = src_camera.R[0] * ref_camera.R[3] + src_camera.R[1] * ref_camera.R[4] + src_camera.R[2] * ref_camera.R[5];
+    R_relative[2] = src_camera.R[0] * ref_camera.R[6] + src_camera.R[1] * ref_camera.R[7] + src_camera.R[2] * ref_camera.R[8];
+    R_relative[3] = src_camera.R[3] * ref_camera.R[0] + src_camera.R[4] * ref_camera.R[1] + src_camera.R[5] * ref_camera.R[2];
+    R_relative[4] = src_camera.R[3] * ref_camera.R[3] + src_camera.R[4] * ref_camera.R[4] + src_camera.R[5] * ref_camera.R[5];
+    R_relative[5] = src_camera.R[3] * ref_camera.R[6] + src_camera.R[4] * ref_camera.R[7] + src_camera.R[5] * ref_camera.R[8];
+    R_relative[6] = src_camera.R[6] * ref_camera.R[0] + src_camera.R[7] * ref_camera.R[1] + src_camera.R[8] * ref_camera.R[2];
+    R_relative[7] = src_camera.R[6] * ref_camera.R[3] + src_camera.R[7] * ref_camera.R[4] + src_camera.R[8] * ref_camera.R[5];
+    R_relative[8] = src_camera.R[6] * ref_camera.R[6] + src_camera.R[7] * ref_camera.R[7] + src_camera.R[8] * ref_camera.R[8];
+
+    // Compute relative translation
+    float3 C_relative = ref_C - src_C;
+    float3 t_relative = float3(
+        src_camera.R[0] * C_relative.x + src_camera.R[1] * C_relative.y + src_camera.R[2] * C_relative.z,
+        src_camera.R[3] * C_relative.x + src_camera.R[4] * C_relative.y + src_camera.R[5] * C_relative.z,
+        src_camera.R[6] * C_relative.x + src_camera.R[7] * C_relative.y + src_camera.R[8] * C_relative.z
+    );
+
+    // Compute homography components
+    float n = plane_hypothesis.w;  // plane normal scale factor
+    H[0] = R_relative[0] - t_relative.x * plane_hypothesis.x / n;
+    H[1] = R_relative[1] - t_relative.x * plane_hypothesis.y / n;
+    H[2] = R_relative[2] - t_relative.x * plane_hypothesis.z / n;
+    H[3] = R_relative[3] - t_relative.y * plane_hypothesis.x / n;
+    H[4] = R_relative[4] - t_relative.y * plane_hypothesis.y / n;
+    H[5] = R_relative[5] - t_relative.y * plane_hypothesis.z / n;
+    H[6] = R_relative[6] - t_relative.z * plane_hypothesis.x / n;
+    H[7] = R_relative[7] - t_relative.z * plane_hypothesis.y / n;
+    H[8] = R_relative[8] - t_relative.z * plane_hypothesis.z / n;
+
+    // Apply intrinsic matrices
+    float tmp[9];
+    tmp[0] = H[0] / ref_camera.K[0];
+    tmp[1] = H[1] / ref_camera.K[1];
+    tmp[2] = -H[0] * ref_camera.K[2] / ref_camera.K[0] - H[1] * ref_camera.K[3] / ref_camera.K[1] + H[2];
+    tmp[3] = H[3] / ref_camera.K[0];
+    tmp[4] = H[4] / ref_camera.K[1];
+    tmp[5] = -H[3] * ref_camera.K[2] / ref_camera.K[0] - H[4] * ref_camera.K[3] / ref_camera.K[1] + H[5];
+    tmp[6] = H[6] / ref_camera.K[0];
+    tmp[7] = H[7] / ref_camera.K[1];
+    tmp[8] = -H[6] * ref_camera.K[2] / ref_camera.K[0] - H[7] * ref_camera.K[3] / ref_camera.K[1] + H[8];
+
+    H[0] = src_camera.K[0] * tmp[0] + src_camera.K[2] * tmp[6];
+    H[1] = src_camera.K[0] * tmp[1] + src_camera.K[2] * tmp[7];
+    H[2] = src_camera.K[0] * tmp[2] + src_camera.K[2] * tmp[8];
+    H[3] = src_camera.K[1] * tmp[3] + src_camera.K[3] * tmp[6];
+    H[4] = src_camera.K[1] * tmp[4] + src_camera.K[3] * tmp[7];
+    H[5] = src_camera.K[1] * tmp[5] + src_camera.K[3] * tmp[8];
+    H[6] = tmp[6];
+    H[7] = tmp[7];
+    H[8] = tmp[8];
+}
