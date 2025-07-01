@@ -14,6 +14,12 @@ cbuffer PushConstants
     uint srcCount;
 
     uint currentImage;
+
+    // patch parameter
+    uint patch_size;
+    uint radius_increment;
+    uint sigma_spatial;
+    uint sigma_color;
 };
 
 float4 GenerateRandomPlaneHypothesis(float4 cameraK, const int2 p, const float depth_min, const float depth_max)

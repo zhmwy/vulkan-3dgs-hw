@@ -83,7 +83,7 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
     std::stringstream ss;
     ss  << "Matrix values:" << floatMat << std::endl;
     
-    cv::Mat ucharMat; 
+    cv::Mat ucharMat;
     floatMat.convertTo(ucharMat, CV_8UC4, 255.0);
     
     cv::cvtColor(ucharMat, ucharMat, cv::COLOR_RGBA2BGR);
@@ -98,6 +98,11 @@ void VulkanComputePatch::compute()
         pushConstants.push_back(image_height);
         pushConstants.push_back(params.srcCount);
         pushConstants.push_back(0);
+        
+        pushConstants.push_back(params.patch_size);
+        pushConstants.push_back(params.radius_increment);
+        pushConstants.push_back(params.sigma_spatial);
+        pushConstants.push_back(params.sigma_color);
         
         int X = ((int)(image_width) + 16 - 1) / 16; // Ceiling division
         int Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
@@ -266,7 +271,7 @@ void VulkanComputePatch::setupRandomInitializationPipeline()
         pipeRandomInitialization,
         bindingCount,  // Number of descriptor set bindings
         true,
-        sizeof(uint32_t) * 4
+        sizeof(uint32_t) * 8
     );
 
     std::vector<vkgs::Buffer*> pBuffers = {

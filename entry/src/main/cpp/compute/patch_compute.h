@@ -21,6 +21,11 @@ public:
         uint32_t height = 640;
         
         uint32_t srcCount = 20;
+        
+        uint32_t patch_size = 11;
+        uint32_t radius_increment = 2;
+        uint32_t sigma_spatial = 5.0;
+        uint32_t sigma_color = 3.0;
     }params;
     
     void loadPatchData(std::string& dataFolder);
