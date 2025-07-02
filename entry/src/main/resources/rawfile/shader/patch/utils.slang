@@ -202,76 +202,108 @@ struct PatchMatchParams {
     uint sigma_color;
 };
 
-//float ComputeBilateralNCC(texture2D ref_image, const Camera ref_camera, texture2D src_image, const Camera src_camera, const int2 p, const float4 plane_hypothesis, const PatchMatchParams params)
-//{
-//    const float cost_max = 2.0f;
-//    int radius = params.patch_size / 2;
-//
-//    float H[9];
-//    ComputeHomography(ref_camera, src_camera, plane_hypothesis, H);
-//    float2 pt = ComputeCorrespondingPoint(H, p);
-//    if (pt.x >= src_camera.width || pt.x < 0.0f || pt.y >= src_camera.height || pt.y < 0.0f) {
-//        return cost_max;
-//    }
-//
-//    float cost = 0.0f;
-//    {
-//        float sum_ref = 0.0f;
-//        float sum_ref_ref = 0.0f;
-//        float sum_src = 0.0f;
-//        float sum_src_src = 0.0f;
-//        float sum_ref_src = 0.0f;
-//        float bilateral_weight_sum = 0.0f;
-//        const float ref_center_pix = tex2D<float>(ref_image, p.x + 0.5f, p.y + 0.5f);
-//
-//        for (int i = -radius; i < radius + 1; i += params.radius_increment) {
-//            float sum_ref_row = 0.0f;
-//            float sum_src_row = 0.0f;
-//            float sum_ref_ref_row = 0.0f;
-//            float sum_src_src_row = 0.0f;
-//            float sum_ref_src_row = 0.0f;
-//            float bilateral_weight_sum_row = 0.0f;
-//
-//            for (int j = -radius; j < radius + 1; j += params.radius_increment) {
-//                const int2 ref_pt = make_int2(p.x + i, p.y + j);
-//                const float ref_pix = tex2D<float>(ref_image, ref_pt.x + 0.5f, ref_pt.y + 0.5f);
-//                float2 src_pt = ComputeCorrespondingPoint(H, ref_pt);
-//                const float src_pix = tex2D<float>(src_image, src_pt.x + 0.5f, src_pt.y + 0.5f);
-//
-//                float weight = ComputeBilateralWeight(i, j, ref_pix, ref_center_pix, params.sigma_spatial, params.sigma_color);
-//
-//                sum_ref_row += weight * ref_pix;
-//                sum_ref_ref_row += weight * ref_pix * ref_pix;
-//                sum_src_row += weight * src_pix;
-//                sum_src_src_row += weight * src_pix * src_pix;
-//                sum_ref_src_row += weight * ref_pix * src_pix;
-//                bilateral_weight_sum_row += weight;
-//            }
-//
-//            sum_ref += sum_ref_row;
-//            sum_ref_ref += sum_ref_ref_row;
-//            sum_src += sum_src_row;
-//            sum_src_src += sum_src_src_row;
-//            sum_ref_src += sum_ref_src_row;
-//            bilateral_weight_sum += bilateral_weight_sum_row;
-//        }
-//        const float inv_bilateral_weight_sum = 1.0f / bilateral_weight_sum;
-//        sum_ref *= inv_bilateral_weight_sum;
-//        sum_ref_ref *= inv_bilateral_weight_sum;
-//        sum_src *= inv_bilateral_weight_sum;
-//        sum_src_src *= inv_bilateral_weight_sum;
-//        sum_ref_src *= inv_bilateral_weight_sum;
-//
-//        const float var_ref = sum_ref_ref - sum_ref * sum_ref;
-//        const float var_src = sum_src_src - sum_src * sum_src;
-//
-//        const float kMinVar = 1e-5f;
-//        if (var_ref < kMinVar || var_src < kMinVar) {
-//            return cost = cost_max;
-//        } else {
-//            const float covar_src_ref = sum_ref_src - sum_ref * sum_src;
-//            const float var_ref_src = sqrt(var_ref * var_src);
-//            return cost = max(0.0f, min(cost_max, 1.0f - covar_src_ref / var_ref_src));
-//        }
-//    }
-//}
+float iTexValue(StructuredBuffer<float> images, int image_idx, int image_width, int image_height, int px, int py)
+{
+    int offset = image_idx * (image_width * image_height * 3) + (image_width * py + px) * 3;
+    return (images[offset] + images[offset+1] + images[offset+2]) / 3;
+}
+
+float fTexValue(StructuredBuffer<float> images, int image_idx, int image_width, int image_height, float px, float py)
+{
+    int ix = (int)px;
+    if (ix < 0) ix = 0;
+    else if (ix >= image_width) ix = image_width-1;
+    float fx = px - (float)ix;
+    int ix1 = ix+1;
+    if (ix1 >= image_width) ix1 = image_width-1;
+
+    int iy = (int)py;
+    if (iy < 0) iy = 0;
+    else if (iy >= image_width) iy = image_width-1;
+    float fy = py - (float)iy;
+    int iy1 = iy+1;
+    if (iy1 >= image_width) iy1 = image_width-1;
+
+    float vxy = iTexValue(images, image_idx, image_width, image_height, ix, iy);
+    float vx1y1 = iTexValue(images, image_idx, image_width, image_height, ix1, iy1);
+    float vxy1 = iTexValue(images, image_idx, image_width, image_height, ix, iy1);
+    float vx1y = iTexValue(images, image_idx, image_width, image_height, ix1, iy);
+
+    return (vxy * (1-fx) + vx1y * fx) * (1-fy) + (vxy1 * (1-fx) + vx1y1 * fx) * fy;
+}
+
+float ComputeBilateralNCC(StructuredBuffer<float> images, int ref_image, const Camera ref_camera, int src_image, const Camera src_camera, const int2 p, const float4 plane_hypothesis, const PatchMatchParams params)
+{
+    const float cost_max = 2.0f;
+    int radius = params.patch_size / 2;
+
+    float H[9];
+    ComputeHomography(ref_camera, src_camera, plane_hypothesis, H);
+    float2 pt = ComputeCorrespondingPoint(H, p);
+    if (pt.x >= params.image_width || pt.x < 0.0f || pt.y >= params.image_height || pt.y < 0.0f) {
+        return cost_max;
+    }
+
+    float cost = 0.0f;
+    {
+        float sum_ref = 0.0f;
+        float sum_ref_ref = 0.0f;
+        float sum_src = 0.0f;
+        float sum_src_src = 0.0f;
+        float sum_ref_src = 0.0f;
+        float bilateral_weight_sum = 0.0f;
+        float ref_center_pix = iTexValue(images, ref_image, params.image_width, params.image_height, p.x, p.y);
+
+        for (int i = -radius; i < radius + 1; i += params.radius_increment) {
+            float sum_ref_row = 0.0f;
+            float sum_src_row = 0.0f;
+            float sum_ref_ref_row = 0.0f;
+            float sum_src_src_row = 0.0f;
+            float sum_ref_src_row = 0.0f;
+            float bilateral_weight_sum_row = 0.0f;
+
+            for (int j = -radius; j < radius + 1; j += params.radius_increment) {
+                const int2 ref_pt = {p.x + i, p.y + j};
+                const float ref_pix = iTexValue(images, ref_image, params.image_width, params.image_height, ref_pt.x, ref_pt.y);
+                float2 src_pt = ComputeCorrespondingPoint(H, ref_pt);
+                const float src_pix = fTexValue(images, src_image, params.image_width, params.image_height, src_pt.x, src_pt.y);
+
+                float weight = ComputeBilateralWeight(i, j, ref_pix, ref_center_pix, params.sigma_spatial, params.sigma_color);
+
+                sum_ref_row += weight * ref_pix;
+                sum_ref_ref_row += weight * ref_pix * ref_pix;
+                sum_src_row += weight * src_pix;
+                sum_src_src_row += weight * src_pix * src_pix;
+                sum_ref_src_row += weight * ref_pix * src_pix;
+                bilateral_weight_sum_row += weight;
+            }
+
+            sum_ref += sum_ref_row;
+            sum_ref_ref += sum_ref_ref_row;
+            sum_src += sum_src_row;
+            sum_src_src += sum_src_src_row;
+            sum_ref_src += sum_ref_src_row;
+            bilateral_weight_sum += bilateral_weight_sum_row;
+        }
+        const float inv_bilateral_weight_sum = 1.0f / bilateral_weight_sum;
+        sum_ref *= inv_bilateral_weight_sum;
+        sum_ref_ref *= inv_bilateral_weight_sum;
+        sum_src *= inv_bilateral_weight_sum;
+        sum_src_src *= inv_bilateral_weight_sum;
+        sum_ref_src *= inv_bilateral_weight_sum;
+
+        const float var_ref = sum_ref_ref - sum_ref * sum_ref;
+        const float var_src = sum_src_src - sum_src * sum_src;
+
+        const float kMinVar = 1e-5f;
+        if (var_ref < kMinVar || var_src < kMinVar) {
+            return cost = cost_max;
+        } else {
+            const float covar_src_ref = sum_ref_src - sum_ref * sum_src;
+            const float var_ref_src = sqrt(var_ref * var_src);
+            return cost = max(0.0f, min(cost_max, 1.0f - covar_src_ref / var_ref_src));
+        }
+    }
+
+    return cost;
+}
