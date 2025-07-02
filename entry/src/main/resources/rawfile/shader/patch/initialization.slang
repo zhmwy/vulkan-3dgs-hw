@@ -1,10 +1,14 @@
 #include "utils.slang"
 
-[[vk::binding(0)]] StructuredBuffer<float> images;
-[[vk::binding(1)]] StructuredBuffer<int>   srcPairs;
-[[vk::binding(2)]] StructuredBuffer<float> cameraIntrics;
-[[vk::binding(3)]] StructuredBuffer<float> depthRanges;
-[[vk::binding(4)]] RWStructuredBuffer<float4> planeHypotheses;
+[[vk::binding(0)]] Texture2D<float3> refImage;
+[[vk::binding(1)]] Texture2D<float3> srcImage;
+
+[[vk::binding(2)]] StructuredBuffer<float> images;
+[[vk::binding(3)]] StructuredBuffer<int>   srcPairs;
+[[vk::binding(4)]] StructuredBuffer<float> cameraIntrics;
+[[vk::binding(5)]] StructuredBuffer<float> depthRanges;
+[[vk::binding(6)]] RWStructuredBuffer<float4> planeHypotheses;
+
 
 [[vk::push_constant]]
 cbuffer PushConstants

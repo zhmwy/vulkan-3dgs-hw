@@ -361,6 +361,78 @@ void VulkanComputeBase::queryEventTime(int training_step)
     }
 }
 
+void VulkanComputeBase::createPipelineLayout(    
+    STComputePipeLine& pipe_3dgs,
+    uint32_t numImages,
+    uint32_t numArrays, 
+    bool usePushConstant,
+    uint32_t pushConstantSize
+) {
+    
+    // Define descriptor set bindings
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(numImages+numArrays);
+    
+    for (uint32_t i = 0; i < numImages; ++i) {
+        setLayoutBindings[i] = vkbase::vkDescriptorSetLayoutBinding(
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,              // descriptor type
+            VK_SHADER_STAGE_COMPUTE_BIT,                    // shader stage
+            i                                               // binding number
+        );
+    }
+    
+    
+    for (uint32_t i = 0; i < numArrays; ++i) {
+        setLayoutBindings[i] = vkbase::vkDescriptorSetLayoutBinding(
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,              // descriptor type
+            VK_SHADER_STAGE_COMPUTE_BIT,                    // shader stage
+            i + numImages                                     // binding number
+        );
+    }
+
+    // Create descriptor set layout
+    VkDescriptorSetLayoutCreateInfo layoutInfo = vkbase::vkDescriptorSetLayoutCreateInfo(setLayoutBindings);
+
+    VK_CHECK_RESULT(
+        vkCreateDescriptorSetLayoutGS(device, &layoutInfo, nullptr, &pipe_3dgs.descriptorSetLayout)
+    );
+
+    // Define push constant range (optional)
+    VkPushConstantRange pushConstantRange = {};
+    if (usePushConstant) {
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        pushConstantRange.offset = 0;
+        pushConstantRange.size = pushConstantSize;  // Example push constant size
+    }
+
+    // Create pipeline layout
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &pipe_3dgs.descriptorSetLayout;
+
+    if (usePushConstant) {
+        pipelineLayoutInfo.pushConstantRangeCount = 1;
+        pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+    } else {
+        pipelineLayoutInfo.pushConstantRangeCount = 0;
+        pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    }
+
+    VK_CHECK_RESULT(
+        vkCreatePipelineLayoutGS(device, &pipelineLayoutInfo, nullptr, &pipe_3dgs.pipelineLayout)
+    );
+
+    // Allocate descriptor set
+    VkDescriptorSetAllocateInfo allocInfo = vkbase::vkDescriptorSetAllocateInfo(
+        descriptorPool, 
+        &pipe_3dgs.descriptorSetLayout, 1
+    );
+
+    VK_CHECK_RESULT(
+        vkAllocateDescriptorSetsGS(device, &allocInfo, &pipe_3dgs.descriptorSet)
+    );
+}
+
 void VulkanComputeBase::createPipelineLayout(
     STComputePipeLine& pipe_3dgs,
     uint32_t numBindings, 
@@ -574,6 +646,51 @@ void VulkanComputeBase::createGpu2CpuCopy(vkgs::Buffer &buffer)
         1, &region
     );
     TransComputeBarrierBlock();
+}
+
+void VulkanComputeBase::updateDescriptorSet(VkDescriptorSet& descriptorSet, 
+    vkbase::Texture2DGS& refImage, 
+    vkbase::Texture2DGS& srcImage, 
+    std::vector<vkgs::Buffer*>& buffers)
+{
+    // Write descriptor sets
+    std::vector<VkWriteDescriptorSet> descriptorWrites(buffers.size() + 2);
+    
+    VkDescriptorImageInfo refImageInfo = {refImage.vkSampler, refImage.vkImageView, refImage.vkImageLayout};
+    descriptorWrites[0] = {};
+    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrites[0].dstSet = descriptorSet;
+    descriptorWrites[0].dstBinding = 0;
+    descriptorWrites[0].descriptorCount = 1;
+    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrites[0].pImageInfo = &refImageInfo;
+    
+    VkDescriptorImageInfo srcImageInfo = {srcImage.vkSampler, srcImage.vkImageView, srcImage.vkImageLayout};
+    descriptorWrites[0] = {};
+    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrites[0].dstSet = descriptorSet;
+    descriptorWrites[0].dstBinding = 1;
+    descriptorWrites[0].descriptorCount = 1;
+    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrites[0].pImageInfo = &srcImageInfo;
+    
+    // Prepare buffer info
+    std::unique_ptr<VkDescriptorBufferInfo[]> bufferInfos = std::make_unique<VkDescriptorBufferInfo[]>(buffers.size());
+    for (int i = 0; i < buffers.size(); ++i) {
+        bufferInfos[i] = { *buffers[i], 0, buffers[i]->size() };
+    }
+
+    for (int i = 0; i < buffers.size(); ++i) {
+        descriptorWrites[i+2] = {};
+        descriptorWrites[i+2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[i+2].dstSet = descriptorSet;
+        descriptorWrites[i+2].dstBinding = i+2;
+        descriptorWrites[i+2].descriptorCount = 1;
+        descriptorWrites[i+2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[i+2].pBufferInfo = &bufferInfos[i];
+    }
+
+    vkUpdateDescriptorSetsGS(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 }
 
 void VulkanComputeBase::updateDescriptorSet(

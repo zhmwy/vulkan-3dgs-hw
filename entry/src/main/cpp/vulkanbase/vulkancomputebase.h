@@ -77,6 +77,16 @@ protected:
         uint32_t pushConstantSize=0
     );
     
+    void createPipelineLayout(    
+        STComputePipeLine& pipe_3dgs,
+        uint32_t numImages,
+        uint32_t numArrays, 
+        bool usePushConstant,
+        uint32_t pushConstantSize=0
+    );
+    
+    void updateDescriptorSet(VkDescriptorSet& descriptorSet, vkbase::Texture2DGS& refImage, vkbase::Texture2DGS& srcImage, std::vector<vkgs::Buffer*>& buffers);
+    
     void updateDescriptorSet(VkDescriptorSet& descriptorSet, std::vector<vkgs::Buffer*>& buffers);
     
     void bindPipeline2CommandBufferPushConstants(

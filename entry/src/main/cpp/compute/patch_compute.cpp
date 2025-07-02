@@ -269,6 +269,7 @@ void VulkanComputePatch::setupRandomInitializationPipeline()
     const uint32_t bindingCount = 5;
     createPipelineLayout(
         pipeRandomInitialization,
+        2, 
         bindingCount,  // Number of descriptor set bindings
         true,
         sizeof(uint32_t) * 8
@@ -282,7 +283,8 @@ void VulkanComputePatch::setupRandomInitializationPipeline()
         &patchBuffers.planeHypotheses
     };
 
-    updateDescriptorSet(pipeRandomInitialization.descriptorSet, pBuffers);
+    //updateDescriptorSet(pipeRandomInitialization.descriptorSet, inputGaussian.images, pBuffers);
+    updateDescriptorSet(pipeRandomInitialization.descriptorSet, inputGaussian.images[0], inputGaussian.images[1], pBuffers);
 
     pipeRandomInitialization.pipelines.resize(1);
 
