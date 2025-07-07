@@ -100,9 +100,9 @@ void InterfaceImplVulkan::updateProgress(float value){
 
 float InterfaceImplVulkan::GetProcessVulkan() {
     if (_g_progress_cb_train) {
-        int* data = new int(_progress);
+        //int* data = new int(_progress);
         napi_status status = napi_acquire_threadsafe_function(_g_progress_cb_train);
-        napi_call_threadsafe_function(_g_progress_cb_train, data, napi_tsfn_blocking);
+        napi_call_threadsafe_function(_g_progress_cb_train, &_progress, napi_tsfn_blocking);
         status = napi_release_threadsafe_function(_g_progress_cb_train, napi_tsfn_release);
     }
     return _progress;

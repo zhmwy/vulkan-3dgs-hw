@@ -173,12 +173,12 @@ napi_value getSandBoxPixelMap(napi_env env, napi_callback_info info)
 
 // Progress reporting functions remain unchanged
 void CallJsProgressTrain(napi_env env, napi_value js_cb, void* context, void* data) {
-    int progress = *static_cast<int*>(data);
+    float progress = *static_cast<float*>(data);
     napi_value undefined, argv[1];
     napi_get_undefined(env, &undefined);
-    napi_create_int32(env, progress, &argv[0]);
+    napi_create_int32(env, (int)progress, &argv[0]);
     napi_call_function(env, undefined, js_cb, 1, argv, nullptr);
-    delete static_cast<int*>(data);
+    //delete static_cast<int*>(data);
 }
 
 // Threadsafe function initialization remains unchanged
