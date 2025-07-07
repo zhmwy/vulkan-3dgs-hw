@@ -1,12 +1,11 @@
 #version 450
 //#extension GL_EXT_samplerless_texture_functions : require
 
-layout(binding = 0) uniform sampler2D refImage;
-layout(binding = 1) uniform sampler2D srcImage;
-layout(binding = 2) buffer SrcPairsBuffer { int srcPairs[]; };
-layout(binding = 3) buffer CameraIntricsBuffer { float cameraIntrics[]; };
-layout(binding = 4) buffer DepthRangesBuffer { float depthRanges[]; };
-layout(binding = 5) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
+layout(binding = 0) uniform sampler2D images[];
+layout(binding = 1) buffer SrcPairsBuffer { int srcPairs[]; };
+layout(binding = 2) buffer CameraIntricsBuffer { float cameraIntrics[]; };
+layout(binding = 3) buffer DepthRangesBuffer { float depthRanges[]; };
+layout(binding = 4) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
 
 layout(push_constant) uniform PushConstants {
     uint width;
@@ -343,7 +342,7 @@ void main() {
     }
 
     vec2 uv = (vec2(p) + 0.5) / vec2(pc.width, pc.height);
-    vec4 color = texture(refImage, uv);
+    vec4 color = texture(images[15], uv);
 
     vec4 cameraK = {
         cameraIntrics[pc.currentImage*4+0],
@@ -355,7 +354,8 @@ void main() {
     float depth_min = depthRanges[pc.currentImage*2+0];
     float depth_max = depthRanges[pc.currentImage*2+1];
 
-    planeHypotheses[p.y * pc.width + p.x] = GenerateRandomPlaneHypothesis(cameraK, p, depth_min, depth_max, pc.currentImage);
+    //planeHypotheses[p.y * pc.width + p.x] = GenerateRandomPlaneHypothesis(cameraK, p, depth_min, depth_max, pc.currentImage);
+    planeHypotheses[p.y * pc.width + p.x] = color;
 }
 
 // Test function for Get3DPoint

@@ -370,22 +370,21 @@ void VulkanComputeBase::createPipelineLayout(
 ) {
     
     // Define descriptor set bindings
-    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(numImages+numArrays);
-    
-    for (uint32_t i = 0; i < numImages; ++i) {
-        setLayoutBindings[i] = vkbase::vkDescriptorSetLayoutBinding(
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,              // descriptor type
-            VK_SHADER_STAGE_COMPUTE_BIT,                    // shader stage
-            i                                               // binding number
-        );
-    }
-    
+    std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings(1+numArrays);
+
+    setLayoutBindings[0] = vkbase::vkDescriptorSetLayoutBinding(
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,              // descriptor type
+        VK_SHADER_STAGE_COMPUTE_BIT,                       // shader stage
+        0,                                                   // binding number
+        numImages
+    );
+
     
     for (uint32_t i = 0; i < numArrays; ++i) {
-        setLayoutBindings[i+numImages] = vkbase::vkDescriptorSetLayoutBinding(
+        setLayoutBindings[i+1] = vkbase::vkDescriptorSetLayoutBinding(
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,              // descriptor type
             VK_SHADER_STAGE_COMPUTE_BIT,                    // shader stage
-            i + numImages                                     // binding number
+            i + 1                                     // binding number
         );
     }
 
@@ -649,30 +648,24 @@ void VulkanComputeBase::createGpu2CpuCopy(vkgs::Buffer &buffer)
 }
 
 void VulkanComputeBase::updateDescriptorSet(VkDescriptorSet& descriptorSet, 
-    vkbase::Texture2DGS& refImage, 
-    vkbase::Texture2DGS& srcImage, 
+    std::vector<vkbase::Texture2DGS>& images,
     std::vector<vkgs::Buffer*>& buffers)
 {
     // Write descriptor sets
-    std::vector<VkWriteDescriptorSet> descriptorWrites(buffers.size() + 2);
+    std::vector<VkWriteDescriptorSet> descriptorWrites(buffers.size() + 1);
     
-    VkDescriptorImageInfo refImageInfo = {refImage.vkSampler, refImage.vkImageView, refImage.vkImageLayout};
+    std::unique_ptr<VkDescriptorImageInfo[]> imageInfos = std::make_unique<VkDescriptorImageInfo[]>(images.size());
+    for (int i = 0; i < images.size(); ++i) {
+        imageInfos[i] = { images[i].vkSampler, images[i].vkImageView, images[i].vkImageLayout };
+    }
+    
     descriptorWrites[0] = {};
     descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrites[0].dstSet = descriptorSet;
     descriptorWrites[0].dstBinding = 0;
-    descriptorWrites[0].descriptorCount = 1;
+    descriptorWrites[0].descriptorCount = images.size();
     descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrites[0].pImageInfo = &refImageInfo;
-    
-    VkDescriptorImageInfo srcImageInfo = {srcImage.vkSampler, srcImage.vkImageView, srcImage.vkImageLayout};
-    descriptorWrites[1] = {};
-    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrites[1].dstSet = descriptorSet;
-    descriptorWrites[1].dstBinding = 1;
-    descriptorWrites[1].descriptorCount = 1;
-    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrites[1].pImageInfo = &srcImageInfo;
+    descriptorWrites[0].pImageInfo = imageInfos.get();
     
     // Prepare buffer info
     std::unique_ptr<VkDescriptorBufferInfo[]> bufferInfos = std::make_unique<VkDescriptorBufferInfo[]>(buffers.size());
@@ -681,13 +674,13 @@ void VulkanComputeBase::updateDescriptorSet(VkDescriptorSet& descriptorSet,
     }
 
     for (int i = 0; i < buffers.size(); ++i) {
-        descriptorWrites[i+2] = {};
-        descriptorWrites[i+2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[i+2].dstSet = descriptorSet;
-        descriptorWrites[i+2].dstBinding = i+2;
-        descriptorWrites[i+2].descriptorCount = 1;
-        descriptorWrites[i+2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[i+2].pBufferInfo = &bufferInfos[i];
+        descriptorWrites[i+1] = {};
+        descriptorWrites[i+1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[i+1].dstSet = descriptorSet;
+        descriptorWrites[i+1].dstBinding = i+1;
+        descriptorWrites[i+1].descriptorCount = 1;
+        descriptorWrites[i+1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[i+1].pBufferInfo = &bufferInfos[i];
     }
 
     vkUpdateDescriptorSetsGS(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);

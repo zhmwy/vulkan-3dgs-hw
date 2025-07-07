@@ -85,7 +85,7 @@ protected:
         uint32_t pushConstantSize=0
     );
     
-    void updateDescriptorSet(VkDescriptorSet& descriptorSet, vkbase::Texture2DGS& refImage, vkbase::Texture2DGS& srcImage, std::vector<vkgs::Buffer*>& buffers);
+    void updateDescriptorSet(VkDescriptorSet& descriptorSet, std::vector<vkbase::Texture2DGS>& images, std::vector<vkgs::Buffer*>& buffers);
     
     void updateDescriptorSet(VkDescriptorSet& descriptorSet, std::vector<vkgs::Buffer*>& buffers);
     
