@@ -3,11 +3,10 @@
 
 layout(binding = 0) uniform sampler2D refImage;
 layout(binding = 1) uniform sampler2D srcImage;
-layout(binding = 2) buffer ImagesBuffer { float images[]; };
-layout(binding = 3) buffer SrcPairsBuffer { int srcPairs[]; };
-layout(binding = 4) buffer CameraIntricsBuffer { float cameraIntrics[]; };
-layout(binding = 5) buffer DepthRangesBuffer { float depthRanges[]; };
-layout(binding = 6) buffer PlaneHypothesesBuffer { float planeHypotheses[]; };
+layout(binding = 2) buffer SrcPairsBuffer { int srcPairs[]; };
+layout(binding = 3) buffer CameraIntricsBuffer { float cameraIntrics[]; };
+layout(binding = 4) buffer DepthRangesBuffer { float depthRanges[]; };
+layout(binding = 5) buffer PlaneHypothesesBuffer { float planeHypotheses[]; };
 
 layout(push_constant) uniform PushConstants {
     uint width;

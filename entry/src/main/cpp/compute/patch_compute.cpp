@@ -64,18 +64,12 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
 {
     buildComputeCommandBuffer([this](){
         ComputeTransBarrierBlock();
-        createGpu2CpuCopy(patchBuffers.image_arrays);
         createGpu2CpuCopy(patchBuffers.planeHypotheses);
         createGpu2CpuCopy(patchBuffers.depthRanges);
     });
     executeComputeCommand();
     
     VK_CHECK_RESULT(vkQueueWaitIdleGS(computeRes.queue));
-    
-    cv::Mat img(image_height, image_width, CV_8UC4, 
-                    (uint8_t *)patchBuffers.image_arrays.cpu_buffer.data() + 15*4*image_width*image_height);
-    cv::cvtColor(img, img, cv::COLOR_RGBA2BGR);
-    cv::imwrite(dataPath + "/test1.png", img);
     
     cv::Mat floatMat(image_height, image_width, CV_32FC4, 
                 (float *)patchBuffers.planeHypotheses.cpu_buffer.data());
@@ -117,30 +111,7 @@ void VulkanComputePatch::initBuffersValues()
         return;
     }
     
-    buildComputeCommandBuffer([this]() {
-        
-        for (int i=0; i<inputGaussian.images.size(); ++i) {
-            VkBufferImageCopy copyRegionI = {};
-            copyRegionI.bufferOffset = i * image_width * image_height * 4 * sizeof(uint8_t);
-            copyRegionI.bufferRowLength = 0;         // Tightly packed
-            copyRegionI.bufferImageHeight = 0;       // Tightly packed
-            copyRegionI.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            copyRegionI.imageSubresource.mipLevel = 0;
-            copyRegionI.imageSubresource.baseArrayLayer = 0;
-            copyRegionI.imageSubresource.layerCount = 1;
-            copyRegionI.imageOffset = { 0, 0, 0 };
-            copyRegionI.imageExtent = {(unsigned int)(image_width), (unsigned int)(image_height), 1 };
-            
-            vkCmdCopyImageToBufferGS(
-                computeRes.commandBuffer,
-                inputGaussian.images[i].vkImage,
-                inputGaussian.images[i].vkImageLayout,
-                patchBuffers.image_arrays,
-                1,
-                &copyRegionI
-            );
-        }
-        
+    buildComputeCommandBuffer([this]() {        
         {
             ///暂时使用所有图像公用一个内存
             std::vector<float> vIntr;
@@ -221,10 +192,6 @@ void VulkanComputePatch::DestoryPatchBuffers()
 
 void VulkanComputePatch::preparePatchBuffers()
 {
-    patchBuffers.image_arrays = vkgs::Buffer(
-        allocator, inputGaussian.images.size() * image_width * image_height * 4 * sizeof(uint8_t),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
     patchBuffers.intrParams = vkgs::Buffer(
         allocator, inputGaussian.images.size() * 4 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -268,7 +235,7 @@ void VulkanComputePatch::preparePatchBuffers()
 
 void VulkanComputePatch::setupRandomInitializationPipeline()
 {
-    const uint32_t bindingCount = 5;
+    const uint32_t bindingCount = 4;
     createPipelineLayout(
         pipeRandomInitialization,
         2, 
@@ -278,7 +245,6 @@ void VulkanComputePatch::setupRandomInitializationPipeline()
     );
 
     std::vector<vkgs::Buffer*> pBuffers = {
-        &patchBuffers.image_arrays,
         &patchBuffers.srcPairs,
         &patchBuffers.intrParams,
         &patchBuffers.depthRanges,

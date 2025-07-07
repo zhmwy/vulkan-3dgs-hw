@@ -382,7 +382,7 @@ void VulkanComputeBase::createPipelineLayout(
     
     
     for (uint32_t i = 0; i < numArrays; ++i) {
-        setLayoutBindings[i] = vkbase::vkDescriptorSetLayoutBinding(
+        setLayoutBindings[i+numImages] = vkbase::vkDescriptorSetLayoutBinding(
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,              // descriptor type
             VK_SHADER_STAGE_COMPUTE_BIT,                    // shader stage
             i + numImages                                     // binding number

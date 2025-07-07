@@ -40,8 +40,6 @@ protected:
     
     struct PatchBuffers {
         
-        vkgs::Buffer image_arrays;
-        
         vkgs::Buffer intrParams;
         vkgs::Buffer cameraR;
         vkgs::Buffer cameraT;
