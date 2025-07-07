@@ -59,6 +59,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float depth_max = depthRanges[currentImage*2+1];
 
     planeHypotheses[p.y * width + p.x] = GenerateRandomPlaneHypothesis(cameraK, p, depth_min, depth_max);
+    planeHypotheses[p.y * width + p.x].x = 0.1;
 }
 
 

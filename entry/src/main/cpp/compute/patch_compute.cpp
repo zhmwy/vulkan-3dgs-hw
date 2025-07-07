@@ -64,7 +64,7 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
 {
     buildComputeCommandBuffer([this](){
         ComputeTransBarrierBlock();
-        //createGpu2CpuCopy(patchBuffers.image_arrays);
+        createGpu2CpuCopy(patchBuffers.image_arrays);
         createGpu2CpuCopy(patchBuffers.planeHypotheses);
         createGpu2CpuCopy(patchBuffers.depthRanges);
     });
@@ -72,10 +72,10 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
     
     VK_CHECK_RESULT(vkQueueWaitIdleGS(computeRes.queue));
     
-    //cv::Mat img(image_height, image_width, CV_8UC3, 
-    //                (uint8_t *)patchBuffers.image_arrays.cpu_buffer.data() + 15*image_width*image_height);
-    //cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
-    //cv::imwrite(dataPath + "/test.png", img);
+    cv::Mat img(image_height, image_width, CV_8UC4, 
+                    (uint8_t *)patchBuffers.image_arrays.cpu_buffer.data() + 15*4*image_width*image_height);
+    cv::cvtColor(img, img, cv::COLOR_RGBA2BGR);
+    cv::imwrite(dataPath + "/test1.png", img);
     
     cv::Mat floatMat(image_height, image_width, CV_32FC4, 
                 (float *)patchBuffers.planeHypotheses.cpu_buffer.data());
@@ -121,7 +121,7 @@ void VulkanComputePatch::initBuffersValues()
         
         for (int i=0; i<inputGaussian.images.size(); ++i) {
             VkBufferImageCopy copyRegionI = {};
-            copyRegionI.bufferOffset = i * image_width * image_height * 3 * sizeof(uint8_t);
+            copyRegionI.bufferOffset = i * image_width * image_height * 4 * sizeof(uint8_t);
             copyRegionI.bufferRowLength = 0;         // Tightly packed
             copyRegionI.bufferImageHeight = 0;       // Tightly packed
             copyRegionI.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -189,16 +189,18 @@ void VulkanComputePatch::loadAssets(int origin_width, int origin_height)
             return;
         }
         cv::resize(img, img, cv::Size(origin_width, origin_height));
-        cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+        cv::cvtColor(img, img, cv::COLOR_BGR2RGBA);
         
         vkbase::Texture2DGS texture_original;
         texture_original.fromImageBuffer(
             img.data,
-            origin_width * origin_height * 3,
-            VK_FORMAT_R8G8B8_UNORM,
+            origin_width * origin_height * 4,
+            VK_FORMAT_R8G8B8A8_UNORM,
             origin_width, origin_height, 
             vulkanDevice, computeRes.queue,
-            VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
+            VK_FILTER_LINEAR, 
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         );
         
         inputGaussian.images.push_back(texture_original);
@@ -220,7 +222,7 @@ void VulkanComputePatch::DestoryPatchBuffers()
 void VulkanComputePatch::preparePatchBuffers()
 {
     patchBuffers.image_arrays = vkgs::Buffer(
-        allocator, inputGaussian.images.size() * image_width * image_height * 3 * sizeof(uint8_t),
+        allocator, inputGaussian.images.size() * image_width * image_height * 4 * sizeof(uint8_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     patchBuffers.intrParams = vkgs::Buffer(

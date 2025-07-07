@@ -1,0 +1,46 @@
+#version 450
+//#extension GL_EXT_samplerless_texture_functions : require
+
+layout(binding = 0) uniform sampler2D refImage;
+layout(binding = 1) uniform sampler2D srcImage;
+layout(binding = 2) buffer ImagesBuffer { float images[]; };
+layout(binding = 3) buffer SrcPairsBuffer { int srcPairs[]; };
+layout(binding = 4) buffer CameraIntricsBuffer { float cameraIntrics[]; };
+layout(binding = 5) buffer DepthRangesBuffer { float depthRanges[]; };
+layout(binding = 6) buffer PlaneHypothesesBuffer { float planeHypotheses[]; };
+
+layout(push_constant) uniform PushConstants {
+    uint width;
+    uint height;
+    uint srcCount;
+    uint currentImage;
+
+    // patch parameter
+    uint patch_size;
+    uint radius_increment;
+    uint sigma_spatial;
+    uint sigma_color;
+} pc;
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+
+    if (p.x >= pc.width || p.y >= pc.height) {
+        return;
+    }
+
+    vec2 uv = (vec2(p) + 0.5) / vec2(pc.width, pc.height);
+    vec4 color = texture(refImage, uv);
+
+    planeHypotheses[(p.y * pc.width + p.x) * 4 + 0] = 0;
+    planeHypotheses[(p.y * pc.width + p.x) * 4 + 1] = 1;
+    planeHypotheses[(p.y * pc.width + p.x) * 4 + 2] = 2;
+    planeHypotheses[(p.y * pc.width + p.x) * 4 + 3] = 3;
+
+    planeHypotheses[(p.y * pc.width + p.x) * 4 + 0] = color.r;
+    planeHypotheses[(p.y * pc.width + p.x) * 4 + 1] = color.g;
+    planeHypotheses[(p.y * pc.width + p.x) * 4 + 2] = color.b;
+    planeHypotheses[(p.y * pc.width + p.x) * 4 + 3] = color.a;
+
+}
