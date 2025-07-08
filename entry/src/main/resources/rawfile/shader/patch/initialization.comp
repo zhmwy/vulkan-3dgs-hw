@@ -342,7 +342,7 @@ void main() {
     }
 
     vec2 uv = (vec2(p) + 0.5) / vec2(pc.width, pc.height);
-    vec4 color = texture(images[15], uv);
+    float color = texture(images[15], uv).r;
 
     vec4 cameraK = {
         cameraIntrics[pc.currentImage*4+0],
@@ -355,7 +355,7 @@ void main() {
     float depth_max = depthRanges[pc.currentImage*2+1];
 
     //planeHypotheses[p.y * pc.width + p.x] = GenerateRandomPlaneHypothesis(cameraK, p, depth_min, depth_max, pc.currentImage);
-    planeHypotheses[p.y * pc.width + p.x] = color;
+    planeHypotheses[p.y * pc.width + p.x] = vec4(color, color, color, 1.0);
 }
 
 // Test function for Get3DPoint

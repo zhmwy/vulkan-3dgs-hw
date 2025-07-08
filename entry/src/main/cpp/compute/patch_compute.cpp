@@ -160,13 +160,16 @@ void VulkanComputePatch::loadAssets(int origin_width, int origin_height)
             return;
         }
         cv::resize(img, img, cv::Size(origin_width, origin_height));
-        cv::cvtColor(img, img, cv::COLOR_BGR2RGBA);
+        
+        cv::Mat bgrFloat;
+        img.convertTo(bgrFloat, CV_32FC3, 1.0/255.0);
+        cv::cvtColor(bgrFloat, bgrFloat, cv::COLOR_BGR2GRAY);
         
         vkbase::Texture2DGS texture_original;
         texture_original.fromImageBuffer(
-            img.data,
+            bgrFloat.data,
             origin_width * origin_height * 4,
-            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_FORMAT_R32_SFLOAT,
             origin_width, origin_height, 
             vulkanDevice, computeRes.queue,
             VK_FILTER_LINEAR, 
