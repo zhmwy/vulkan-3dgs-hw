@@ -66,21 +66,31 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
         ComputeTransBarrierBlock();
         createGpu2CpuCopy(patchBuffers.planeHypotheses);
         createGpu2CpuCopy(patchBuffers.depthRanges);
+        createGpu2CpuCopy(patchBuffers.costs);
     });
     executeComputeCommand();
     
     VK_CHECK_RESULT(vkQueueWaitIdleGS(computeRes.queue));
     
-    cv::Mat floatMat(image_height, image_width, CV_32FC4, 
-                (float *)patchBuffers.planeHypotheses.cpu_buffer.data());
+    //cv::Mat floatMat(image_height, image_width, CV_32FC4, 
+    //            (float *)patchBuffers.planeHypotheses.cpu_buffer.data());
+    //
+    //std::stringstream ss;
+    //ss  << "Matrix values:" << floatMat << std::endl;
+    //
+    //cv::Mat ucharMat;
+    //floatMat.convertTo(ucharMat, CV_8UC4, 255.0);
+    //
+    //cv::cvtColor(ucharMat, ucharMat, cv::COLOR_RGBA2BGR);
+    //cv::imwrite(dataPath + "/test.png", ucharMat);
+    
+    cv::Mat floatMat(image_height, image_width, CV_32FC1, 
+            (float *)patchBuffers.costs.cpu_buffer.data());
     
     std::stringstream ss;
     ss  << "Matrix values:" << floatMat << std::endl;
-    
     cv::Mat ucharMat;
-    floatMat.convertTo(ucharMat, CV_8UC4, 255.0);
-    
-    cv::cvtColor(ucharMat, ucharMat, cv::COLOR_RGBA2BGR);
+    floatMat.convertTo(ucharMat, CV_8UC1, 255.0);
     cv::imwrite(dataPath + "/test.png", ucharMat);
 }
 
@@ -97,6 +107,7 @@ void VulkanComputePatch::compute()
         pushConstants.push_back(params.radius_increment);
         pushConstants.push_back(params.sigma_spatial);
         pushConstants.push_back(params.sigma_color);
+        pushConstants.push_back(params.top_k);
         
         int X = ((int)(image_width) + 16 - 1) / 16; // Ceiling division
         int Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
@@ -226,7 +237,7 @@ void VulkanComputePatch::preparePatchBuffers()
     );
     
     patchBuffers.selectedViews = vkgs::Buffer(
-        allocator, image_height * image_width * params.srcCount * sizeof(uint32_t),
+        allocator, image_height * image_width * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
@@ -238,13 +249,13 @@ void VulkanComputePatch::preparePatchBuffers()
 
 void VulkanComputePatch::setupRandomInitializationPipeline()
 {
-    const uint32_t bindingCount = 6;
+    const uint32_t bindingCount = 8;
     createPipelineLayout(
         pipeRandomInitialization,
         inputGaussian.images.size(), 
         bindingCount,  // Number of descriptor set bindings
         true,
-        sizeof(uint32_t) * 8
+        sizeof(uint32_t) * 9
     );
 
     std::vector<vkgs::Buffer*> pBuffers = {
@@ -253,7 +264,9 @@ void VulkanComputePatch::setupRandomInitializationPipeline()
         &patchBuffers.cameraR,
         &patchBuffers.cameraT,
         &patchBuffers.depthRanges,
-        &patchBuffers.planeHypotheses
+        &patchBuffers.planeHypotheses,
+        &patchBuffers.costs,
+        &patchBuffers.selectedViews
     };
 
     //updateDescriptorSet(pipeRandomInitialization.descriptorSet, inputGaussian.images, pBuffers);

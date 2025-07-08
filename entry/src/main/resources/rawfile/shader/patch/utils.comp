@@ -7,15 +7,6 @@ struct Camera {
     vec4  K;  // Intrinsic matrix parameters (fx, fy, cx, cy)
 };
 
-struct PatchMatchParams {
-    int image_width;
-    int image_height;
-    uint patch_size;
-    uint radius_increment;
-    uint sigma_spatial;
-    uint sigma_color;
-};
-
 // 随机数部分
 uint mobileRand(uvec2 coord, uint frame) {
     uint seed = (coord.x * 1973u) ^ (coord.y * 9277u) + frame;
@@ -205,4 +196,243 @@ vec2 ComputeCorrespondingPoint(const float H[9], const ivec2 p)
     pt.y = H[3] * float(p.x) + H[4] * float(p.y) + H[5];
     pt.z = H[6] * float(p.x) + H[7] * float(p.y) + H[8];
     return vec2(pt.x / pt.z, pt.y / pt.z);
+}
+
+void GetCamera(uint camId, inout Camera stCamera)
+{
+    stCamera.K = vec4(
+        cameraIntrics[camId * 4 + 0],
+        cameraIntrics[camId * 4 + 1],
+        cameraIntrics[camId * 4 + 2],
+        cameraIntrics[camId * 4 + 3]);
+
+    stCamera.R = float[9](
+        cameraRots[camId * 9 + 0],
+        cameraRots[camId * 9 + 1],
+        cameraRots[camId * 9 + 2],
+        cameraRots[camId * 9 + 3],
+        cameraRots[camId * 9 + 4],
+        cameraRots[camId * 9 + 5],
+        cameraRots[camId * 9 + 6],
+        cameraRots[camId * 9 + 7],
+        cameraRots[camId * 9 + 8]);
+
+    stCamera.t = vec3(
+        cameraTrans[camId * 3 + 0],
+        cameraTrans[camId * 3 + 1],
+        cameraTrans[camId * 3 + 2]);
+}
+
+float ComputeBilateralNCC(sampler2D ref_image, Camera ref_camera, sampler2D src_image, Camera src_camera, ivec2 p, vec4 plane_hypothesis)
+{
+    const float cost_max = 2.0;
+    int radius = int(pc.patch_size) / 2;
+
+    float H[9];
+    ComputeHomography(ref_camera, src_camera, plane_hypothesis, H);
+    vec2 pt = ComputeCorrespondingPoint(H, p);
+    if (pt.x >= float(pc.width) || pt.x < 0.0 || pt.y >= float(pc.height) || pt.y < 0.0) {
+        return cost_max;
+    }
+
+    float cost = 0.0;
+    {
+        float sum_ref = 0.0;
+        float sum_ref_ref = 0.0;
+        float sum_src = 0.0;
+        float sum_src_src = 0.0;
+        float sum_ref_src = 0.0;
+        float bilateral_weight_sum = 0.0;
+        float ref_center_pix = texture(ref_image, (vec2(p) + 0.5) / vec2(pc.width, pc.height)).r;
+
+        for (int i = -radius; i < radius + 1; i += int(pc.radius_increment)) {
+            float sum_ref_row = 0.0;
+            float sum_src_row = 0.0;
+            float sum_ref_ref_row = 0.0;
+            float sum_src_src_row = 0.0;
+            float sum_ref_src_row = 0.0;
+            float bilateral_weight_sum_row = 0.0;
+
+            for (int j = -radius; j < radius + 1; j += int(pc.radius_increment)) {
+                ivec2 ref_pt = ivec2(p.x + i, p.y + j);
+                float ref_pix = texture(ref_image, (ref_pt + 0.5) / vec2(pc.width, pc.height)).r;
+
+                vec2 src_pt = ComputeCorrespondingPoint(H, ref_pt);
+                float src_pix = texture(src_image, (src_pt + 0.5) / vec2(pc.width, pc.height)).r;
+
+                float weight = ComputeBilateralWeight(float(i), float(j), ref_pix, ref_center_pix, float(pc.sigma_spatial), float(pc.sigma_color));
+
+                sum_ref_row += weight * ref_pix;
+                sum_ref_ref_row += weight * ref_pix * ref_pix;
+                sum_src_row += weight * src_pix;
+                sum_src_src_row += weight * src_pix * src_pix;
+                sum_ref_src_row += weight * ref_pix * src_pix;
+                bilateral_weight_sum_row += weight;
+            }
+
+            sum_ref += sum_ref_row;
+            sum_ref_ref += sum_ref_ref_row;
+            sum_src += sum_src_row;
+            sum_src_src += sum_src_src_row;
+            sum_ref_src += sum_ref_src_row;
+            bilateral_weight_sum += bilateral_weight_sum_row;
+        }
+        const float inv_bilateral_weight_sum = 1.0 / bilateral_weight_sum;
+        sum_ref *= inv_bilateral_weight_sum;
+        sum_ref_ref *= inv_bilateral_weight_sum;
+        sum_src *= inv_bilateral_weight_sum;
+        sum_src_src *= inv_bilateral_weight_sum;
+        sum_ref_src *= inv_bilateral_weight_sum;
+
+        const float var_ref = sum_ref_ref - sum_ref * sum_ref;
+        const float var_src = sum_src_src - sum_src * sum_src;
+
+        const float kMinVar = 1e-5;
+        if (var_ref < kMinVar || var_src < kMinVar) {
+            return cost = cost_max;
+        } else {
+            const float covar_src_ref = sum_ref_src - sum_ref * sum_src;
+            const float var_ref_src = sqrt(var_ref * var_src);
+            return cost = max(0.0, min(cost_max, 1.0 - covar_src_ref / var_ref_src));
+        }
+    }
+
+    return cost;
+}
+
+void setBit(inout uint flag, const uint n) {
+    flag |= (1u << n);
+}
+
+uint isSet(uint flag, const uint n) {
+    return (flag >> n) & 1u;
+}
+
+void sort_small(inout float d[32], const int n) {
+    int j;
+    for (int i = 1; i < n; i++) {
+        float tmp = d[i];
+        for (j = i; j >= 1 && tmp < d[j-1]; j--) {
+            d[j] = d[j-1];
+        }
+        d[j] = tmp;
+    }
+}
+
+void sort_small_weighted(inout float d[32], inout float w[32], int n) {
+    int j;
+    for (int i = 1; i < n; i++) {
+        float tmp = d[i];
+        float tmp_w = w[i];
+        for (j = i; j >= 1 && tmp < d[j - 1]; j--) {
+            d[j] = d[j - 1];
+            w[j] = w[j - 1];
+        }
+        d[j] = tmp;
+        w[j] = tmp_w;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+// Test function for Get3DPoint
+vec3 testGet3DPoint()
+{
+    vec3 point;
+
+    // Test case 1: Basic case with standard camera parameters
+    if (false)
+    {
+        vec4 cameraK = vec4(500.0, 500.0, 320.0, 240.0); // fx, fy, cx, cy
+        ivec2 pixel = ivec2(320, 240); // Center of image
+        float depth = 2.0;
+
+        point = Get3DPoint(cameraK, pixel, depth);
+        //printf("  Expected: (0.0, 0.0, 2.0)");
+    }
+
+    // Test case 2: Corner pixel with depth 1.0
+    if (false)
+    {
+        vec4 cameraK = vec4(500.0, 500.0, 320.0, 240.0);
+        ivec2 pixel = ivec2(0, 0); // Top-left corner
+        float depth = 1.0;
+
+        point = Get3DPoint(cameraK, pixel, depth);
+        //printf("  Expected: (-0.64, -0.48, 1.0)");
+    }
+
+    // Test case 3: Different focal lengths in x and y
+    if (false)
+    {
+        vec4 cameraK = vec4(600.0, 400.0, 320.0, 240.0);
+        ivec2 pixel = ivec2(420, 340);
+        float depth = 3.0;
+
+        point = Get3DPoint(cameraK, pixel, depth);
+        //printf("  Expected: (0.5, 0.75, 3.0)");
+    }
+
+    // Test case 4: Zero depth (should return zero vector)
+    if (true)
+    {
+        vec4 cameraK = vec4(500.0, 500.0, 320.0, 240.0);
+        ivec2 pixel = ivec2(100, 100);
+        float depth = 0.0;
+
+        point = Get3DPoint(cameraK, pixel, depth);
+        //printf("  Expected: (0.0, 0.0, 0.0)");
+    }
+
+    // Test case 5: Negative depth (valid if your application allows it)
+    if (false)
+    {
+        vec4 cameraK = vec4(500.0, 500.0, 320.0, 240.0);
+        ivec2 pixel = ivec2(400, 300);
+        float depth = -1.5;
+
+        point = Get3DPoint(cameraK, pixel, depth);
+        //printf("  Expected: (0.24, 0.18, -1.5)");
+    }
+
+    return point;
+}
+
+void testHomoGraphy()
+{
+    Camera camera1;
+    camera1.R = float[9](1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+    camera1.t = vec3(0.0, 0.0, 0.0);
+    camera1.K = vec4(600.0, 400.0, 320.0, 240.0);
+
+    Camera camera2;
+    float theta = 0.01745329251 * 30.0;
+    camera2.R = float[9](cos(theta), 0.0, sin(theta), 0.0, 1.0, 0.0, -sin(theta), 0.0, cos(theta));
+    camera2.t = vec3(0.0, 0.0, 0.0);
+
+    //camera2.R = float[9](1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+    //camera2.t = vec3(0.1, 0.0, 0.0);
+
+    camera2.K = vec4(600.0, 400.0, 320.0, 240.0);
+
+    float H[9];
+    ComputeHomography(camera1, camera2, vec4(0.0, 0.0, 1.0, -2.0), H);
+
+
+    //Homography Matrix (with rotation):
+    // [[ 5.99358737e-01  0.00000000e+00  3.85333333e+02]
+    // [-2.00000000e-01  1.00000000e+00  3.18460969e+01]
+    // [-8.33333333e-04  0.00000000e+00  1.13269207e+00]]
+    //
+    //Homography Matrix:
+    //  [[ 1.  0. 30.]
+    //  [ 0.  1.  0.]
+    //  [ 0.  0.  1.]]
+}
+
+void testBilateray()
+{
+    float w1 = ComputeBilateralWeight(0.0, 0.0, 0.5, 0.5, 1.0, 0.1);    // 1
+    float w2 = ComputeBilateralWeight(2.0, 0.0, 0.5, 0.5, 1.0, 0.1);  // 0.367887948
+    float w3 = ComputeBilateralWeight(0.0, 0.0, 0.6, 0.5, 1.0, 0.1);    // 0.006737939
 }

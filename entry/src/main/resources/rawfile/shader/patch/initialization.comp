@@ -1,7 +1,6 @@
 #version 450
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : enable
-#include "utils.comp"
 
 layout(binding = 0) uniform sampler2D images[];
 layout(binding = 1) buffer SrcPairsBuffer { int srcPairs[]; };
@@ -10,6 +9,8 @@ layout(binding = 3) buffer CameraRotBuffer { float cameraRots[]; };
 layout(binding = 4) buffer CameraTransBuffer { float cameraTrans[]; };
 layout(binding = 5) buffer DepthRangesBuffer { float depthRanges[]; };
 layout(binding = 6) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
+layout(binding = 7) buffer CostsBuffer { float costs[]; };
+layout(binding = 8) buffer SelectedViewsBuffer { float selectedViews[]; };
 
 layout(push_constant) uniform PushConstants {
     uint width;
@@ -22,108 +23,75 @@ layout(push_constant) uniform PushConstants {
     uint radius_increment;
     uint sigma_spatial;
     uint sigma_color;
+    uint top_k;
 } pc;
 
-void GetCamera(uint camId, inout Camera stCamera)
-{
-    stCamera.K = vec4(
-        cameraIntrics[camId * 4 + 0],
-        cameraIntrics[camId * 4 + 1],
-        cameraIntrics[camId * 4 + 2],
-        cameraIntrics[camId * 4 + 3]);
+#include "utils.comp"
 
-    stCamera.R = float[9](
-        cameraRots[camId * 9 + 0],
-        cameraRots[camId * 9 + 1],
-        cameraRots[camId * 9 + 2],
-        cameraRots[camId * 9 + 3],
-        cameraRots[camId * 9 + 4],
-        cameraRots[camId * 9 + 5],
-        cameraRots[camId * 9 + 6],
-        cameraRots[camId * 9 + 7],
-        cameraRots[camId * 9 + 8]);
-
-    stCamera.t = vec3(
-        cameraTrans[camId * 3 + 0],
-        cameraTrans[camId * 3 + 1],
-        cameraTrans[camId * 3 + 2]);
-}
-
-float ComputeBilateralNCC(sampler2D ref_image, Camera ref_camera, sampler2D src_image, Camera src_camera, ivec2 p, vec4 plane_hypothesis)
-{
+float ComputeMultiViewInitialCostandSelectedViews(
+    ivec2 p,                 // 像素坐标
+    vec4 plane_hypothesis,   // 平面假设
+    out uint selected_views  // 输出选中的视图掩码
+) {
     const float cost_max = 2.0;
-    int radius = int(pc.patch_size) / 2;
+    float cost_vector[32];
+    float cost_vector_copy[32];
+    int cost_count = 0;
+    uint num_valid_views = 0;
 
-    float H[9];
-    ComputeHomography(ref_camera, src_camera, plane_hypothesis, H);
-    vec2 pt = ComputeCorrespondingPoint(H, p);
-    if (pt.x >= float(pc.width) || pt.x < 0.0 || pt.y >= float(pc.height) || pt.y < 0.0) {
+    // 初始化成本数组
+    for (int i = 0; i < 32; ++i) {
+        cost_vector[i] = cost_max;
+        cost_vector_copy[i] = cost_max;
+    }
+
+    Camera refCamera;
+    GetCamera(pc.currentImage, refCamera);
+
+    // 计算所有视图的成本
+    for (int i = 0; i < pc.srcCount; ++i) {
+
+        uint isrc = srcPairs[pc.currentImage*pc.srcCount + i];
+
+        Camera srcCamera;
+        GetCamera(isrc, srcCamera);
+
+        float c = ComputeBilateralNCC(
+            images[pc.currentImage], refCamera,
+            images[isrc], srcCamera,
+            p, plane_hypothesis
+        );
+        cost_vector[i - 1] = c;
+        cost_vector_copy[i - 1] = c;
+        cost_count++;
+        if (c < cost_max) {
+            num_valid_views++;
+        }
+    }
+
+    // 排序成本数组
+    sort_small(cost_vector, cost_count);
+    selected_views = 0u; // 初始化为0
+
+    // 计算前top_k的平均成本
+    uint top_k = min(num_valid_views, pc.top_k);
+    if (top_k > 0) {
+        float cost = 0.0;
+        for (int i = 0; i < top_k; ++i) {
+            cost += cost_vector[i];
+        }
+        float cost_threshold = cost_vector[top_k - 1];
+
+        // 设置选中的视图掩码
+        for (int i = 0; i < pc.srcCount; ++i) {
+            if (cost_vector_copy[i] <= cost_threshold) {
+                setBit(selected_views, i);
+            }
+        }
+        return cost / float(top_k);
+    } else {
         return cost_max;
     }
-
-    float cost = 0.0;
-    {
-        float sum_ref = 0.0;
-        float sum_ref_ref = 0.0;
-        float sum_src = 0.0;
-        float sum_src_src = 0.0;
-        float sum_ref_src = 0.0;
-        float bilateral_weight_sum = 0.0;
-        float ref_center_pix = texture(ref_image, (vec2(p) + 0.5) / vec2(pc.width, pc.height)).r;
-
-        for (int i = -radius; i < radius + 1; i += int(pc.radius_increment)) {
-            float sum_ref_row = 0.0;
-            float sum_src_row = 0.0;
-            float sum_ref_ref_row = 0.0;
-            float sum_src_src_row = 0.0;
-            float sum_ref_src_row = 0.0;
-            float bilateral_weight_sum_row = 0.0;
-
-            for (int j = -radius; j < radius + 1; j += int(pc.radius_increment)) {
-                ivec2 ref_pt = ivec2(p.x + i, p.y + j);
-                float ref_pix = texture(ref_image, (ref_pt + 0.5) / vec2(pc.width, pc.height)).r;
-
-                vec2 src_pt = ComputeCorrespondingPoint(H, ref_pt);
-                float src_pix = texture(src_image, (src_pt + 0.5) / vec2(pc.width, pc.height)).r;
-
-                float weight = ComputeBilateralWeight(float(i), float(j), ref_pix, ref_center_pix, float(pc.sigma_spatial), float(pc.sigma_color));
-
-                sum_ref_row += weight * ref_pix;
-                sum_ref_ref_row += weight * ref_pix * ref_pix;
-                sum_src_row += weight * src_pix;
-                sum_src_src_row += weight * src_pix * src_pix;
-                sum_ref_src_row += weight * ref_pix * src_pix;
-                bilateral_weight_sum_row += weight;
-            }
-
-            sum_ref += sum_ref_row;
-            sum_ref_ref += sum_ref_ref_row;
-            sum_src += sum_src_row;
-            sum_src_src += sum_src_src_row;
-            sum_ref_src += sum_ref_src_row;
-            bilateral_weight_sum += bilateral_weight_sum_row;
-        }
-        const float inv_bilateral_weight_sum = 1.0 / bilateral_weight_sum;
-        sum_ref *= inv_bilateral_weight_sum;
-        sum_ref_ref *= inv_bilateral_weight_sum;
-        sum_src *= inv_bilateral_weight_sum;
-        sum_src_src *= inv_bilateral_weight_sum;
-        sum_ref_src *= inv_bilateral_weight_sum;
-
-        const float var_ref = sum_ref_ref - sum_ref * sum_ref;
-        const float var_src = sum_src_src - sum_src * sum_src;
-
-        const float kMinVar = 1e-5;
-        if (var_ref < kMinVar || var_src < kMinVar) {
-            return cost = cost_max;
-        } else {
-            const float covar_src_ref = sum_ref_src - sum_ref * sum_src;
-            const float var_ref_src = sqrt(var_ref * var_src);
-            return cost = max(0.0, min(cost_max, 1.0 - covar_src_ref / var_ref_src));
-        }
-    }
-
-    return cost;
 }
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
@@ -144,124 +112,15 @@ void main() {
     float depth_max = depthRanges[pc.currentImage*2+1];
 
     vec4 plane = GenerateRandomPlaneHypothesis(vec4(refCamera.K), pt, depth_min, depth_max, pc.currentImage);
-    //planeHypotheses[pt.y * pc.width + pt.x] = plane;
+    planeHypotheses[pt.y * pc.width + pt.x] = plane;
 
     uint isrc = srcPairs[pc.currentImage*pc.srcCount + 0];
     color = texture(images[isrc], uv).r;
     Camera srcCamera;
     GetCamera(isrc, srcCamera);
 
-    float ncc = ComputeBilateralNCC(images[pc.currentImage], refCamera, images[isrc], srcCamera, pt, plane);
-    planeHypotheses[pt.y * pc.width + pt.x] = vec4(ncc, ncc, ncc, 1.0);
-    //if (pt.x == 0) {
-    //    planeHypotheses[pt.y * pc.width + pt.x] = vec4(refCamera.R[0], refCamera.R[1], refCamera.R[2], refCamera.R[3]);
-    //} else if (pt.x == 1) {
-    //    planeHypotheses[pt.y * pc.width + pt.x] = vec4(refCamera.R[4], refCamera.R[5], refCamera.R[6], refCamera.R[7]);
-    //} else if (pt.x == 2) {
-    //    planeHypotheses[pt.y * pc.width + pt.x] = vec4(refCamera.R[8], 0, 0, 0);
-    //}
+    uint selected_views;
+    float cost = ComputeMultiViewInitialCostandSelectedViews(pt, plane, selected_views);
+    costs[pt.y * pc.width + pt.x] = cost;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////
-
-// Test function for Get3DPoint
-vec3 testGet3DPoint()
-{
-    vec3 point;
-
-    // Test case 1: Basic case with standard camera parameters
-    if (false)
-    {
-        vec4 cameraK = vec4(500.0, 500.0, 320.0, 240.0); // fx, fy, cx, cy
-        ivec2 pixel = ivec2(320, 240); // Center of image
-        float depth = 2.0;
-
-        point = Get3DPoint(cameraK, pixel, depth);
-        //printf("  Expected: (0.0, 0.0, 2.0)");
-    }
-
-    // Test case 2: Corner pixel with depth 1.0
-    if (false)
-    {
-        vec4 cameraK = vec4(500.0, 500.0, 320.0, 240.0);
-        ivec2 pixel = ivec2(0, 0); // Top-left corner
-        float depth = 1.0;
-
-        point = Get3DPoint(cameraK, pixel, depth);
-        //printf("  Expected: (-0.64, -0.48, 1.0)");
-    }
-
-    // Test case 3: Different focal lengths in x and y
-    if (false)
-    {
-        vec4 cameraK = vec4(600.0, 400.0, 320.0, 240.0);
-        ivec2 pixel = ivec2(420, 340);
-        float depth = 3.0;
-
-        point = Get3DPoint(cameraK, pixel, depth);
-        //printf("  Expected: (0.5, 0.75, 3.0)");
-    }
-
-    // Test case 4: Zero depth (should return zero vector)
-    if (true)
-    {
-        vec4 cameraK = vec4(500.0, 500.0, 320.0, 240.0);
-        ivec2 pixel = ivec2(100, 100);
-        float depth = 0.0;
-
-        point = Get3DPoint(cameraK, pixel, depth);
-        //printf("  Expected: (0.0, 0.0, 0.0)");
-    }
-
-    // Test case 5: Negative depth (valid if your application allows it)
-    if (false)
-    {
-        vec4 cameraK = vec4(500.0, 500.0, 320.0, 240.0);
-        ivec2 pixel = ivec2(400, 300);
-        float depth = -1.5;
-
-        point = Get3DPoint(cameraK, pixel, depth);
-        //printf("  Expected: (0.24, 0.18, -1.5)");
-    }
-
-    return point;
-}
-
-void testHomoGraphy()
-{
-    Camera camera1;
-    camera1.R = float[9](1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
-    camera1.t = vec3(0.0, 0.0, 0.0);
-    camera1.K = vec4(600.0, 400.0, 320.0, 240.0);
-
-    Camera camera2;
-    float theta = 0.01745329251 * 30.0;
-    camera2.R = float[9](cos(theta), 0.0, sin(theta), 0.0, 1.0, 0.0, -sin(theta), 0.0, cos(theta));
-    camera2.t = vec3(0.0, 0.0, 0.0);
-
-    //camera2.R = float[9](1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
-    //camera2.t = vec3(0.1, 0.0, 0.0);
-
-    camera2.K = vec4(600.0, 400.0, 320.0, 240.0);
-
-    float H[9];
-    ComputeHomography(camera1, camera2, vec4(0.0, 0.0, 1.0, -2.0), H);
-
-
-    //Homography Matrix (with rotation):
-    // [[ 5.99358737e-01  0.00000000e+00  3.85333333e+02]
-    // [-2.00000000e-01  1.00000000e+00  3.18460969e+01]
-    // [-8.33333333e-04  0.00000000e+00  1.13269207e+00]]
-    //
-    //Homography Matrix:
-    //  [[ 1.  0. 30.]
-    //  [ 0.  1.  0.]
-    //  [ 0.  0.  1.]]
-}
-
-void testBilateray()
-{
-    float w1 = ComputeBilateralWeight(0.0, 0.0, 0.5, 0.5, 1.0, 0.1);    // 1
-    float w2 = ComputeBilateralWeight(2.0, 0.0, 0.5, 0.5, 1.0, 0.1);  // 0.367887948
-    float w3 = ComputeBilateralWeight(0.0, 0.0, 0.6, 0.5, 1.0, 0.1);    // 0.006737939
-}
