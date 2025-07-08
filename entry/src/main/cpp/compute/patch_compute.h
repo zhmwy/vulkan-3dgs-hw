@@ -63,8 +63,10 @@ protected:
     int image_height = 640;
     
     STComputePipeLine pipeRandomInitialization;
+    STComputePipeLine pipePropagation;
     
     void setupRandomInitializationPipeline();
+    void setupPropagationPipeline();
     
     void loadAssets(int origin_width, int origin_height);
     void preparePatchBuffers();

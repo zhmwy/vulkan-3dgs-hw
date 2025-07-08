@@ -1,0 +1,70 @@
+#version 450
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_GOOGLE_include_directive : enable
+
+layout(binding = 0) uniform sampler2D images[];
+layout(binding = 1) buffer SrcPairsBuffer { int srcPairs[]; };
+layout(binding = 2) buffer CameraIntricsBuffer { float cameraIntrics[]; };
+layout(binding = 3) buffer CameraRotBuffer { float cameraRots[]; };
+layout(binding = 4) buffer CameraTransBuffer { float cameraTrans[]; };
+layout(binding = 5) buffer DepthRangesBuffer { float depthRanges[]; };
+layout(binding = 6) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
+layout(binding = 7) buffer CostsBuffer { float costs[]; };
+layout(binding = 8) buffer SelectedViewsBuffer { float selectedViews[]; };
+
+layout(push_constant) uniform PushConstants {
+    uint width;
+    uint height;
+    uint srcCount;
+    uint currentImage;
+
+    // patch parameter
+    uint patch_size;
+    uint radius_increment;
+    uint sigma_spatial;
+    uint sigma_color;
+    uint top_k;
+    uint is_black_update;
+} pc;
+
+#define BLOCK_W 32
+#define BLOCK_H (BLOCK_W / 2)
+
+#include "utils.comp"
+
+void BlackPixelUpdate(ivec2 pt)
+{
+    //if (gl_LocalInvocationID.x % 2 == 0) {
+    //    pt.y = pt.y * 2;
+    //} else {
+    //    pt.y = pt.y * 2 + 1;
+    //}
+
+    planeHypotheses[pt.x + pc.width * pt.y] = vec4(0.0, 0.0, 1.0, 1.0);
+}
+
+void RedPixelUpdate(ivec2 pt)
+{
+    //if (gl_LocalInvocationID.x % 2 == 0) {
+    //    pt.y = pt.y * 2 + 1;
+    //} else {
+    //    pt.y = pt.y * 2;
+    //}
+
+    planeHypotheses[pt.x + pc.width * pt.y] = vec4(1.0, 0.0, 0.0, 1.0);
+}
+
+layout(local_size_x = BLOCK_W, local_size_y = BLOCK_H, local_size_z = 1) in;
+void main() {
+    ivec2 pt = ivec2(gl_GlobalInvocationID.xy);
+    if (pt.x >= pc.width || pt.y >= pc.height) {
+        return;
+    }
+
+    // 通过 Uniform 标志选择模式
+    if (pc.is_black_update == 0) {
+        RedPixelUpdate(pt);
+    } else {
+        BlackPixelUpdate(pt);
+    }
+}
