@@ -26,6 +26,8 @@ public:
         uint32_t radius_increment = 2;
         uint32_t sigma_spatial = 5.0;
         uint32_t sigma_color = 3.0;
+        uint32_t top_k = 4;
+        uint32_t max_iterations = 3;
     }params;
     
     void loadPatchData(std::string& dataFolder);

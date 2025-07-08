@@ -238,7 +238,7 @@ void VulkanComputePatch::preparePatchBuffers()
 
 void VulkanComputePatch::setupRandomInitializationPipeline()
 {
-    const uint32_t bindingCount = 4;
+    const uint32_t bindingCount = 6;
     createPipelineLayout(
         pipeRandomInitialization,
         inputGaussian.images.size(), 
@@ -250,6 +250,8 @@ void VulkanComputePatch::setupRandomInitializationPipeline()
     std::vector<vkgs::Buffer*> pBuffers = {
         &patchBuffers.srcPairs,
         &patchBuffers.intrParams,
+        &patchBuffers.cameraR,
+        &patchBuffers.cameraT,
         &patchBuffers.depthRanges,
         &patchBuffers.planeHypotheses
     };

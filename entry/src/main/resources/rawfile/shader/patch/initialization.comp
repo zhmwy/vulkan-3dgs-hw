@@ -1,11 +1,15 @@
 #version 450
-//#extension GL_EXT_samplerless_texture_functions : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_GOOGLE_include_directive : enable
+#include "utils.comp"
 
 layout(binding = 0) uniform sampler2D images[];
 layout(binding = 1) buffer SrcPairsBuffer { int srcPairs[]; };
 layout(binding = 2) buffer CameraIntricsBuffer { float cameraIntrics[]; };
-layout(binding = 3) buffer DepthRangesBuffer { float depthRanges[]; };
-layout(binding = 4) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
+layout(binding = 3) buffer CameraRotBuffer { float cameraRots[]; };
+layout(binding = 4) buffer CameraTransBuffer { float cameraTrans[]; };
+layout(binding = 5) buffer DepthRangesBuffer { float depthRanges[]; };
+layout(binding = 6) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
 
 layout(push_constant) uniform PushConstants {
     uint width;
@@ -20,252 +24,40 @@ layout(push_constant) uniform PushConstants {
     uint sigma_color;
 } pc;
 
-// Define camera structure
-struct Camera {
-    float R[9];  // Rotation matrix (3x3 in row-major order)
-    float t[3];  // Translation vector
-    float K[4];  // Intrinsic matrix parameters (fx, fy, cx, cy)
-};
-
-struct PatchMatchParams {
-    int image_width;
-    int image_height;
-    uint patch_size;
-    uint radius_increment;
-    uint sigma_spatial;
-    uint sigma_color;
-};
-
-// 随机数部分
-uint mobileRand(uvec2 coord, uint frame) {
-    uint seed = (coord.x * 1973u) ^ (coord.y * 9277u) + frame;
-    seed ^= seed << 13u;
-    seed ^= seed >> 17u;
-    seed ^= seed << 5u;
-    return seed;
-}
-
-float random(uvec2 coord, uint frame) {
-    uvec2 offCoord = uvec2(197, 197);
-    return (float(mobileRand(coord, frame)) * (1.0 / 4294967296.0) +
-           float(mobileRand(coord+offCoord, frame)) * (1.0 / 4294967296.0)) / 2.0;
-}
-
-// 3D坐标计算
-vec3 Get3DPoint(vec4 cameraK, ivec2 p, float depth) {
-    vec3 X;
-    X.x = depth * (float(p.x) - cameraK.z) / cameraK.x;
-    X.y = depth * (float(p.y) - cameraK.w) / cameraK.y;
-    X.z = depth;
-    return X;
-}
-
-vec4 GetViewDirection(vec4 cameraK, const ivec2 p, const float depth)
+void GetCamera(uint camId, inout Camera stCamera)
 {
-    vec3 X = Get3DPoint(cameraK, p, depth);
-    float norm = sqrt(X[0] * X[0] + X[1] * X[1] + X[2] * X[2]);
+    stCamera.K = vec4(
+        cameraIntrics[camId * 4 + 0],
+        cameraIntrics[camId * 4 + 1],
+        cameraIntrics[camId * 4 + 2],
+        cameraIntrics[camId * 4 + 3]);
 
-    vec4 view_direction;
-    view_direction.x = X[0] / norm;
-    view_direction.y = X[1] / norm;
-    view_direction.z = X[2] / norm;
-    view_direction.w = 0.0;
-    return view_direction;
+    stCamera.R = float[9](
+        cameraRots[camId * 9 + 0],
+        cameraRots[camId * 9 + 1],
+        cameraRots[camId * 9 + 2],
+        cameraRots[camId * 9 + 3],
+        cameraRots[camId * 9 + 4],
+        cameraRots[camId * 9 + 5],
+        cameraRots[camId * 9 + 6],
+        cameraRots[camId * 9 + 7],
+        cameraRots[camId * 9 + 8]);
+
+    stCamera.t = vec3(
+        cameraTrans[camId * 3 + 0],
+        cameraTrans[camId * 3 + 1],
+        cameraTrans[camId * 3 + 2]);
 }
 
-void NormalizeVec3(inout vec4 vec)
-{
-    const float normSquared = vec.x * vec.x + vec.y * vec.y + vec.z * vec.z;
-    const float inverse_sqrt = inversesqrt(normSquared);
-    vec.xyz *= inverse_sqrt;
-}
-
-vec4 GenerateRandomNormal(vec4 cameraK, const ivec2 p, const float depth, uint currentImage)
-{
-    float q1 = 1.0;
-    float q2 = 1.0;
-    float s  = 2.0;
-
-    uint idx = currentImage;
-    while (s >= 1.0) {
-        q1 = 2.0 * random(uvec2(p), idx) - 1.0;
-        q2 = 2.0 * random(uvec2(p + ivec2(37, 17)), idx + 1u) - 1.0;
-        s = q1 * q1 + q2 * q2;
-        idx = idx + 1u;
-    }
-
-    idx = uint(float(random(uvec2(p + ivec2(113, 127)), currentImage)) * 32771.0);
-
-    const float sq = sqrt(1.0 - s);
-    vec4 normal;
-    if (idx % 3u == 0u) {
-        normal.x = 2.0 * q1 * sq;
-        normal.y = 2.0 * q2 * sq;
-        normal.z = 1.0 - 2.0 * s;
-    }
-    else if (idx % 3u == 1u) {
-        normal.y = 2.0 * q1 * sq;
-        normal.z = 2.0 * q2 * sq;
-        normal.x = 1.0 - 2.0 * s;
-    }
-    else /* if (idx % 3u == 2u) */ {
-        normal.z = 2.0 * q1 * sq;
-        normal.x = 2.0 * q2 * sq;
-        normal.y = 1.0 - 2.0 * s;
-    }
-    normal.w = 0.0;
-
-    vec4 view_direction = GetViewDirection(cameraK, p, depth);
-    float dot_product = normal.x * view_direction.x + normal.y * view_direction.y + normal.z * view_direction.z;
-    if (dot_product > 0.0) {
-        normal.x = -normal.x;
-        normal.y = -normal.y;
-        normal.z = -normal.z;
-    }
-    NormalizeVec3(normal);
-    return normal;
-}
-
-float GetDistance2Origin(vec4 cameraK, ivec2 p, const float depth, const vec4 normal)
-{
-    vec3 X = Get3DPoint(cameraK, p, depth);
-    return -(normal.x * X.x + normal.y * X.y + normal.z * X.z);
-}
-
-vec4 GenerateRandomPlaneHypothesis(vec4 cameraK, const ivec2 p, const float depth_min, const float depth_max, uint currentImage)
-{
-    float depth = random(uvec2(p), 1u) * (depth_max - depth_min) + depth_min;
-    vec4 plane_hypothesis = GenerateRandomNormal(cameraK, p, depth, currentImage);
-    plane_hypothesis.w = GetDistance2Origin(cameraK, p, depth, plane_hypothesis);
-
-    return plane_hypothesis;
-}
-
-// Compute homography function in GLSL
-void ComputeHomography(Camera ref_camera, Camera src_camera, vec4 plane_hypothesis, inout float H[9]) {
-    // Compute camera centers
-    vec3 ref_C = vec3(
-        -(ref_camera.R[0] * ref_camera.t[0] + ref_camera.R[3] * ref_camera.t[1] + ref_camera.R[6] * ref_camera.t[2]),
-        -(ref_camera.R[1] * ref_camera.t[0] + ref_camera.R[4] * ref_camera.t[1] + ref_camera.R[7] * ref_camera.t[2]),
-        -(ref_camera.R[2] * ref_camera.t[0] + ref_camera.R[5] * ref_camera.t[1] + ref_camera.R[8] * ref_camera.t[2])
-    );
-
-    vec3 src_C = vec3(
-        -(src_camera.R[0] * src_camera.t[0] + src_camera.R[3] * src_camera.t[1] + src_camera.R[6] * src_camera.t[2]),
-        -(src_camera.R[1] * src_camera.t[0] + src_camera.R[4] * src_camera.t[1] + src_camera.R[7] * src_camera.t[2]),
-        -(src_camera.R[2] * src_camera.t[0] + src_camera.R[5] * src_camera.t[1] + src_camera.R[8] * src_camera.t[2])
-    );
-
-    // Compute relative rotation
-    float R_relative[9];
-    R_relative[0] = src_camera.R[0] * ref_camera.R[0] + src_camera.R[1] * ref_camera.R[1] + src_camera.R[2] * ref_camera.R[2];
-    R_relative[1] = src_camera.R[0] * ref_camera.R[3] + src_camera.R[1] * ref_camera.R[4] + src_camera.R[2] * ref_camera.R[5];
-    R_relative[2] = src_camera.R[0] * ref_camera.R[6] + src_camera.R[1] * ref_camera.R[7] + src_camera.R[2] * ref_camera.R[8];
-    R_relative[3] = src_camera.R[3] * ref_camera.R[0] + src_camera.R[4] * ref_camera.R[1] + src_camera.R[5] * ref_camera.R[2];
-    R_relative[4] = src_camera.R[3] * ref_camera.R[3] + src_camera.R[4] * ref_camera.R[4] + src_camera.R[5] * ref_camera.R[5];
-    R_relative[5] = src_camera.R[3] * ref_camera.R[6] + src_camera.R[4] * ref_camera.R[7] + src_camera.R[5] * ref_camera.R[8];
-    R_relative[6] = src_camera.R[6] * ref_camera.R[0] + src_camera.R[7] * ref_camera.R[1] + src_camera.R[8] * ref_camera.R[2];
-    R_relative[7] = src_camera.R[6] * ref_camera.R[3] + src_camera.R[7] * ref_camera.R[4] + src_camera.R[8] * ref_camera.R[5];
-    R_relative[8] = src_camera.R[6] * ref_camera.R[6] + src_camera.R[7] * ref_camera.R[7] + src_camera.R[8] * ref_camera.R[8];
-
-    // Compute relative translation
-    vec3 C_relative = ref_C - src_C;
-    vec3 t_relative = vec3(
-        src_camera.R[0] * C_relative.x + src_camera.R[1] * C_relative.y + src_camera.R[2] * C_relative.z,
-        src_camera.R[3] * C_relative.x + src_camera.R[4] * C_relative.y + src_camera.R[5] * C_relative.z,
-        src_camera.R[6] * C_relative.x + src_camera.R[7] * C_relative.y + src_camera.R[8] * C_relative.z
-    );
-
-    // Compute homography components
-    float n = plane_hypothesis.w;  // plane normal scale factor
-    H[0] = R_relative[0] - t_relative.x * plane_hypothesis.x / n;
-    H[1] = R_relative[1] - t_relative.x * plane_hypothesis.y / n;
-    H[2] = R_relative[2] - t_relative.x * plane_hypothesis.z / n;
-    H[3] = R_relative[3] - t_relative.y * plane_hypothesis.x / n;
-    H[4] = R_relative[4] - t_relative.y * plane_hypothesis.y / n;
-    H[5] = R_relative[5] - t_relative.y * plane_hypothesis.z / n;
-    H[6] = R_relative[6] - t_relative.z * plane_hypothesis.x / n;
-    H[7] = R_relative[7] - t_relative.z * plane_hypothesis.y / n;
-    H[8] = R_relative[8] - t_relative.z * plane_hypothesis.z / n;
-
-    // Apply intrinsic matrices
-    float tmp[9];
-    tmp[0] = H[0] / ref_camera.K[0];
-    tmp[1] = H[1] / ref_camera.K[1];
-    tmp[2] = -H[0] * ref_camera.K[2] / ref_camera.K[0] - H[1] * ref_camera.K[3] / ref_camera.K[1] + H[2];
-    tmp[3] = H[3] / ref_camera.K[0];
-    tmp[4] = H[4] / ref_camera.K[1];
-    tmp[5] = -H[3] * ref_camera.K[2] / ref_camera.K[0] - H[4] * ref_camera.K[3] / ref_camera.K[1] + H[5];
-    tmp[6] = H[6] / ref_camera.K[0];
-    tmp[7] = H[7] / ref_camera.K[1];
-    tmp[8] = -H[6] * ref_camera.K[2] / ref_camera.K[0] - H[7] * ref_camera.K[3] / ref_camera.K[1] + H[8];
-
-    H[0] = src_camera.K[0] * tmp[0] + src_camera.K[2] * tmp[6];
-    H[1] = src_camera.K[0] * tmp[1] + src_camera.K[2] * tmp[7];
-    H[2] = src_camera.K[0] * tmp[2] + src_camera.K[2] * tmp[8];
-    H[3] = src_camera.K[1] * tmp[3] + src_camera.K[3] * tmp[6];
-    H[4] = src_camera.K[1] * tmp[4] + src_camera.K[3] * tmp[7];
-    H[5] = src_camera.K[1] * tmp[5] + src_camera.K[3] * tmp[8];
-    H[6] = tmp[6];
-    H[7] = tmp[7];
-    H[8] = tmp[8];
-}
-
-float ComputeBilateralWeight(float x_dist, float y_dist, float pix, float center_pix, float sigma_spatial, float sigma_color) {
-    float spatial_dist = sqrt(x_dist * x_dist + y_dist * y_dist);
-    float color_dist = abs(pix - center_pix);
-    return exp(-spatial_dist / (2.0 * sigma_spatial * sigma_spatial) -
-               color_dist / (2.0 * sigma_color * sigma_color));
-}
-
-vec2 ComputeCorrespondingPoint(const float H[9], const ivec2 p)
-{
-    vec3 pt;
-    pt.x = H[0] * float(p.x) + H[1] * float(p.y) + H[2];
-    pt.y = H[3] * float(p.x) + H[4] * float(p.y) + H[5];
-    pt.z = H[6] * float(p.x) + H[7] * float(p.y) + H[8];
-    return vec2(pt.x / pt.z, pt.y / pt.z);
-}
-
-float iTexValue(sampler2DArray images, int image_idx, int image_width, int image_height, int px, int py)
-{
-    vec3 color = texture(images, vec3(float(px) + 0.5, float(py) + 0.5, float(image_idx))).rgb;
-    return (color.r + color.g + color.b) / 3.0;
-}
-
-float fTexValue(sampler2DArray images, int image_idx, int image_width, int image_height, float px, float py)
-{
-    float ix = floor(px);
-    if (ix < 0.0) ix = 0.0;
-    else if (ix >= float(image_width)) ix = float(image_width-1);
-    float fx = px - ix;
-    float ix1 = ix+1.0;
-    if (ix1 >= float(image_width)) ix1 = float(image_width-1);
-
-    float iy = floor(py);
-    if (iy < 0.0) iy = 0.0;
-    else if (iy >= float(image_height)) iy = float(image_height-1);
-    float fy = py - iy;
-    float iy1 = iy+1.0;
-    if (iy1 >= float(image_height)) iy1 = float(image_height-1);
-
-    float vxy = iTexValue(images, image_idx, image_width, image_height, int(ix), int(iy));
-    float vx1y1 = iTexValue(images, image_idx, image_width, image_height, int(ix1), int(iy1));
-    float vxy1 = iTexValue(images, image_idx, image_width, image_height, int(ix), int(iy1));
-    float vx1y = iTexValue(images, image_idx, image_width, image_height, int(ix1), int(iy));
-
-    return (vxy * (1.0-fx) + vx1y * fx) * (1.0-fy) + (vxy1 * (1.0-fx) + vx1y1 * fx) * fy;
-}
-
-float ComputeBilateralNCC(sampler2DArray images, int ref_image, Camera ref_camera, int src_image, Camera src_camera, ivec2 p, vec4 plane_hypothesis, PatchMatchParams params)
+float ComputeBilateralNCC(sampler2D ref_image, Camera ref_camera, sampler2D src_image, Camera src_camera, ivec2 p, vec4 plane_hypothesis)
 {
     const float cost_max = 2.0;
-    int radius = int(params.patch_size) / 2;
+    int radius = int(pc.patch_size) / 2;
 
     float H[9];
     ComputeHomography(ref_camera, src_camera, plane_hypothesis, H);
     vec2 pt = ComputeCorrespondingPoint(H, p);
-    if (pt.x >= float(params.image_width) || pt.x < 0.0 || pt.y >= float(params.image_height) || pt.y < 0.0) {
+    if (pt.x >= float(pc.width) || pt.x < 0.0 || pt.y >= float(pc.height) || pt.y < 0.0) {
         return cost_max;
     }
 
@@ -277,9 +69,9 @@ float ComputeBilateralNCC(sampler2DArray images, int ref_image, Camera ref_camer
         float sum_src_src = 0.0;
         float sum_ref_src = 0.0;
         float bilateral_weight_sum = 0.0;
-        float ref_center_pix = iTexValue(images, ref_image, params.image_width, params.image_height, p.x, p.y);
+        float ref_center_pix = texture(ref_image, (vec2(p) + 0.5) / vec2(pc.width, pc.height)).r;
 
-        for (int i = -radius; i < radius + 1; i += int(params.radius_increment)) {
+        for (int i = -radius; i < radius + 1; i += int(pc.radius_increment)) {
             float sum_ref_row = 0.0;
             float sum_src_row = 0.0;
             float sum_ref_ref_row = 0.0;
@@ -287,13 +79,14 @@ float ComputeBilateralNCC(sampler2DArray images, int ref_image, Camera ref_camer
             float sum_ref_src_row = 0.0;
             float bilateral_weight_sum_row = 0.0;
 
-            for (int j = -radius; j < radius + 1; j += int(params.radius_increment)) {
+            for (int j = -radius; j < radius + 1; j += int(pc.radius_increment)) {
                 ivec2 ref_pt = ivec2(p.x + i, p.y + j);
-                float ref_pix = iTexValue(images, ref_image, params.image_width, params.image_height, ref_pt.x, ref_pt.y);
-                vec2 src_pt = ComputeCorrespondingPoint(H, ref_pt);
-                float src_pix = fTexValue(images, src_image, params.image_width, params.image_height, src_pt.x, src_pt.y);
+                float ref_pix = texture(ref_image, (ref_pt + 0.5) / vec2(pc.width, pc.height)).r;
 
-                float weight = ComputeBilateralWeight(float(i), float(j), ref_pix, ref_center_pix, float(params.sigma_spatial), float(params.sigma_color));
+                vec2 src_pt = ComputeCorrespondingPoint(H, ref_pt);
+                float src_pix = texture(src_image, (src_pt + 0.5) / vec2(pc.width, pc.height)).r;
+
+                float weight = ComputeBilateralWeight(float(i), float(j), ref_pix, ref_center_pix, float(pc.sigma_spatial), float(pc.sigma_color));
 
                 sum_ref_row += weight * ref_pix;
                 sum_ref_ref_row += weight * ref_pix * ref_pix;
@@ -335,28 +128,41 @@ float ComputeBilateralNCC(sampler2DArray images, int ref_image, Camera ref_camer
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 void main() {
-    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 pt = ivec2(gl_GlobalInvocationID.xy);
 
-    if (p.x >= pc.width || p.y >= pc.height) {
+    if (pt.x >= pc.width || pt.y >= pc.height) {
         return;
     }
 
-    vec2 uv = (vec2(p) + 0.5) / vec2(pc.width, pc.height);
-    float color = texture(images[15], uv).r;
+    vec2 uv = (vec2(pt) + 0.5) / vec2(pc.width, pc.height);
+    float color = texture(images[pc.currentImage], uv).r;
 
-    vec4 cameraK = {
-        cameraIntrics[pc.currentImage*4+0],
-        cameraIntrics[pc.currentImage*4+1],
-        cameraIntrics[pc.currentImage*4+2],
-        cameraIntrics[pc.currentImage*4+3]
-        };
+    Camera refCamera;
+    GetCamera(pc.currentImage, refCamera);
 
     float depth_min = depthRanges[pc.currentImage*2+0];
     float depth_max = depthRanges[pc.currentImage*2+1];
 
-    //planeHypotheses[p.y * pc.width + p.x] = GenerateRandomPlaneHypothesis(cameraK, p, depth_min, depth_max, pc.currentImage);
-    planeHypotheses[p.y * pc.width + p.x] = vec4(color, color, color, 1.0);
+    vec4 plane = GenerateRandomPlaneHypothesis(vec4(refCamera.K), pt, depth_min, depth_max, pc.currentImage);
+    //planeHypotheses[pt.y * pc.width + pt.x] = plane;
+
+    uint isrc = srcPairs[pc.currentImage*pc.srcCount + 0];
+    color = texture(images[isrc], uv).r;
+    Camera srcCamera;
+    GetCamera(isrc, srcCamera);
+
+    float ncc = ComputeBilateralNCC(images[pc.currentImage], refCamera, images[isrc], srcCamera, pt, plane);
+    planeHypotheses[pt.y * pc.width + pt.x] = vec4(ncc, ncc, ncc, 1.0);
+    //if (pt.x == 0) {
+    //    planeHypotheses[pt.y * pc.width + pt.x] = vec4(refCamera.R[0], refCamera.R[1], refCamera.R[2], refCamera.R[3]);
+    //} else if (pt.x == 1) {
+    //    planeHypotheses[pt.y * pc.width + pt.x] = vec4(refCamera.R[4], refCamera.R[5], refCamera.R[6], refCamera.R[7]);
+    //} else if (pt.x == 2) {
+    //    planeHypotheses[pt.y * pc.width + pt.x] = vec4(refCamera.R[8], 0, 0, 0);
+    //}
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 // Test function for Get3DPoint
 vec3 testGet3DPoint()
@@ -425,18 +231,18 @@ void testHomoGraphy()
 {
     Camera camera1;
     camera1.R = float[9](1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
-    camera1.t = float[3](0.0, 0.0, 0.0);
-    camera1.K = float[4](600.0, 400.0, 320.0, 240.0);
+    camera1.t = vec3(0.0, 0.0, 0.0);
+    camera1.K = vec4(600.0, 400.0, 320.0, 240.0);
 
     Camera camera2;
     float theta = 0.01745329251 * 30.0;
     camera2.R = float[9](cos(theta), 0.0, sin(theta), 0.0, 1.0, 0.0, -sin(theta), 0.0, cos(theta));
-    camera2.t = float[3](0.0, 0.0, 0.0);
+    camera2.t = vec3(0.0, 0.0, 0.0);
 
     //camera2.R = float[9](1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
-    //camera2.t = float[3](0.1, 0.0, 0.0);
+    //camera2.t = vec3(0.1, 0.0, 0.0);
 
-    camera2.K = float[4](600.0, 400.0, 320.0, 240.0);
+    camera2.K = vec4(600.0, 400.0, 320.0, 240.0);
 
     float H[9];
     ComputeHomography(camera1, camera2, vec4(0.0, 0.0, 1.0, -2.0), H);
