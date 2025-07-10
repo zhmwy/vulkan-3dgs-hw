@@ -1,4 +1,5 @@
 
+#define M_PI 3.14159265358979323846
 
 // Define camera structure
 struct Camera {
@@ -20,6 +21,10 @@ float random(uvec2 coord, uint frame) {
     uvec2 offCoord = uvec2(197, 197);
     return (float(mobileRand(coord, frame)) * (1.0 / 4294967296.0) +
            float(mobileRand(coord+offCoord, frame)) * (1.0 / 4294967296.0)) / 2.0;
+}
+
+float rand(vec2 seed) {
+    return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
 // 3D坐标计算
@@ -331,6 +336,11 @@ void sort_small_weighted(inout float d[32], inout float w[32], int n) {
         d[j] = tmp;
         w[j] = tmp_w;
     }
+}
+
+float ComputeDepthfromPlaneHypothesis(const Camera camera, const vec4 plane_hypothesis, const ivec2 p)
+{
+    return -plane_hypothesis.w * camera.K[0] / ((p.x - camera.K[2]) * plane_hypothesis.x + (camera.K[0] / camera.K[1]) * (p.y - camera.K[3]) * plane_hypothesis.y + camera.K[0] * plane_hypothesis.z);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
