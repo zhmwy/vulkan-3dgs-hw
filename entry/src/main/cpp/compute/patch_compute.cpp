@@ -13,7 +13,6 @@ VulkanComputePatch::VulkanComputePatch()
     enabledDeviceExtensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
     enabledDeviceExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
 #endif
-    
 }
 
 VulkanComputePatch::~VulkanComputePatch()
@@ -56,6 +55,7 @@ bool VulkanComputePatch::prepare()
     setupRandomInitializationPipeline();
     setupPropagationPipeline();
     setupDepthAndNormalPipeline();
+    setupFilterPipeline();
     
     prepared = true;
     
@@ -113,6 +113,8 @@ void VulkanComputePatch::compute()
         pushConstants.push_back(params.sigma_color);
         pushConstants.push_back(params.top_k);
         pushConstants.push_back(0);
+        pushConstants.push_back(0);
+        pushConstants.push_back(0);
         
         int X = ((int)(image_width) + 16 - 1) / 16; // Ceiling division
         int Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
@@ -120,20 +122,26 @@ void VulkanComputePatch::compute()
         
         
         for (int i=0; i<10; ++i) {
-            pushConstants.back() = 0;
+            pushConstants[9] = 0;
+            pushConstants[11] = i;
             X = ((int)(image_width) + 32 - 1) / 32; // Ceiling division
             Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
             bindPipeline2CommandBufferPushConstants(pipePropagation, 0, X, Y, 1, pushConstants);
         
-            pushConstants.back() = 1;
+            pushConstants[9] = 1;
+            pushConstants[11] = i;
             X = ((int)(image_width) + 32 - 1) / 32; // Ceiling division
             Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
             bindPipeline2CommandBufferPushConstants(pipePropagation, 0, X, Y, 1, pushConstants);
         }
-        
-        X = ((int)(image_width) + 16 - 1) / 16; // Ceiling division
+            
+        X = ((int)(image_width) + 32 - 1) / 32; // Ceiling division
         Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
-        bindPipeline2CommandBufferPushConstants(pipeDepthAndNormal, 0, X, Y, 1, pushConstants);
+        
+        pushConstants[9] = 0;
+        bindPipeline2CommandBufferPushConstants(pipeFilter, 0, X, Y, 1, pushConstants);
+        pushConstants[9] = 1;
+        bindPipeline2CommandBufferPushConstants(pipeFilter, 0, X, Y, 1, pushConstants);
         
     });
     executeComputeCommand();
@@ -236,6 +244,45 @@ void VulkanComputePatch::preparePatchBuffers()
     );
 }
 
+void VulkanComputePatch::setupFilterPipeline()
+{
+    const uint32_t bindingCount = 5;
+    createPipelineLayout(
+        pipeFilter,
+        inputGaussian.images.size(), 
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 12
+    );
+
+    std::vector<vkgs::Buffer*> pBuffers = {
+        &patchBuffers.srcPairs,
+        &patchBuffers.cameras,
+        &patchBuffers.planeHypotheses,
+        &patchBuffers.costs,
+        &patchBuffers.selectedViews
+    };
+
+    updateDescriptorSet(pipeFilter.descriptorSet, inputGaussian.images, pBuffers);
+
+    pipeFilter.pipelines.resize(1);
+
+    std::string shaderCode = getPath("shader/patch/pixelFilter.comp.spv");
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);
+    pipelineInfo.layout = pipeFilter.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeFilter.pipelines[0]
+        )
+    );
+
+    LOGI("[setupFilterPipeline] Filter pipeline set");
+}
+
 void VulkanComputePatch::setupDepthAndNormalPipeline()
 {
     const uint32_t bindingCount = 5;
@@ -244,7 +291,7 @@ void VulkanComputePatch::setupDepthAndNormalPipeline()
         inputGaussian.images.size(), 
         bindingCount,  // Number of descriptor set bindings
         true,
-        sizeof(uint32_t) * 10
+        sizeof(uint32_t) * 12
     );
 
     std::vector<vkgs::Buffer*> pBuffers = {
@@ -264,7 +311,7 @@ void VulkanComputePatch::setupDepthAndNormalPipeline()
     VkComputePipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);
-    pipelineInfo.layout = pipePropagation.pipelineLayout;
+    pipelineInfo.layout = pipeDepthAndNormal.pipelineLayout;
 
     VK_CHECK_RESULT(
         vkCreateComputePipelinesGS(
@@ -283,7 +330,7 @@ void VulkanComputePatch::setupPropagationPipeline()
         inputGaussian.images.size(), 
         bindingCount,  // Number of descriptor set bindings
         true,
-        sizeof(uint32_t) * 10
+        sizeof(uint32_t) * 12
     );
 
     std::vector<vkgs::Buffer*> pBuffers = {
@@ -322,7 +369,7 @@ void VulkanComputePatch::setupRandomInitializationPipeline()
         inputGaussian.images.size(), 
         bindingCount,  // Number of descriptor set bindings
         true,
-        sizeof(uint32_t) * 10
+        sizeof(uint32_t) * 12
     );
 
     std::vector<vkgs::Buffer*> pBuffers = {

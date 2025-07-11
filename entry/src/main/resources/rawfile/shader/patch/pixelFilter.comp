@@ -1,0 +1,186 @@
+#version 450
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_GOOGLE_include_directive : enable
+
+struct STCamera {
+    vec4 K;
+    vec3 t;
+    float R[9];
+    float minDepth;
+    float maxDepth;
+};
+
+layout(binding = 0) uniform sampler2D images[];
+layout(binding = 1) buffer SrcPairsBuffer { int srcPairs[]; };
+layout(binding = 2) buffer CamerasBuffer { STCamera camerasBuffer[]; };
+layout(binding = 3) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
+layout(binding = 4) buffer CostsBuffer { float costs[]; };
+layout(binding = 5) buffer SelectedViewsBuffer { float selectedViews[]; };
+
+layout(push_constant) uniform PushConstants {
+    uint width;
+    uint height;
+    uint srcCount;
+    uint refImage;
+
+    // patch parameter
+    uint patch_size;
+    uint radius_increment;
+    uint sigma_spatial;
+    uint sigma_color;
+    uint top_k;
+    uint is_black_update;
+    uint geom_consistency;
+    uint iter;
+} pc;
+
+#include "utils.comp"
+
+void CheckerboardFilter(const ivec2 p)
+{
+    int width = int(pc.width);
+    int height = int(pc.height);
+    if (p.x >= width || p.y >= height) {
+        return;
+    }
+
+    const int center = p.y * int(width) + p.x;
+
+    float filters[32];
+    int index = 0;
+
+    filters[index++] = planeHypotheses[center].w;
+
+    // Left
+    const int left = center - 1;
+    const int leftleft = center - 3;
+
+    // Up
+    const int up = center - width;
+    const int upup = center - 3 * width;
+
+    // Down
+    const int down = center + width;
+    const int downdown = center + 3 * width;
+
+    // Right
+    const int right = center + 1;
+    const int rightright = center + 3;
+
+    if (costs[center] < 0.001f) {
+        return;
+    }
+
+    if (p.y>0) {
+        filters[index++] = planeHypotheses[up].w;
+    }
+    if (p.y>2) {
+        filters[index++] = planeHypotheses[upup].w;
+    }
+    if (p.y>4) {
+        filters[index++] = planeHypotheses[upup-width*2].w;
+    }
+    if (p.y<height-1) {
+        filters[index++] = planeHypotheses[down].w;
+    }
+    if (p.y<height-3) {
+        filters[index++] = planeHypotheses[downdown].w;
+    }
+    if (p.y<height-5) {
+        filters[index++] = planeHypotheses[downdown+width*2].w;
+    }
+    if (p.x>0) {
+        filters[index++] = planeHypotheses[left].w;
+    }
+    if (p.x>2) {
+        filters[index++] = planeHypotheses[leftleft].w;
+    }
+    if (p.x>4) {
+        filters[index++] = planeHypotheses[leftleft-2].w;
+    }
+    if (p.x<width-1) {
+        filters[index++] = planeHypotheses[right].w;
+    }
+    if (p.x<width-3) {
+        filters[index++] = planeHypotheses[rightright].w;
+    }
+    if (p.x<width-5) {
+        filters[index++] = planeHypotheses[rightright+2].w;
+    }
+    if (p.y>0 &&
+        p.x<width-2) {
+        filters[index++] = planeHypotheses[up+2].w;
+    }
+    if (p.y< height-1 &&
+        p.x<width-2) {
+        filters[index++] = planeHypotheses[down+2].w;
+    }
+    if (p.y>0 &&
+        p.x>1)
+    {
+        filters[index++] = planeHypotheses[up-2].w;
+    }
+    if (p.y<height-1 &&
+        p.x>1) {
+        filters[index++] = planeHypotheses[down-2].w;
+    }
+    if (p.x>0 &&
+        p.y>2)
+    {
+        filters[index++] = planeHypotheses[left  - width*2].w;
+    }
+    if (p.x<width-1 &&
+        p.y>2)
+    {
+        filters[index++] = planeHypotheses[right - width*2].w;
+    }
+    if (p.x>0 &&
+        p.y<height-2) {
+        filters[index++] = planeHypotheses[left  + width*2].w;
+    }
+    if (p.x<width-1 &&
+        p.y<height-2) {
+        filters[index++] = planeHypotheses[right + width*2].w;
+    }
+
+    sort_small(filters,index);
+    int median_index = index / 2;
+    if (index % 2 == 0) {
+        planeHypotheses[center].w = (filters[median_index-1] + filters[median_index]) / 2;
+    } else {
+        planeHypotheses[center].w = filters[median_index];
+    }
+}
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+void main() {
+    ivec2 pt = ivec2(gl_GlobalInvocationID.xy);
+    if (pt.x >= pc.width || pt.y >= pc.height) {
+        return;
+    }
+
+    const int center = pt.y * int(pc.width) + pt.x;
+
+    planeHypotheses[center] = vec4(1.0, 0.0, 0.0, 1.0);
+
+    return ;
+
+    // 通过 Uniform 标志选择模式
+    if (pc.is_black_update == 0) {
+        if (gl_LocalInvocationID.x % 2 == 0) {
+            pt.y = pt.y * 2 + 1;
+        } else {
+            pt.y = pt.y * 2;
+        }
+    } else {
+        if (gl_LocalInvocationID.x % 2 == 0) {
+            pt.y = pt.y * 2;
+        } else {
+            pt.y = pt.y * 2 + 1;
+        }
+    }
+
+
+
+    CheckerboardFilter(pt);
+}
