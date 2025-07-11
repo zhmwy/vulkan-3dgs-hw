@@ -309,9 +309,9 @@ void sort_small_weighted(inout float d[32], inout float w[32], int n) {
     }
 }
 
-float ComputeDepthfromPlaneHypothesis(const STCamera camera, const vec4 plane_hypothesis, const ivec2 p)
+float ComputeDepthfromPlaneHypothesis(const vec4 cameraK, const vec4 plane_hypothesis, const ivec2 p)
 {
-    return -plane_hypothesis.w * camera.K[0] / ((p.x - camera.K[2]) * plane_hypothesis.x + (camera.K[0] / camera.K[1]) * (p.y - camera.K[3]) * plane_hypothesis.y + camera.K[0] * plane_hypothesis.z);
+    return -plane_hypothesis.w * cameraK[0] / ((p.x - cameraK[2]) * plane_hypothesis.x + (cameraK[0] / cameraK[1]) * (p.y - cameraK[3]) * plane_hypothesis.y + cameraK[0] * plane_hypothesis.z);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////

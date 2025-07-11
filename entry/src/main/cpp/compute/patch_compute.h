@@ -70,9 +70,11 @@ protected:
     
     STComputePipeLine pipeRandomInitialization;
     STComputePipeLine pipePropagation;
+    STComputePipeLine pipeDepthAndNormal;
     
     void setupRandomInitializationPipeline();
     void setupPropagationPipeline();
+    void setupDepthAndNormalPipeline();
     
     void loadAssets(int origin_width, int origin_height);
     void preparePatchBuffers();

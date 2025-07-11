@@ -175,7 +175,7 @@ void PlaneHypothesisRefinement(inout vec4 plane_hypothesis, inout float depth, i
         }
         temp_cost /= weight_norm;
 
-        float depth_before = ComputeDepthfromPlaneHypothesis(refCamera, temp_plane_hypothesis, pt);
+        float depth_before = ComputeDepthfromPlaneHypothesis(refCamera.K, temp_plane_hypothesis, pt);
         if (depth_before >= refCamera.minDepth && depth_before <= refCamera.maxDepth && temp_cost < cost) {
             depth = depth_before;
             plane_hypothesis = temp_plane_hypothesis;
@@ -512,10 +512,10 @@ void CheckerboardPropagation(ivec2 pt, uint iter)
 
     cost_now /= weight_norm;
     costs[center] = cost_now;
-    float depth_now = ComputeDepthfromPlaneHypothesis(refCamera, planeHypotheses[center], pt);
+    float depth_now = ComputeDepthfromPlaneHypothesis(refCamera.K, planeHypotheses[center], pt);
 
     if (flag[min_cost_idx]) {
-        float depth_before = ComputeDepthfromPlaneHypothesis(refCamera, planeHypotheses[positions[min_cost_idx]], pt);
+        float depth_before = ComputeDepthfromPlaneHypothesis(refCamera.K, planeHypotheses[positions[min_cost_idx]], pt);
 
         if (depth_before >= refCamera.minDepth && depth_before <= refCamera.maxDepth && final_costs[min_cost_idx] < cost_now) {
             depth_now = depth_before;

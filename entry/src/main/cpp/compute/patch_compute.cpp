@@ -55,6 +55,7 @@ bool VulkanComputePatch::prepare()
     
     setupRandomInitializationPipeline();
     setupPropagationPipeline();
+    setupDepthAndNormalPipeline();
     
     prepared = true;
     
@@ -85,13 +86,14 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
         cv::imwrite(dataPath + "/test1.png", ucharMat);
     }
     {
-        cv::Mat floatMat(image_height, image_width, CV_32FC1, 
-                (float *)patchBuffers.costs.cpu_buffer.data());
+        cv::Mat src_32fc4(image_height, image_width, CV_32FC4, 
+                    (float *)patchBuffers.planeHypotheses.cpu_buffer.data());
         
-        std::stringstream ss;
-        ss  << "Matrix values:" << floatMat << std::endl;
+        cv::Mat channel_32fc1;
+        cv::extractChannel(src_32fc4, channel_32fc1, 3);
+        
         cv::Mat ucharMat;
-        floatMat.convertTo(ucharMat, CV_8UC1, 255.0);
+        channel_32fc1.convertTo(ucharMat, CV_8UC1, 255.0/5.0);
         cv::imwrite(dataPath + "/test2.png", ucharMat);
     }
 }
@@ -128,6 +130,11 @@ void VulkanComputePatch::compute()
             Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
             bindPipeline2CommandBufferPushConstants(pipePropagation, 0, X, Y, 1, pushConstants);
         }
+        
+        X = ((int)(image_width) + 16 - 1) / 16; // Ceiling division
+        Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
+        bindPipeline2CommandBufferPushConstants(pipeDepthAndNormal, 0, X, Y, 1, pushConstants);
+        
     });
     executeComputeCommand();
 }
@@ -227,6 +234,45 @@ void VulkanComputePatch::preparePatchBuffers()
         allocator, inputGaussian.images.size() * params.srcCount * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+}
+
+void VulkanComputePatch::setupDepthAndNormalPipeline()
+{
+    const uint32_t bindingCount = 5;
+    createPipelineLayout(
+        pipeDepthAndNormal,
+        inputGaussian.images.size(), 
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 10
+    );
+
+    std::vector<vkgs::Buffer*> pBuffers = {
+        &patchBuffers.srcPairs,
+        &patchBuffers.cameras,
+        &patchBuffers.planeHypotheses,
+        &patchBuffers.costs,
+        &patchBuffers.selectedViews
+    };
+
+    updateDescriptorSet(pipeDepthAndNormal.descriptorSet, inputGaussian.images, pBuffers);
+
+    pipeDepthAndNormal.pipelines.resize(1);
+
+    std::string shaderCode = getPath("shader/patch/depthNormal.comp.spv");
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);
+    pipelineInfo.layout = pipePropagation.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeDepthAndNormal.pipelines[0]
+        )
+    );
+
+    LOGI("[setupDepthAndNormalPipeline] DepthAndNormal pipeline set");
 }
 
 void VulkanComputePatch::setupPropagationPipeline()

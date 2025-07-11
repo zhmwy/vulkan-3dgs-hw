@@ -1,0 +1,57 @@
+#version 450
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_GOOGLE_include_directive : enable
+
+struct STCamera {
+    vec4 K;
+    vec3 t;
+    float R[9];
+    float minDepth;
+    float maxDepth;
+};
+
+layout(binding = 0) uniform sampler2D images[];
+layout(binding = 1) buffer SrcPairsBuffer { int srcPairs[]; };
+layout(binding = 2) buffer CamerasBuffer { STCamera camerasBuffer[]; };
+layout(binding = 3) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
+layout(binding = 4) buffer CostsBuffer { float costs[]; };
+layout(binding = 5) buffer SelectedViewsBuffer { float selectedViews[]; };
+
+layout(push_constant) uniform PushConstants {
+    uint width;
+    uint height;
+    uint srcCount;
+    uint refImage;
+
+    // patch parameter
+    uint patch_size;
+    uint radius_increment;
+    uint sigma_spatial;
+    uint sigma_color;
+    uint top_k;
+} pc;
+
+#include "utils.comp"
+
+vec4 TransformNormal(const float cameraR[9], vec4 plane_hypothesis)
+{
+    vec4 transformed_normal;
+    transformed_normal.x = cameraR[0] * plane_hypothesis.x + cameraR[3] * plane_hypothesis.y + cameraR[6] * plane_hypothesis.z;
+    transformed_normal.y = cameraR[1] * plane_hypothesis.x + cameraR[4] * plane_hypothesis.y + cameraR[7] * plane_hypothesis.z;
+    transformed_normal.z = cameraR[2] * plane_hypothesis.x + cameraR[5] * plane_hypothesis.y + cameraR[8] * plane_hypothesis.z;
+    transformed_normal.w = plane_hypothesis.w;
+    return transformed_normal;
+}
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+void main() {
+    ivec2 pt = ivec2(gl_GlobalInvocationID.xy);
+    if (pt.x >= pc.width || pt.y >= pc.height) {
+        return;
+    }
+
+    const uint center = pt.y * pc.width + pt.x;
+
+    planeHypotheses[center].w = ComputeDepthfromPlaneHypothesis(camerasBuffer[pc.refImage].K, planeHypotheses[center], pt);
+    planeHypotheses[center] = TransformNormal(camerasBuffer[pc.refImage].R, planeHypotheses[center]);
+}
