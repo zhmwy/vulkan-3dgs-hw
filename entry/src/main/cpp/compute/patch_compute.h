@@ -40,12 +40,18 @@ public:
     
 protected:
     
+    #pragma pack(push, 1)
+    struct STCamera {
+        float K[4];
+        float t[3];
+        float R[9];
+        float minDepth;
+        float maxDepth;
+    };
+    #pragma pack(pop)
+    
     struct PatchBuffers {
-        
-        vkgs::Buffer intrParams;
-        vkgs::Buffer cameraR;
-        vkgs::Buffer cameraT;
-        vkgs::Buffer depthRanges;
+        vkgs::Buffer cameras;
         
         vkgs::Buffer costs;
         vkgs::Buffer planeHypotheses;

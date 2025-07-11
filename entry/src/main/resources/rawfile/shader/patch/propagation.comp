@@ -2,21 +2,26 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : enable
 
+struct STCamera {
+    vec4 K;
+    vec3 t;
+    float R[9];
+    float minDepth;
+    float maxDepth;
+};
+
 layout(binding = 0) uniform sampler2D images[];
 layout(binding = 1) buffer SrcPairsBuffer { int srcPairs[]; };
-layout(binding = 2) buffer CameraIntricsBuffer { float cameraIntrics[]; };
-layout(binding = 3) buffer CameraRotBuffer { float cameraRots[]; };
-layout(binding = 4) buffer CameraTransBuffer { float cameraTrans[]; };
-layout(binding = 5) buffer DepthRangesBuffer { float depthRanges[]; };
-layout(binding = 6) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
-layout(binding = 7) buffer CostsBuffer { float costs[]; };
-layout(binding = 8) buffer SelectedViewsBuffer { uint selectedViews[]; };
+layout(binding = 2) buffer CamerasBuffer { STCamera camerasBuffer[]; };
+layout(binding = 3) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
+layout(binding = 4) buffer CostsBuffer { float costs[]; };
+layout(binding = 5) buffer SelectedViewsBuffer { uint selectedViews[]; };
 
 layout(push_constant) uniform PushConstants {
     uint width;
     uint height;
     uint srcCount;
-    uint currentImage;
+    uint refImage;
 
     // patch parameter
     uint patch_size;
@@ -36,17 +41,10 @@ layout(push_constant) uniform PushConstants {
 
 void ComputeMultiViewCostVector(const ivec2 p, const vec4 plane_hypothesis, inout float cost_vector[32])
 {
-    Camera refCamera;
-    GetCamera(pc.currentImage, refCamera);
-
     for (uint i = 0; i < pc.srcCount; ++i) {
-
-        int srcIdx = srcPairs[pc.currentImage * pc.srcCount + i];
-        Camera srcCamera;
-        GetCamera(srcIdx, srcCamera);
-
-        cost_vector[i] = ComputeBilateralNCC(images[pc.currentImage], refCamera,
-                            images[srcIdx], srcCamera, p, plane_hypothesis);
+        uint srcIdx = uint(srcPairs[pc.refImage * pc.srcCount + i]);
+        cost_vector[i] = ComputeBilateralNCC(pc.refImage, images[pc.refImage],
+                            srcIdx, images[srcIdx], p, plane_hypothesis);
     }
 }
 
@@ -137,20 +135,19 @@ void PlaneHypothesisRefinement(inout vec4 plane_hypothesis, inout float depth, i
 {
     float perturbation = 0.02f;
 
-    Camera refCamera;
-    GetCamera(pc.currentImage, refCamera);
+    STCamera refCamera = camerasBuffer[pc.refImage];
 
     int seed = 0;
 
-    float depth_rand = random(pt, pc.currentImage) * (depthRanges[pc.currentImage*2+1] - depthRanges[pc.currentImage*2+0]) + depthRanges[pc.currentImage*2+0];
-    vec4 plane_hypothesis_rand = GenerateRandomNormal(refCamera.K, pt, depth_rand, pc.currentImage);
+    float depth_rand = random(pt, pc.refImage) * (refCamera.maxDepth - refCamera.minDepth) + refCamera.minDepth;
+    vec4 plane_hypothesis_rand = GenerateRandomNormal(refCamera.K, pt, depth_rand, pc.refImage);
     float depth_perturbed = depth;
     const float depth_min_perturbed = (1 - perturbation) * depth_perturbed;
     const float depth_max_perturbed = (1 + perturbation) * depth_perturbed;
     do {
         seed = seed + 1;
-        depth_perturbed = random(pt, pc.currentImage+seed) * (depth_max_perturbed - depth_min_perturbed) + depth_min_perturbed;
-    } while (depth_perturbed < depthRanges[pc.currentImage*2+0] && depth_perturbed > depthRanges[pc.currentImage*2+1]);
+        depth_perturbed = random(pt, pc.refImage+seed) * (depth_max_perturbed - depth_min_perturbed) + depth_min_perturbed;
+    } while (depth_perturbed < refCamera.minDepth && depth_perturbed > refCamera.maxDepth);
 
     vec4 plane_hypothesis_perturbed = GeneratePerturbedNormal(refCamera.K, pt, plane_hypothesis, perturbation * M_PI);
 
@@ -179,7 +176,7 @@ void PlaneHypothesisRefinement(inout vec4 plane_hypothesis, inout float depth, i
         temp_cost /= weight_norm;
 
         float depth_before = ComputeDepthfromPlaneHypothesis(refCamera, temp_plane_hypothesis, pt);
-        if (depth_before >= depthRanges[pc.currentImage*2+0] && depth_before <= depthRanges[pc.currentImage*2+1] && temp_cost < cost) {
+        if (depth_before >= refCamera.minDepth && depth_before <= refCamera.maxDepth && temp_cost < cost) {
             depth = depth_before;
             plane_hypothesis = temp_plane_hypothesis;
             cost = temp_cost;
@@ -511,8 +508,7 @@ void CheckerboardPropagation(ivec2 pt, uint iter)
         }
     }
 
-    Camera refCamera;
-    GetCamera(pc.currentImage, refCamera);
+    STCamera refCamera = camerasBuffer[pc.refImage];
 
     cost_now /= weight_norm;
     costs[center] = cost_now;
@@ -521,7 +517,7 @@ void CheckerboardPropagation(ivec2 pt, uint iter)
     if (flag[min_cost_idx]) {
         float depth_before = ComputeDepthfromPlaneHypothesis(refCamera, planeHypotheses[positions[min_cost_idx]], pt);
 
-        if (depth_before >= depthRanges[pc.currentImage*2+0] && depth_before <= depthRanges[pc.currentImage*2+0] && final_costs[min_cost_idx] < cost_now) {
+        if (depth_before >= refCamera.minDepth && depth_before <= refCamera.maxDepth && final_costs[min_cost_idx] < cost_now) {
             depth_now = depth_before;
             planeHypotheses[center] = planeHypotheses[positions[min_cost_idx]];
             costs[center] = final_costs[min_cost_idx];

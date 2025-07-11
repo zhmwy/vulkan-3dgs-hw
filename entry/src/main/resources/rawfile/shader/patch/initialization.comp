@@ -2,21 +2,26 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : enable
 
+struct STCamera {
+    vec4 K;
+    vec3 t;
+    float R[9];
+    float minDepth;
+    float maxDepth;
+};
+
 layout(binding = 0) uniform sampler2D images[];
 layout(binding = 1) buffer SrcPairsBuffer { int srcPairs[]; };
-layout(binding = 2) buffer CameraIntricsBuffer { float cameraIntrics[]; };
-layout(binding = 3) buffer CameraRotBuffer { float cameraRots[]; };
-layout(binding = 4) buffer CameraTransBuffer { float cameraTrans[]; };
-layout(binding = 5) buffer DepthRangesBuffer { float depthRanges[]; };
-layout(binding = 6) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
-layout(binding = 7) buffer CostsBuffer { float costs[]; };
-layout(binding = 8) buffer SelectedViewsBuffer { float selectedViews[]; };
+layout(binding = 2) buffer CamerasBuffer { STCamera camerasBuffer[]; };
+layout(binding = 3) buffer PlaneHypothesesBuffer { vec4 planeHypotheses[]; };
+layout(binding = 4) buffer CostsBuffer { float costs[]; };
+layout(binding = 5) buffer SelectedViewsBuffer { float selectedViews[]; };
 
 layout(push_constant) uniform PushConstants {
     uint width;
     uint height;
     uint srcCount;
-    uint currentImage;
+    uint refImage;
 
     // patch parameter
     uint patch_size;
@@ -45,20 +50,14 @@ float ComputeMultiViewInitialCostandSelectedViews(
         cost_vector_copy[i] = cost_max;
     }
 
-    Camera refCamera;
-    GetCamera(pc.currentImage, refCamera);
-
     // 计算所有视图的成本
     for (int i = 0; i < pc.srcCount; ++i) {
 
-        uint isrc = srcPairs[pc.currentImage*pc.srcCount + i];
-
-        Camera srcCamera;
-        GetCamera(isrc, srcCamera);
+        uint isrc = srcPairs[pc.refImage*pc.srcCount + i];
 
         float c = ComputeBilateralNCC(
-            images[pc.currentImage], refCamera,
-            images[isrc], srcCamera,
+            pc.refImage, images[pc.refImage],
+            isrc, images[isrc],
             p, plane_hypothesis
         );
         cost_vector[i - 1] = c;
@@ -103,21 +102,15 @@ void main() {
     }
 
     vec2 uv = (vec2(pt) + 0.5) / vec2(pc.width, pc.height);
-    float color = texture(images[pc.currentImage], uv).r;
+    float color = texture(images[pc.refImage], uv).r;
 
-    Camera refCamera;
-    GetCamera(pc.currentImage, refCamera);
+    STCamera refCamera = camerasBuffer[pc.refImage];
 
-    float depth_min = depthRanges[pc.currentImage*2+0];
-    float depth_max = depthRanges[pc.currentImage*2+1];
-
-    vec4 plane = GenerateRandomPlaneHypothesis(vec4(refCamera.K), pt, depth_min, depth_max, pc.currentImage);
+    vec4 plane = GenerateRandomPlaneHypothesis(refCamera.K, pt, refCamera.minDepth, refCamera.maxDepth, pc.refImage);
     planeHypotheses[pt.y * pc.width + pt.x] = plane;
 
-    uint isrc = srcPairs[pc.currentImage*pc.srcCount + 0];
+    uint isrc = srcPairs[pc.refImage*pc.srcCount + 0];
     color = texture(images[isrc], uv).r;
-    Camera srcCamera;
-    GetCamera(isrc, srcCamera);
 
     uint selected_views;
     float cost = ComputeMultiViewInitialCostandSelectedViews(pt, plane, selected_views);

@@ -1,13 +1,6 @@
 
 #define M_PI 3.14159265358979323846
 
-// Define camera structure
-struct Camera {
-    float R[9];  // Rotation matrix (3x3 in row-major order)
-    vec3  t;  // Translation vector
-    vec4  K;  // Intrinsic matrix parameters (fx, fy, cx, cy)
-};
-
 // 随机数部分
 uint mobileRand(uvec2 coord, uint frame) {
     uint seed = (coord.x * 1973u) ^ (coord.y * 9277u) + frame;
@@ -118,7 +111,10 @@ vec4 GenerateRandomPlaneHypothesis(vec4 cameraK, const ivec2 p, const float dept
 }
 
 // Compute homography function in GLSL
-void ComputeHomography(Camera ref_camera, Camera src_camera, vec4 plane_hypothesis, inout float H[9]) {
+void ComputeHomography(uint iref, uint isrc, vec4 plane_hypothesis, inout float H[9]) {
+    STCamera ref_camera = camerasBuffer[iref];
+    STCamera src_camera = camerasBuffer[isrc];
+
     // Compute camera centers
     vec3 ref_C = vec3(
         -(ref_camera.R[0] * ref_camera.t[0] + ref_camera.R[3] * ref_camera.t[1] + ref_camera.R[6] * ref_camera.t[2]),
@@ -203,38 +199,13 @@ vec2 ComputeCorrespondingPoint(const float H[9], const ivec2 p)
     return vec2(pt.x / pt.z, pt.y / pt.z);
 }
 
-void GetCamera(uint camId, inout Camera stCamera)
-{
-    stCamera.K = vec4(
-        cameraIntrics[camId * 4 + 0],
-        cameraIntrics[camId * 4 + 1],
-        cameraIntrics[camId * 4 + 2],
-        cameraIntrics[camId * 4 + 3]);
-
-    stCamera.R = float[9](
-        cameraRots[camId * 9 + 0],
-        cameraRots[camId * 9 + 1],
-        cameraRots[camId * 9 + 2],
-        cameraRots[camId * 9 + 3],
-        cameraRots[camId * 9 + 4],
-        cameraRots[camId * 9 + 5],
-        cameraRots[camId * 9 + 6],
-        cameraRots[camId * 9 + 7],
-        cameraRots[camId * 9 + 8]);
-
-    stCamera.t = vec3(
-        cameraTrans[camId * 3 + 0],
-        cameraTrans[camId * 3 + 1],
-        cameraTrans[camId * 3 + 2]);
-}
-
-float ComputeBilateralNCC(sampler2D ref_image, Camera ref_camera, sampler2D src_image, Camera src_camera, ivec2 p, vec4 plane_hypothesis)
+float ComputeBilateralNCC(uint iref, sampler2D ref_image, uint isrc, sampler2D src_image, ivec2 p, vec4 plane_hypothesis)
 {
     const float cost_max = 2.0;
     int radius = int(pc.patch_size) / 2;
 
     float H[9];
-    ComputeHomography(ref_camera, src_camera, plane_hypothesis, H);
+    ComputeHomography(iref, isrc, plane_hypothesis, H);
     vec2 pt = ComputeCorrespondingPoint(H, p);
     if (pt.x >= float(pc.width) || pt.x < 0.0 || pt.y >= float(pc.height) || pt.y < 0.0) {
         return cost_max;
@@ -338,7 +309,7 @@ void sort_small_weighted(inout float d[32], inout float w[32], int n) {
     }
 }
 
-float ComputeDepthfromPlaneHypothesis(const Camera camera, const vec4 plane_hypothesis, const ivec2 p)
+float ComputeDepthfromPlaneHypothesis(const STCamera camera, const vec4 plane_hypothesis, const ivec2 p)
 {
     return -plane_hypothesis.w * camera.K[0] / ((p.x - camera.K[2]) * plane_hypothesis.x + (camera.K[0] / camera.K[1]) * (p.y - camera.K[3]) * plane_hypothesis.y + camera.K[0] * plane_hypothesis.z);
 }
@@ -407,15 +378,15 @@ vec3 testGet3DPoint()
 
     return point;
 }
-
+/*
 void testHomoGraphy()
 {
-    Camera camera1;
+    STCamera camera1;
     camera1.R = float[9](1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
     camera1.t = vec3(0.0, 0.0, 0.0);
     camera1.K = vec4(600.0, 400.0, 320.0, 240.0);
 
-    Camera camera2;
+    STCamera camera2;
     float theta = 0.01745329251 * 30.0;
     camera2.R = float[9](cos(theta), 0.0, sin(theta), 0.0, 1.0, 0.0, -sin(theta), 0.0, cos(theta));
     camera2.t = vec3(0.0, 0.0, 0.0);
@@ -439,7 +410,7 @@ void testHomoGraphy()
     //  [ 0.  1.  0.]
     //  [ 0.  0.  1.]]
 }
-
+*/
 void testBilateray()
 {
     float w1 = ComputeBilateralWeight(0.0, 0.0, 0.5, 0.5, 1.0, 0.1);    // 1

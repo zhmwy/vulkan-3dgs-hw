@@ -66,7 +66,6 @@ void VulkanComputePatch::debugOutputs(std::string dataPath)
     buildComputeCommandBuffer([this](){
         ComputeTransBarrierBlock();
         createGpu2CpuCopy(patchBuffers.planeHypotheses);
-        createGpu2CpuCopy(patchBuffers.depthRanges);
         createGpu2CpuCopy(patchBuffers.costs);
     });
     executeComputeCommand();
@@ -111,16 +110,24 @@ void VulkanComputePatch::compute()
         pushConstants.push_back(params.sigma_spatial);
         pushConstants.push_back(params.sigma_color);
         pushConstants.push_back(params.top_k);
+        pushConstants.push_back(0);
         
         int X = ((int)(image_width) + 16 - 1) / 16; // Ceiling division
         int Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
         bindPipeline2CommandBufferPushConstants(pipeRandomInitialization, 0, X, Y, 1, pushConstants);
         
         
-        pushConstants.push_back(0);
-        X = ((int)(image_width) + 32 - 1) / 32; // Ceiling division
-        Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
-        bindPipeline2CommandBufferPushConstants(pipePropagation, 0, X, Y, 1, pushConstants);
+        for (int i=0; i<10; ++i) {
+            pushConstants.back() = 0;
+            X = ((int)(image_width) + 32 - 1) / 32; // Ceiling division
+            Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
+            bindPipeline2CommandBufferPushConstants(pipePropagation, 0, X, Y, 1, pushConstants);
+        
+            pushConstants.back() = 1;
+            X = ((int)(image_width) + 32 - 1) / 32; // Ceiling division
+            Y = ((int)(image_height) + 16 - 1) / 16; // Ceiling division
+            bindPipeline2CommandBufferPushConstants(pipePropagation, 0, X, Y, 1, pushConstants);
+        }
     });
     executeComputeCommand();
 }
@@ -131,37 +138,21 @@ void VulkanComputePatch::initBuffersValues()
         return;
     }
     
-    buildComputeCommandBuffer([this]() {        
+    buildComputeCommandBuffer([this]() {
         {
-            ///暂时使用所有图像公用一个内存
-            std::vector<float> vIntr;
+            std::vector<float> depthRanges = calcDepthRange();
+            std::vector<STCamera> vCameras(inputGaussian.extr_tmp.size());
             for (int i=0; i<inputGaussian.extr_tmp.size(); i++) {
-                vIntr.insert(vIntr.end(), inputGaussian.intr_tmp[0].data(), inputGaussian.intr_tmp[0].data()+4);
+                Base::Math::Mat3X3 rmat = inputGaussian.quat2matrix3(inputGaussian.extr_tmp[i]);
+                memcpy(vCameras[i].R, rmat.data, sizeof(float)*9);
+                memcpy(vCameras[i].K, inputGaussian.intr_tmp[0].data(), sizeof(float)*4);
+                memcpy(vCameras[i].t, inputGaussian.extr_tmp[i].values+4, sizeof(float)*3);
+                vCameras[i].minDepth = depthRanges[2*i+0];
+                vCameras[i].maxDepth = depthRanges[2*i+1];
             }
             
-            patchBuffers.intrParams.FromCpu(computeRes.commandBuffer, vIntr.data());
+            patchBuffers.cameras.FromCpu(computeRes.commandBuffer, vCameras.data());
         }
-    
-        {
-            std::vector<float> result;
-            result.reserve(inputGaussian.extr_tmp.size() * 9);
-            for(size_t i=0; i<inputGaussian.extr_tmp.size(); ++i)
-            {
-                Base::Math::Mat3X3 rmat = inputGaussian.quat2matrix3(inputGaussian.extr_tmp[i]);
-                result.insert(result.end(), rmat.data, rmat.data+9);
-            }
-            patchBuffers.cameraR.FromCpu(computeRes.commandBuffer, result);
-        }
-        
-        {
-            std::vector<float> vTrans;
-            for (int i=0; i<inputGaussian.extr_tmp.size(); i++) {
-                vTrans.insert(vTrans.end(), inputGaussian.extr_tmp[i].values+4, inputGaussian.extr_tmp[i].values+7);
-            }
-            patchBuffers.cameraT.FromCpu(computeRes.commandBuffer, vTrans.data());
-        }
-    
-        patchBuffers.depthRanges.FromCpu(computeRes.commandBuffer, calcDepthRange());
         patchBuffers.srcPairs.FromCpu(computeRes.commandBuffer, selectViewPair());
         
         vkCmdFillBufferGS(computeRes.commandBuffer, patchBuffers.planeHypotheses, 0, VK_WHOLE_SIZE, 0);
@@ -203,10 +194,7 @@ void VulkanComputePatch::loadAssets(int origin_width, int origin_height)
 
 void VulkanComputePatch::DestoryPatchBuffers()
 {
-    vkDestroyBufferGS(device, patchBuffers.intrParams, nullptr);
-    vkDestroyBufferGS(device, patchBuffers.cameraR, nullptr);
-    vkDestroyBufferGS(device, patchBuffers.cameraT, nullptr);
-    vkDestroyBufferGS(device, patchBuffers.depthRanges, nullptr);
+    vkDestroyBufferGS(device, patchBuffers.cameras, nullptr);
     vkDestroyBufferGS(device, patchBuffers.planeHypotheses, nullptr);
     vkDestroyBufferGS(device, patchBuffers.costs, nullptr);
     vkDestroyBufferGS(device, patchBuffers.selectedViews, nullptr);
@@ -215,23 +203,8 @@ void VulkanComputePatch::DestoryPatchBuffers()
 
 void VulkanComputePatch::preparePatchBuffers()
 {
-    patchBuffers.intrParams = vkgs::Buffer(
-        allocator, inputGaussian.images.size() * 4 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    
-    patchBuffers.cameraR = vkgs::Buffer(
-        allocator, inputGaussian.images.size() * 9 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    
-    patchBuffers.cameraT = vkgs::Buffer(
-        allocator, inputGaussian.images.size() * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    
-    patchBuffers.depthRanges = vkgs::Buffer(
-        allocator, inputGaussian.images.size() * 2 * sizeof(float),
+    patchBuffers.cameras = vkgs::Buffer(
+        allocator, inputGaussian.images.size() * sizeof(STCamera),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
@@ -258,7 +231,7 @@ void VulkanComputePatch::preparePatchBuffers()
 
 void VulkanComputePatch::setupPropagationPipeline()
 {
-    const uint32_t bindingCount = 8;
+    const uint32_t bindingCount = 5;
     createPipelineLayout(
         pipePropagation,
         inputGaussian.images.size(), 
@@ -269,10 +242,7 @@ void VulkanComputePatch::setupPropagationPipeline()
 
     std::vector<vkgs::Buffer*> pBuffers = {
         &patchBuffers.srcPairs,
-        &patchBuffers.intrParams,
-        &patchBuffers.cameraR,
-        &patchBuffers.cameraT,
-        &patchBuffers.depthRanges,
+        &patchBuffers.cameras,
         &patchBuffers.planeHypotheses,
         &patchBuffers.costs,
         &patchBuffers.selectedViews
@@ -300,21 +270,18 @@ void VulkanComputePatch::setupPropagationPipeline()
 
 void VulkanComputePatch::setupRandomInitializationPipeline()
 {
-    const uint32_t bindingCount = 8;
+    const uint32_t bindingCount = 5;
     createPipelineLayout(
         pipeRandomInitialization,
         inputGaussian.images.size(), 
         bindingCount,  // Number of descriptor set bindings
         true,
-        sizeof(uint32_t) * 9
+        sizeof(uint32_t) * 10
     );
 
     std::vector<vkgs::Buffer*> pBuffers = {
         &patchBuffers.srcPairs,
-        &patchBuffers.intrParams,
-        &patchBuffers.cameraR,
-        &patchBuffers.cameraT,
-        &patchBuffers.depthRanges,
+        &patchBuffers.cameras,
         &patchBuffers.planeHypotheses,
         &patchBuffers.costs,
         &patchBuffers.selectedViews
