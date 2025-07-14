@@ -177,7 +177,7 @@ void FileOperator::CopyRawDir(std::string assetsDirName)
 {
     RawDir *rawDir = OH_ResourceManager_OpenRawDir(mgr_, assetsDirName.c_str());
     int count = OH_ResourceManager_GetRawFileCount(rawDir);
-    LOGI("FileOperator: Copy num %{public}d from %{public}s", count, assetsDirName.c_str());
+//     LOGI("FileOperator: Copy num %{public}d from %{public}s", count, assetsDirName.c_str());
     if (count == 0) {
         LOGW("FileOperator: Nothing to copy");
         return;
@@ -190,7 +190,7 @@ void FileOperator::CopyRawDir(std::string assetsDirName)
         } else {
             filename = assetsDirName  + OH_ResourceManager_GetRawFileName(rawDir, i);
         }
-        LOGI("FileOperator: Copy from %{public}s", filename.c_str());
+//         LOGI("FileOperator: Copy from %{public}s", filename.c_str());
         RawDir *subDir = OH_ResourceManager_OpenRawDir(mgr_, filename.c_str());
         int subDirFileCount = OH_ResourceManager_GetRawFileCount(subDir);
         std::string dstDirName = m_sCurrentHapFilesDir + "/" + filename;

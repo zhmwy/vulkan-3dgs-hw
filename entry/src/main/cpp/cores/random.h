@@ -34,15 +34,19 @@ public:
             arr[i] = i;
         std::shuffle(arr.begin(), arr.end(), gen);
     }
+    void initialize(std::vector<int> trainOrder) {
+        arr = trainOrder;
+        _range = -1;
+    }
+    
     
     int generate() {
         if(_current_idx == _range){
             this->initQueue();
         }
-        int k = arr[_current_idx];
+        int k = arr[_current_idx % arr.size()];
         _current_idx++;
         return k;
-//         return dist(gen);           // Generate a random number
     }
 
     

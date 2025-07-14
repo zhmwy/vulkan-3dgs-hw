@@ -66,12 +66,18 @@ public:
         
         int width, height;
         
+        std::vector<int> trainOrder;
+        
         //void normalizeData();
         //void computePositionStats();
         void getNerfppNorm();
         
         void denormalizeExtr();
         void denormalizePoints();
+        
+        int findMaxPose(std::set<int>& chosen);
+        void getTrainOrder(int first_id = 0);
+        
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);

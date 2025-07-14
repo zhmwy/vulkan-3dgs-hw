@@ -3,7 +3,6 @@
 #include "model_compute.h"
 
 
-
 /********************* For Unit Test ****************************/
 void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
 {
@@ -34,9 +33,12 @@ void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
 //         inputGaussian.normalizeData();
 
     }
-    
+
     splat_count = inputGaussian.positions.size();
-    random_generator.initialize(inputGaussian.img_list.size());
+
+    inputGaussian.getTrainOrder();
+    random_generator.initialize(inputGaussian.trainOrder);
+//     random_generator.initialize(inputGaussian.img_list.size());
 }
 
 
@@ -931,7 +933,7 @@ VulkanComputeGS::~VulkanComputeGS()
 
         this->DestoryBuffers();
 
-        textureColorMap.destroyGS();
+//         textureColorMap.destroyGS();
         
 //         vmaDestroyImage(allocator, storageImage.image, storageImageAllocation);
 //         vmaDestroyAllocator(allocator);
@@ -3572,28 +3574,30 @@ void VulkanComputeGS::setBufferFillPipeline()
 void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scale) {
     std::cout << "Loading assets..." << std::endl;
     
-    std::string filename = inputGaussian.img_list[0];
-    cv::Mat imgText = cv::imread(filename);
-    if (imgText.empty()){
-        std::cerr << "Failed to load image file: " << filename << std::endl;
-        return;
-    }
-    cv::resize(imgText, imgText, cv::Size(origin_width, origin_height));
-    cv::cvtColor(imgText, imgText, cv::COLOR_BGR2RGBA);
-    textureColorMap.fromImageBuffer(
-        imgText.data,
-        origin_width * origin_height * 4,
-        VK_FORMAT_R8G8B8A8_UNORM,
-        origin_width, origin_height, 
-        vulkanDevice, compute.queue,
-        VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
-    );
-    image_width = textureColorMap.width;
-    image_height = textureColorMap.height;
+//     std::string filename = inputGaussian.img_list[0];
+//     cv::Mat imgText = cv::imread(filename);
+//     if (imgText.empty()){
+//         std::cerr << "Failed to load image file: " << filename << std::endl;
+//         return;
+//     }
+//     cv::resize(imgText, imgText, cv::Size(origin_width, origin_height));
+//     cv::cvtColor(imgText, imgText, cv::COLOR_BGR2RGBA);
+//     textureColorMap.fromImageBuffer(
+//         imgText.data,
+//         origin_width * origin_height * 4,
+//         VK_FORMAT_R8G8B8A8_UNORM,
+//         origin_width, origin_height, 
+//         vulkanDevice, compute.queue,
+//         VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
+//     );
+//     image_width = textureColorMap.width;
+//     image_height = textureColorMap.height;
+    image_width = origin_width;
+    image_height = origin_height;
     
-    LOGI("Load Assets: loading images.");
+//     LOGI("Load Assets: loading images.");
     for (const std::string& filename : inputGaussian.img_list) {
-        LOGI("Load Assets: loading image %{public}s", filename.c_str());
+//         LOGI("Load Assets: loading image %{public}s", filename.c_str());
         cv::Mat img = cv::imread(filename);
         if (img.empty()){
             std::cerr << "Failed to load image file: " << filename << std::endl;
@@ -3633,45 +3637,6 @@ void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scal
         inputGaussian.images_low_res.push_back(texture_resized);
     }
     
-    /*
-    unsigned char* image_data = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-    if (!image_data) {
-        std::cerr << "Failed to load image file: " << filename << std::endl;
-        return;
-    }
-    
-    // textureColorMap
-    this->resizeAndUploadTexture(
-        textureColorMap, image_data, width, height, origin_width, origin_height, vulkanDevice, queue
-    );
-    // 释放加载的图像数据
-    stbi_image_free(image_data);
-
-    image_width = textureColorMap.width;
-    image_height = textureColorMap.height;
-
-    for (const std::string& filename : inputGaussian.img_list) {
-        int width, height, channels;
-        unsigned char* image_data = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-        if (!image_data) {
-            std::cerr << "Failed to load image file: " << filename << std::endl;
-            continue;
-        }
-        
-        vkbase::Texture2D texture_original;
-        this->resizeAndUploadTexture(
-            texture_original, image_data, width, height, 
-            origin_width, origin_height, vulkanDevice, queue
-        );
-        vkbase::Texture2D texture_resized;
-        this->resizeAndUploadTexture(
-            texture_resized, image_data, width, height, 
-            static_cast<int>(origin_width * scale), 
-            static_cast<int>(origin_height * scale),
-            vulkanDevice, queue
-        );
-    }
-    */
 }
 
 void VulkanComputeGS::bindPipeline2CommandBuffer(
@@ -3961,11 +3926,11 @@ void VulkanComputeGS::prepareCompute()
         descriptorPool, &compute.descriptorSetLayout, 1);
     VK_CHECK_RESULT(vkAllocateDescriptorSetsGS(device, &allocInfo, &compute.descriptorSet));
 
-    std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
-        vkbase::vkWriteDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.vkDescriptor),
-        //vkbase::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.vkDescriptor)
-    };
-    vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, nullptr);
+//     std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
+//         vkbase::vkWriteDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.vkDescriptor),
+//         //vkbase::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &storageImage.vkDescriptor)
+//     };
+//     vkUpdateDescriptorSetsGS(device, static_cast<uint32_t>(computeWriteDescriptorSets.size()), computeWriteDescriptorSets.data(), 0, nullptr);
 
     VkComputePipelineCreateInfo computePipelineCreateInfo = vkbase::vkComputePipelineCreateInfo(
         compute.pipelineLayout, 0);
@@ -4353,7 +4318,7 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     }
     
     copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
-    inputGaussian.denormalizePoints();
+//     inputGaussian.denormalizePoints();
     
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian, save_head);
@@ -4378,7 +4343,7 @@ void VulkanComputeGS::saveCameras(std::string dataPath){
         }
         inputGaussian.extr_tmp.push_back(extrData_temp);
     }
-    inputGaussian.denormalizeExtr();
+//     inputGaussian.denormalizeExtr();
     
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveCameras(dataPath, inputGaussian);
@@ -4553,10 +4518,10 @@ void VulkanComputeGS::renderRGB2Cpu(int i, std::string &dataFolder, int width, i
     std::string save_dir_debug = dataFolder + "/temp";
     std::filesystem::create_directories(save_dir_debug);
     std::string filename = save_dir_debug + "/" + imgname;
-    LOGI("Saving rendered image to: %{public}s", filename.c_str());
-    LOGI("PSNR: %{public}f;   PSNR_mask: %{public}f", psnr_each, psnr_mask);
+//     LOGI("Saving rendered image to: %{public}s", filename.c_str());
+//     LOGI("PSNR: %{public}f;   PSNR_mask: %{public}f", psnr_each, psnr_mask);
 
-    cv::imwrite(filename, image);
+//     cv::imwrite(filename, image);
 }
 
 void VulkanComputeGS::render() {

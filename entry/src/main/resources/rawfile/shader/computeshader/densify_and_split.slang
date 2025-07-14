@@ -72,7 +72,7 @@ cbuffer PushConstants
 void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 {
     uint32_t idx = dispatchThreadID.x;
-    if (idx >= xyz_size * 0.1)
+    if (idx >= max(xyz_size * 0.05, 10000.0))
         return;
 
     uint32_t toDensifyIdx_reg = toDensifyIdx_array[idx];
@@ -80,7 +80,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         return;
     }
 
-    if (grads[toDensifyIdx_reg] < densify_grad_threshold)
+    if (grads[toDensifyIdx_reg] < densify_grad_threshold && training_step > 500)
         return;
 
     float3 scale_act = {

@@ -355,6 +355,63 @@ void DataLoader::InputInitStruct::computePositionStats() {
     std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
 }*/
 
+double quatDist(DataLoader::InputInitStruct::DataExtr& A, DataLoader::InputInitStruct::DataExtr& B){
+    return A.values[0] * B.values[0] + A.values[1] * B.values[1] + A.values[2] * B.values[2] + A.values[3] * B.values[3];
+}
+
+int DataLoader::InputInitStruct::findMaxPose(std::set<int>& chosen) {
+    if (chosen.size() == img_list.size())
+        return -1;
+        
+    double maxAngle = 100;
+    int maxID = 100;
+    
+    
+    for (int i = 0; i < img_list.size(); i++) {
+        
+        if (chosen.find(i) != chosen.end())
+            continue;
+            
+        if (chosen.size() == img_list.size() - 1) {
+            maxID = i;
+            break;
+        }
+            
+        double minAngle = -100;
+        
+        for (int j = 0; j < trainOrder.size(); j++){
+            double cosDist = quatDist(extr_tmp[i], extr_tmp[trainOrder[j]]);
+            if(cosDist > minAngle) {
+                minAngle = cosDist;
+            }
+        }
+        
+        if (minAngle < maxAngle) {
+            maxAngle = minAngle;
+            maxID = i;
+        }
+    }
+    
+    return maxID;
+}
+
+void DataLoader::InputInitStruct::getTrainOrder(int first_id) {
+    int N = this->img_list.size();
+    if (N <= 0)
+        return;
+        
+    std::set<int> chosen;
+    trainOrder.clear();
+    if (first_id >= N)
+        first_id = 0;
+    trainOrder.push_back(first_id);
+    chosen.insert(first_id);
+    
+    for(int i = 1; i < N; i++) {
+        trainOrder.push_back(findMaxPose(chosen));
+    }
+}
+
 void DataLoader::InputInitStruct::getNerfppNorm() {
     this->radius = -1.0;
     Base::Math::Vec3 cam_centers = Base::Math::Vec3(0, 0, 0);
@@ -1148,11 +1205,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
 
     std::string imagesFilePath = slampath + "/images.txt";
     std::string cameraFilePath = slampath + "/cameras.txt";             // TODO: slampath?
-    std::string videoInfoFilePath = mediapath + "/videoInfo.txt";
-//     std::filesystem::create_directories(scenepath + "/temp");
-    
+
     // 2. Load intrinsics from cameras.txt
-//     int height, width;
     std::string line;
     std::ifstream camerasFile(cameraFilePath);
     if (!camerasFile.is_open()){
@@ -1249,14 +1303,6 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
-
-    // 1. Load video data
-    // Main code replacing the OpenCV section
-    std::vector<std::string> allVideoFile;
-    getFilesInDirectory(scenepath, "mp4", allVideoFile);
-    if (allVideoFile.size() == 0) {
-        LOGE("No video file!");
-    }
     
     std::string resume_gaussian_path = scenepath + "/point_cloud.ply";
     loadInputGaussianData(resume_gaussian_path, data);

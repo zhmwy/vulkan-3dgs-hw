@@ -7,7 +7,8 @@
 
 #include <multimedia/image_framework/image_source_mdk.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
- 
+#include <chrono>
+
 VulkanComputeGS* _renderer = NULL;
 
 InterfaceImplVulkan::InterfaceImplVulkan() : _progress(0.0f), _isInitialized(false), _isTraining(false), _g_progress_cb_train(nullptr) {}
@@ -49,15 +50,37 @@ void InterfaceImplVulkan::TrainVulkan() {
     try {
         std::vector<int> max_steps = {1500, 500, 500};
         
-        // Main training loop
-        for (int step = 0; step < max_steps[0]; ++step) {
+        double total_time = 120.0;
+        auto start = std::chrono::high_resolution_clock::now();
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = end - start;
+        int step = 0;
+        
+        while(duration.count() < total_time) {
             if (!_isTraining) break;
             _renderer->render();
-//             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
-//             GetProcessVulkan();
+            updateProgress(static_cast<float>(duration.count() * 100) / total_time);
+            GetProcessVulkan();
+            step++;
+            
+            end = std::chrono::high_resolution_clock::now();
+            duration = end - start;
+            
+            // do not densify in the last 5 seconds
+            if (duration.count() > total_time - 5.0){
+                _renderer->densify_start_step = 100000;
+            }
         }
         
-        _renderer->saveCameras(_dataPath);
+//         // Main training loop
+//         for (int step = 0; step < max_steps[0]; ++step) {
+//             if (!_isTraining) break;
+//             _renderer->render();
+//             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
+//             GetProcessVulkan();
+//         }
+        
+//         _renderer->saveCameras(_dataPath);
         _renderer->saveGaussians(_dataPath);
         
         if (_isTraining) {
@@ -66,14 +89,14 @@ void InterfaceImplVulkan::TrainVulkan() {
             
             for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
                 _renderer->renderImage(i);
-                _renderer->renderRGB2Cpu(i, _dataPath);
+                _renderer->renderRGB2Cpu(i, _dataPath, WIDTH, HEIGHT);
             }
             
-            LOGI("PSNR: %{public}f", _renderer->total_psnr / _renderer->inputGaussian.img_list.size());
-            LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
+            LOGE("PSNR: %{public}f ; steps: %{public}d", _renderer->total_psnr / _renderer->inputGaussian.img_list.size(), step);
+//             LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
             
-//             updateProgress(100.0f);
-//             GetProcessVulkan();
+            updateProgress(100.0f);
+            GetProcessVulkan();
         }
     } catch (...) {
         _isTraining = false;

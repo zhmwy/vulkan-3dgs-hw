@@ -13,7 +13,36 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-const caseName: string = "food";
+// const caseName: string = "2025-06-04_15_57_44";
+let caseName = "food";
+const caseNames: string[] = [
+  // "jingtai",
+  "2025-06-04_15_34_45",
+  "2025-06-04_15_57_44",
+  "2025-06-04_15_59_26",
+  "2025-06-04_19_28_34",
+  "2025-06-04_19_29_27",
+  "2025-06-04_19_30_49",
+  "2025-06-04_19_31_45",
+  "2025-06-04_19_32_45",
+  "2025-06-04_19_35_58",
+  "2025-06-04_19_40_24",
+  "2025-06-04_19_43_28",
+  "2025-06-04_19_45_20",
+  "2025-06-04_19_46_14",
+  "2025-06-04_19_49_06",
+  "2025-06-04_20_09_08",
+  "2025-06-04_20_10_08",
+  "2025-06-04_20_12_31",
+  "2025-06-04_20_13_31",
+  "2025-06-04_20_14_32",
+  "2025-06-04_20_15_40",
+  "2025-06-04_20_22_53",
+  "2025-06-04_20_26_45",
+  "2025-06-05_20_27_20",
+  "2025-06-05_20_34_42",
+  "2025-06-05_20_38_24"
+]
 
 
 @Entry
@@ -39,6 +68,7 @@ struct Index {
     // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/12_data/AVATAR/images_orig/frame_0000.jpg")
     // this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, "assets/case1/images/15506175713000.jpg")
     this.pixelMap = nativeRender.getSyncPixelMap(this.resmgr, `${caseName}/images/85864565279156.jpg`)
+    this.train3DGS(caseName);
   }
 
   async train3DGS(inputPath: string) {
@@ -48,11 +78,19 @@ struct Index {
       nativeRender.initTrainProgress(this.resmgr, (progress: number) => {
         this.progressValue = progress;
       });
-      await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件
-      hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-      this.segmentAllImagesInSandbox();
-      await nativeRender.train3DGS(this.resmgr, inputPath);
-      this.message = "Training Complete!";
+      for (let i = 0; i < caseNames.length; i++){
+        caseName = caseNames[i];
+        await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件
+        hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
+        this.segmentAllImagesInSandbox();
+        await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
+        this.message = "Training Complete!";
+      }
+      // await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件kl;lkm
+      // hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
+      // this.segmentAllImagesInSandbox();
+      // await nativeRender.train3DGS(this.resmgr, inputPath);  // for循环
+      // this.message = "Training Complete!";
     } catch (error) {
       // Handle error
     }
@@ -64,6 +102,8 @@ struct Index {
     this.currentImage = (this.currentImage + 1) % 1000
   }
 
+
+
   build() {
     Row() {
       Column() {
@@ -72,14 +112,14 @@ struct Index {
           .fontWeight(FontWeight.Bold)
           .margin(10)
 
-        Button(this.isTraining ? 'Training...' : 'Start Training')
-          .onClick(() => {
-            if (!this.isTraining) {
-              this.train3DGS(caseName);
-            }
-          })
-          .margin(10)
-          .enabled(!this.isTraining)
+        // Button(this.isTraining ? 'Training...' : 'Start Training')
+        //   .onClick(() => {
+        //     if (!this.isTraining) {
+        //       this.train3DGS(caseName);
+        //     }
+        //   })
+        //   .margin(10)
+        //   .enabled(!this.isTraining)
 
         Progress({ value: this.progressValue, total: 100, type: ProgressType.Ring })
           .width(100)
@@ -121,7 +161,7 @@ struct Index {
 
     for (let path of this.pathList) {
       let fullPath = getContext().filesDir + `/${caseName}/images/` + path;
-      hilog.info(0x0000, TAG, `Segmenting ${fullPath}`);
+      // hilog.info(0x0000, TAG, `Segmenting ${fullPath}`);
 
       let fileSource = await fileIo.open(fullPath, fileIo.OpenMode.READ_ONLY)
 
@@ -138,7 +178,7 @@ struct Index {
       };
 
       let data = await subjectSegmentation.doSegmentation(visionInfo, config);
-      hilog.info(0x0000, TAG, `图像 ${path} 分割完成，分割数量: ${data.subjectCount}`);
+      // hilog.info(0x0000, TAG, `图像 ${path} 分割完成，分割数量: ${data.subjectCount}`);
 
       if (data.fullSubject && data.fullSubject.foregroundImage) {
         // Convert foreground image to binary
@@ -146,7 +186,7 @@ struct Index {
 
         let fileName = path.split('/').pop() || 'unknown.jpg'
         let savePath = getContext().filesDir + `/${caseName}/segmented/` + fileName;
-        hilog.info(0x0000, TAG, `目标路径: ${savePath}`);
+        // hilog.info(0x0000, TAG, `目标路径: ${savePath}`);
         let file = fs.openSync(savePath, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE);
 
         // Save as PNG to preserve the binary nature without compression artifacts
@@ -155,7 +195,7 @@ struct Index {
           quality: 100
         });
         fs.closeSync(file);
-        hilog.info(0x0000, TAG, `保存分割图: ${savePath}`);
+        // hilog.info(0x0000, TAG, `保存分割图: ${savePath}`);
       } else {
         hilog.warn(0x0000, TAG, `图像 ${path} 分割无前景图`);
       }

@@ -94,6 +94,8 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     for (int i = 0; i < num_chunk; i++, remain_gaussian_num -= SHARE_CHUNK_SIZE) {
 
         AllMemoryBarrierWithGroupSync();
+        // GroupMemoryBarrierWithGroupSync();
+
         int32_t num_loaded = i * SHARE_CHUNK_SIZE + item_idx;
 
         if (gaussian_range.x + num_loaded < gaussian_range.y && item_idx < SHARE_CHUNK_SIZE) {
@@ -138,6 +140,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         }
 
         AllMemoryBarrierWithGroupSync();
+        // GroupMemoryBarrierWithGroupSync();
 
         int num_to_process = min(SHARE_CHUNK_SIZE, remain_gaussian_num);
 

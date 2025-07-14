@@ -5,6 +5,9 @@
 #include <rawfile/raw_file_manager.h>
 #include <multimedia/image_framework/image_source_mdk.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
+#include <sys/syscall.h>
+#include<sys/types.h>
+#include <unistd.h>
 
 const std::string basepath = "/data/storage/el2/base/haps/entry/files";
 
@@ -218,6 +221,19 @@ struct AsyncContext {
 
 void ExecuteTraining(napi_env env, void* data) {
     AsyncContext* context = static_cast<AsyncContext*>(data);
+    
+//     pid_t tid = gettid();
+//
+//     int result;
+//     cpu_set_t mask;
+//     CPU_ZERO(&mask);
+//     CPU_SET(10, &mask);
+//     CPU_SET(11, &mask);
+//     result = sched_setaffinity(tid, sizeof(mask), &mask);
+//     if (result < 0) {
+//         LOGE("binding CPU fails\n");
+//     }
+    
     context->impl->InitVulkan(context->datapath, context->outputpath, g_progress_cb_train);
 //     context->impl->InitVulkan(context->datapath, context->outputpath, nullptr);
     context->impl->TrainVulkan();

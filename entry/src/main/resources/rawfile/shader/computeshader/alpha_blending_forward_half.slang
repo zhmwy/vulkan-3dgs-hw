@@ -73,6 +73,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     // process in chunks if there are too many Gaussians in a single tile
     for (int32_t i = 0; i < num_chunk; i++, remain_gaussian_num -= SHARE_CHUNK_SIZE) {
         // Collectively fetch per-Gaussian data from global to shared
+        // GroupMemoryBarrierWithGroupSync();
         AllMemoryBarrierWithGroupSync();
         int32_t num_loaded = i * SHARE_CHUNK_SIZE + item_idx;
         if (gaussian_range.x + num_loaded < gaussian_range.y && item_idx < SHARE_CHUNK_SIZE) {
@@ -104,6 +105,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             );
         }
         AllMemoryBarrierWithGroupSync();
+        // GroupMemoryBarrierWithGroupSync();
 
         int32_t num_to_process = min(SHARE_CHUNK_SIZE, remain_gaussian_num);
 
