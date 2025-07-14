@@ -451,8 +451,12 @@ void VulkanComputeGS::imageToBufferCmd()
     copyRegionI.imageOffset = { 0, 0, 0 };
     copyRegionI.imageExtent = {(unsigned int)(image_width * current_scale), (unsigned int)(image_height * current_scale), 1 };
     
-    current_img_idx = random_generator.generate();
-//     current_img_idx = 0;
+    if (training_step == 1498){
+        current_img_idx = 0;
+    }
+    else{
+        current_img_idx = random_generator.generate();
+    }
     
     if (training_step >= low_resolution_steps)
     {
