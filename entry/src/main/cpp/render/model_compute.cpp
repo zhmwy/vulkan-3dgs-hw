@@ -876,7 +876,7 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
         densifyCmd();
     }
     
-    if (training_step % 1000 == 0 && training_step > 3000)
+    if (training_step % 1000 == 0 && training_step > 30000)
     {
         bindPipeline2CommandBuffer(pipe_reset_opacity, FORWARD_PIPE, X, 1, 1);
     }
@@ -4111,7 +4111,7 @@ void VulkanComputeGS::printLog(bool train)
         }
     }
     
-    if (training_step >= 5000) {
+    if (training_step >= 50000) {
         buildComputeCommandBuffer([this](){
             createGpu2CpuCopys();
         });
@@ -4193,8 +4193,8 @@ void VulkanComputeGS::printLog(bool train)
 
     }
     queryEventTime();
-    if ((training_step >= 5000) && train){
-        printGpuBuffers();
+    if ((training_step >= 50000) && train){
+//         printGpuBuffers();
     }
 
 }

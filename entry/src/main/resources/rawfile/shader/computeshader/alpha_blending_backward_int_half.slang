@@ -45,7 +45,7 @@ cbuffer PushConstants
     uint xyz_size;
     uint W;
     uint H;
-    uint temp;
+    uint training_step;
 };
 
 [shader("compute")]
@@ -94,8 +94,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     for (int i = 0; i < num_chunk; i++, remain_gaussian_num -= SHARE_CHUNK_SIZE) {
 
         AllMemoryBarrierWithGroupSync();
-        // GroupMemoryBarrierWithGroupSync();
-
         int32_t num_loaded = i * SHARE_CHUNK_SIZE + item_idx;
 
         if (gaussian_range.x + num_loaded < gaussian_range.y && item_idx < SHARE_CHUNK_SIZE) {
@@ -138,9 +136,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             shared_dL_dopacity[item_idx] = 0;
 
         }
-
         AllMemoryBarrierWithGroupSync();
-        // GroupMemoryBarrierWithGroupSync();
 
         int num_to_process = min(SHARE_CHUNK_SIZE, remain_gaussian_num);
 
@@ -164,8 +160,12 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
                 continue;
             }
 
-            // half G = exp(power);
-            half G = 1.0hf + power;
+            half G;
+            if (training_step > 2000)
+                G = exp(power);
+            else
+                G = 1.0hf + power;
+                
             half current_opacity = shared_opacity[j];
             half alpha = min(0.99hf, current_opacity * G);
             if (alpha < 1.0hf / 255.0hf) {

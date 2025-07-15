@@ -35,7 +35,10 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         return;
     }
     
-    if (grads[toDensifyIdx_reg] < densify_grad_threshold && training_step > 500)
+    if (grads[toDensifyIdx_reg] < densify_grad_threshold && training_step > 500 && training_step < 2000)
+        return;
+
+    if (grads[toDensifyIdx_reg] < 0.0002 && training_step >= 2000)
         return;
 
     float3 scale_act = {

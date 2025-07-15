@@ -48,7 +48,7 @@ void InterfaceImplVulkan::TrainVulkan() {
 //     GetProcessVulkan();
 
     try {
-        std::vector<int> max_steps = {1500, 500, 500};
+        std::vector<int> max_steps = {7000, 500, 500};
         
         double total_time = 120.0;
         auto start = std::chrono::high_resolution_clock::now();
@@ -62,10 +62,10 @@ void InterfaceImplVulkan::TrainVulkan() {
             updateProgress(static_cast<float>(duration.count() * 100) / total_time);
             GetProcessVulkan();
             step++;
-            
+
             end = std::chrono::high_resolution_clock::now();
             duration = end - start;
-            
+
             // do not densify in the last 5 seconds
             if (duration.count() > total_time - 5.0){
                 _renderer->densify_start_step = 100000;
@@ -73,13 +73,13 @@ void InterfaceImplVulkan::TrainVulkan() {
         }
         
 //         // Main training loop
-//         for (int step = 0; step < max_steps[0]; ++step) {
+//         for (step = 0; step < max_steps[0]; ++step) {
 //             if (!_isTraining) break;
 //             _renderer->render();
 //             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
 //             GetProcessVulkan();
 //         }
-        
+//        
 //         _renderer->saveCameras(_dataPath);
         _renderer->saveGaussians(_dataPath);
         

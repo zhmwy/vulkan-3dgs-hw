@@ -210,7 +210,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         return;
     }
         
-
     cov2d_array[3 * idx] = cov.x;
     cov2d_array[3 * idx + 1] = cov.y;
     cov2d_array[3 * idx + 2] = cov.z;

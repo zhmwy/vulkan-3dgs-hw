@@ -14,7 +14,7 @@ const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
 // const caseName: string = "2025-06-04_15_57_44";
-let caseName = "food";
+let caseName = "2025-07-03_09_55_31";
 const caseNames: string[] = [
   // "jingtai",
   "2025-06-04_15_34_45",
@@ -44,6 +44,12 @@ const caseNames: string[] = [
   "2025-06-05_20_38_24"
 ]
 
+const chosenCase: string[] = [
+  "2025-06-04_15_34_45",
+  "2025-06-04_19_40_24",
+  "2025-06-04_20_26_45",
+  "2025-06-05_20_27_20"
+]
 
 @Entry
 @Component
@@ -78,19 +84,19 @@ struct Index {
       nativeRender.initTrainProgress(this.resmgr, (progress: number) => {
         this.progressValue = progress;
       });
-      for (let i = 0; i < caseNames.length; i++){
-        caseName = caseNames[i];
-        await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件
-        hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-        this.segmentAllImagesInSandbox();
-        await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
-        this.message = "Training Complete!";
-      }
-      // await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件kl;lkm
-      // hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-      // this.segmentAllImagesInSandbox();
-      // await nativeRender.train3DGS(this.resmgr, inputPath);  // for循环
-      // this.message = "Training Complete!";
+      // for (let i = 0; i < chosenCase.length; i++){
+      //   caseName = chosenCase[i];
+      //   await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件
+      //   hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
+      //   this.segmentAllImagesInSandbox();
+      //   await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
+      //   this.message = "Training Complete!";
+      // }
+      await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件kl;lkm
+      hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
+      this.segmentAllImagesInSandbox();
+      await nativeRender.train3DGS(this.resmgr, inputPath);  // for循环
+      this.message = "Training Complete!";
     } catch (error) {
       // Handle error
     }
