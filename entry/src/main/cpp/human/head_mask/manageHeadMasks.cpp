@@ -189,7 +189,7 @@ cv::Size calculateOptimalFaceDimensions(const std::vector<KeypointData>& keypoin
 }
 
 void cropAndSaveFace(const cv::Mat& orig_img, const cv::Point& faceCenter, 
-                     cv::Size& cropSize, const std::string& outputPath) {
+                     cv::Size& cropSize, const std::string& scenePath, const std::string& basename) {
     // Crop the face region
     cv::Point topLeft;
     cv::Mat cropped_img = cropImage(orig_img, faceCenter, cropSize, topLeft);
@@ -198,6 +198,7 @@ void cropAndSaveFace(const cv::Mat& orig_img, const cv::Point& faceCenter,
     float smoothing_level = 0.3f;  // Adjustable parameter (0.0 to 1.0)
     float whitening_level = 0.1f;  // Adjustable parameter (0.0 to 1.0)
     cv::Mat beautified_face = applyBeautyFilters(cropped_img, smoothing_level, whitening_level);
+    cv::imwrite(scenePath + "/human/faces/" + basename, beautified_face);
     
     // Create a copy of the original image to paste the beautified face onto
     cv::Mat result_img = orig_img.clone();
@@ -214,11 +215,10 @@ void cropAndSaveFace(const cv::Mat& orig_img, const cv::Point& faceCenter,
         if (face_roi.width != beautified_face.cols || face_roi.height != beautified_face.rows) {
             cv::resize(beautified_face, beautified_face, cv::Size(face_roi.width, face_roi.height));
         }
-        
         // Simply copy the beautified face to the result image
         beautified_face.copyTo(result_img(face_roi));
     }
     
     // Save the final result
-    cv::imwrite(outputPath, result_img);
+    cv::imwrite(scenePath + "/images/" + basename, result_img);
 }

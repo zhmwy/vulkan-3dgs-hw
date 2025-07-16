@@ -237,10 +237,10 @@ int ProcessKeypoints(const std::string& inputPath) {
         return 1;
     }
 
-    // 根据统计结果确定哪些关键点整体检测不足（例如检测次数 < 15）
+    // 根据统计结果确定哪些关键点整体检测不足（例如检测次数 < 2）
     vector<int> few_keypt;
     for (int i = 0; i < 17; ++i) {
-        if (keypoint_count[i] < 15) {
+        if (keypoint_count[i] < 2) {
             few_keypt.push_back(i);
         }
     }
@@ -282,11 +282,11 @@ int ProcessKeypoints(const std::string& inputPath) {
     }
     
     for (int pt : few_keypt) {
-        if (keypoint_count[pt] >= 15)
+        if (keypoint_count[pt] >= 2)
             continue;
         LOGI("开始补充关键点 %{public}d 的候选帧，当前检测次数为 %{public}d", pt, keypoint_count[pt]);
         
-        while (keypoint_count[pt] < 15) {
+        while (keypoint_count[pt] < 2) {
             if (houxuan_id[pt].empty()) {
                 int randomFrame;
                 do {
@@ -315,7 +315,7 @@ int ProcessKeypoints(const std::string& inputPath) {
                 for (int candFrame : houxuan_id[pt]) {
                     int startFrame = max(0, candFrame - window_range);
                     int endFrame = min((int)image_paths.size() - 1, candFrame + window_range);
-                    for (int neighbor = startFrame; neighbor <= endFrame && keypoint_count[pt] < 15; neighbor++) {
+                    for (int neighbor = startFrame; neighbor <= endFrame && keypoint_count[pt] < 2; neighbor++) {
                         if (processedFrames.find(neighbor) != processedFrames.end())
                             continue;
                             
@@ -350,13 +350,13 @@ int ProcessKeypoints(const std::string& inputPath) {
                             keypoint_count[pt]++;
                             LOGI("候选帧%{public}d成功补充关键点%{public}d，新置信度为%{public}f，当前计数： %{public}d", 
                                                 neighbor, pt, newConf, keypoint_count[pt]);
-                            if (keypoint_count[pt] >= 15) {
-                                LOGI("关键点%{public}d已达到15次有效检测，停止补充。",pt);
+                            if (keypoint_count[pt] >= 2) {
+                                LOGI("关键点%{public}d已达到2次有效检测，停止补充。",pt);
                                 break;
                             }
                         }
                     }
-                    if (keypoint_count[pt] >= 15)
+                    if (keypoint_count[pt] >= 2)
                         break;
                 }
                 houxuan_id[pt].clear();

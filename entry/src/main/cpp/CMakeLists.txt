@@ -47,7 +47,7 @@ add_library(3dgs SHARED
 #    cores/video2images.cpp
     human/head_mask/manageHeadMasks.cpp human/head_mask/beauty_filters.cpp human/human.cpp
     human/keypoints/keypointsv2.cpp human/keypoints/HIAIModelManager.cpp human/keypoints/utils.cpp
-    human/triangulation/triangulation.cpp
+    human/triangulation/triangulationv2.cpp human/keypoints/landmark3d.cpp
     human/SMPL/src/fit_smplv2.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
     human/SMPL/src/smpl/BlendShape.cpp human/SMPL/src/smpl/JointRegression.cpp human/SMPL/src/smpl/WorldTransformation.cpp
     human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp

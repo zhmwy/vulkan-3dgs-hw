@@ -31,7 +31,7 @@ struct KeypointData {
 void manageHeadMasks(std::string dataPath, int& width, int& height, std::vector<float>& intr);
 cv::Mat cropImage(const cv::Mat& image, const cv::Point& center, const cv::Size& size, cv::Point& actualTopLeft);
 void cropAndSaveFace(const cv::Mat& orig_img, const cv::Point& faceCenter, cv::Size& cropSize, 
-                    const std::string& outputPath);
+                    const std::string& scenePath, const std::string& basename);
 cv::Size calculateOptimalFaceDimensions(const std::vector<KeypointData>& keypoints) ;
 std::vector<KeypointData> parseKeypointsFile(const std::string& filepath);
 cv::Mat applyBeautyFilters(const cv::Mat& image, float smoothing_level = 0.5f, float whitening_level = 0.3f);

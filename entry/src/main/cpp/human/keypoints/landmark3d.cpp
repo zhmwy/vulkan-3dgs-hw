@@ -6,7 +6,7 @@ using namespace cv;
 using namespace cv::dnn;
 
 int PreprocessingLandmark(const std::vector<cv::Mat> &SrcImgs, std::vector<cv::Mat> &OutSrcImgs,
-                          std::vector<cv::Vec4d> &params, int imgSize = 256) {
+                          std::vector<cv::Vec4d> &params, int imgSize = 120) {
     OutSrcImgs.clear();
     Size input_size = Size(imgSize, imgSize);
 
@@ -90,8 +90,8 @@ void GetPredsFromHeatmap(const cv::Mat& heatmaps, std::vector<cv::Point2f>& land
         }
         
         // Scale from heatmap coordinates to image coordinates (256x256)
-        x = (x - 0.5) * 256.0 / hm_width;
-        y = (y - 0.5) * 256.0 / hm_height;
+        x = (x - 0.5) * 120.0 / hm_width;
+        y = (y - 0.5) * 120.0 / hm_height;
         
         landmarks[i] = cv::Point2f(x, y);
     }
@@ -129,9 +129,9 @@ OH_NN_ReturnCode LoadImageLandmark(const std::string& imagePath, vector<Vec4d>& 
 
     vector<cv::Mat> srcs{frame};
     vector<cv::Mat> input_images;
-    PreprocessingLandmark(srcs, input_images, params, 256);
+    PreprocessingLandmark(srcs, input_images, params, 120);
 
-    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(256, 256));
+    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(120, 120));
     std::vector<std::pair<float*, size_t>> inputDataList{
         {reinterpret_cast<float*>(blob.data), blob.total()}
     };
@@ -151,7 +151,7 @@ int ProcessLandmarks(const std::vector<std::string>& imagePaths, const std::stri
     int totalProcessedImages = 0;
     
     // Construct model path
-    std::string modelPath = modelDir + "/landmark3d.om";
+    std::string modelPath = modelDir + "/debug.om";
     
     if (LoadModel(modelPath) != OH_NN_SUCCESS) {
         OH_LOG_ERROR(LOG_APP, "Model loading failed");

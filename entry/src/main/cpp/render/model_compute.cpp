@@ -843,7 +843,9 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
 
     if (training_step > flow_steps){
         copyBaseCmd();
+        queryCmdTimeStart("ex. flow_forward");
         bindPipeline2CommandBuffer(pipe_flow, FORWARD_PIPE, X, 1, 1);
+        queryCmdTimeEnd("ex. flow_forward");
     }
     bindPipeline2CommandBuffer(pipe_project, FORWARD_PIPE, X, 1, 1);
     queryCmdTimeEnd("05. forward_EWA");
@@ -857,7 +859,9 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
 
     if (training_step > flow_steps) {
         X = (splat_count + 256 - 1) / 256; // Ceiling division
+        queryCmdTimeStart("ex. flow_backward");
         bindPipeline2CommandBuffer(pipe_flow, BACKWARD_PIPE, X, 1, 1);
+        queryCmdTimeEnd("ex. flow_backward");
     }
     queryCmdTimeStart("20. training_optimize");
     optimizeStepCmd();
