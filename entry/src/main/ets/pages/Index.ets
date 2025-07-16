@@ -14,7 +14,7 @@ const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
 // const caseName: string = "2025-06-04_15_57_44";
-let caseName = "2025-07-03_09_55_31";
+let caseName = "jingtai";
 const caseNames: string[] = [
   // "jingtai",
   "2025-06-04_15_34_45",

@@ -1027,7 +1027,7 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
     }
     
     cv::Mat orig_img = cv::imread(data.img_list[0]);
-    float scale_factor = orig_img.size[0] / 640;
+    float scale_factor = orig_img.size[0] / 640.0;
     
     // Parse keypoints file to calculate optimal face dimensions
     std::string keypointsPath = scenepath + "/keypoints.txt";
@@ -1308,8 +1308,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
-//         bool is_human = HumanPreprocess(scenepath, data.head_bbox, data.body_bbox);
-        bool is_human = false;
+        bool is_human = HumanPreprocess(scenepath, data.head_bbox, data.body_bbox);
+//         bool is_human = false;
         std::string pointsFilePath = slampath + "/points3D.txt";
         load3DPoints(pointsFilePath, data);
         
