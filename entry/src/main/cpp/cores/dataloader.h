@@ -87,7 +87,7 @@ public:
     static void loadInputTo(const std::string _scenepath, DataLoader::InputInitStruct& data);
     static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height = 640, int width = 480);
     static void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
-                                   const std::vector<FaceProcessingInfo>& faceInfos,
+                                   std::vector<FaceProcessingInfo>& faceInfos,
                                    const std::pair<int, int>& selectedIndices);
     
     static std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);

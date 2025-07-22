@@ -14,12 +14,6 @@
 #include "segmentation/segment.h"
 #include "head_mask/manageHeadMasks.h"
 
-struct FaceProcessingInfo {
-    std::string imageName;
-    cv::Point faceCenter;
-    double angle;
-    bool isWithinBounds;
-};
 
 std::string getBaseName(const std::string& path);
 std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, double>& faceAngles,

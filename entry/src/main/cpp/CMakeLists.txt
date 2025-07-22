@@ -53,6 +53,7 @@ add_library(3dgs SHARED
     human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp
     human/SMPL/src/smpl/smpl_male.cpp
     human/segmentation/segment.cpp human/segmentation/utils.cpp
+    human/keypoints/landmark2d.cpp human/keypoints/bfm_data.cpp
 )
 
 

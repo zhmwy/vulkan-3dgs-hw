@@ -1025,7 +1025,7 @@ void DataLoader::createEnlargedFacev1(const std::string scenepath, DataLoader::I
 
 // Modified createEnlargedFace function
 void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
-                                   const std::vector<FaceProcessingInfo>& faceInfos,
+                                   std::vector<FaceProcessingInfo>& faceInfos,
                                    const std::pair<int, int>& selectedIndices) {
     // Create directories
     std::filesystem::create_directories(scenepath + "/human");
@@ -1050,8 +1050,6 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
     
     LOGI("Optimal face dimensions: width=%{public}d, height=%{public}d", 
          optimalFaceSize.width, optimalFaceSize.height);
-    
-    std::vector<cv::Rect2d> roi_bboxes;
     
     // Process each face
     for (int i = 0; i < faceInfos.size(); ++i) {
@@ -1084,7 +1082,7 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
             cv::Point2d half(optimalFaceSize.width * 0.5, optimalFaceSize.height * 0.5);
             cv::Point2d pt1 = center - half;
             cv::Point2d pt2 = center + half;
-            roi_bboxes.push_back(cv::Rect2d(pt1, pt2));
+            faceInfos[i].roi_bbox = cv::Rect2d(pt1, pt2);
         }
         
         // Schedule 2: Optimal face crops (no intrinsics calculation)
@@ -1383,12 +1381,9 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
                 data.max_movement = (data.body_bbox[3] - data.body_bbox[2]) * 0.01;
                 createEnlargedFace(scenepath, data, faceInfos, selectedIndices);
                 
-                // Now we can build the selected image paths for ProcessLandmarks
-                std::vector<std::string> selectedImages;
-                selectedImages.push_back(scenepath + "/human/faces/" + faceInfos[selectedIndices.first].imageName);
-                selectedImages.push_back(scenepath + "/human/faces/" + faceInfos[selectedIndices.second].imageName);
+
                 
-                // ProcessLandmarks(scenepath, selectedImages);
+                ProcessLandmarks(scenepath, selectedIndices, faceInfos);
             }
         }
     }

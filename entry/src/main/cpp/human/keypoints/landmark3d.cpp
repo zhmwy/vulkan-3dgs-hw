@@ -139,14 +139,14 @@ OH_NN_ReturnCode LoadImageLandmark(const std::string& imagePath, vector<Vec4d>& 
     return HIAIModelManager::GetInstance().InitIOTensors(inputDataList);
 }
 
-void inferenceLandmarkModel(const std::string& imgPath, std::vector<OutputLandmark>& result, vector<Vec4d>& params) {
+void inferenceLandmarkModel(const std::string& imgPath, std::vector<float>& result, vector<Vec4d>& params) {
     LoadImageLandmark(imgPath, params);
     RunModel();
-    PostProcessingLandmark(HIAIModelManager::GetInstance().GetResult(), params, result);
+    result = HIAIModelManager::GetInstance().GetResult()[0];
 }
 
-int ProcessLandmarks(const std::vector<std::string>& imagePaths, const std::string& modelDir, 
-                     const std::string& outputPath) {
+int ProcessLandmarks(std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, int>& selectedIndices, const std::string& modelDir, 
+                     const std::string& scenePath) {
     auto begin = clk::now();
     int totalProcessedImages = 0;
     
@@ -159,69 +159,46 @@ int ProcessLandmarks(const std::vector<std::string>& imagePaths, const std::stri
     }
 
     // Create output file
+    std::string outputPath = scenePath + "/landmarks.txt";
     std::ofstream outfile(outputPath);
     if (!outfile.is_open()) {
         OH_LOG_ERROR(LOG_APP, "Failed to create output file: %s", outputPath.c_str());
         return 0;
     }
 
+    std::vector<std::string> selectedImages;
+    selectedImages.push_back(scenePath + "/human/faces/" + faceInfos[selectedIndices.first].imageName);
+    selectedImages.push_back(scenePath + "/human/faces/" + faceInfos[selectedIndices.second].imageName);
+    std::vector<cv::Rect2d> roi_bboxes;
+    roi_bboxes.push_back(faceInfos[selectedIndices.first].roi_bbox);
+    roi_bboxes.push_back(faceInfos[selectedIndices.second].roi_bbox);
+
     // Process each image
-    for (const auto& imgPath : imagePaths) {
-        std::vector<OutputLandmark> result;
+    for (int i=0; i<2; ++i) {
+        std::vector<float> result;
         vector<Vec4d> params;
         
         // Extract filename
-        size_t last_slash = imgPath.find_last_of("/\\");
+        size_t last_slash = selectedImages[i].find_last_of("/\\");
         std::string imgName = (last_slash != string::npos) ? 
-                              imgPath.substr(last_slash + 1) : imgPath;
+                              selectedImages[i].substr(last_slash + 1) : selectedImages[i];
         
-        inferenceLandmarkModel(imgPath, result, params);
-        ++totalProcessedImages;
-        
-        if (!result.empty() && !result[0].landmarks.empty()) {
-            // Write filename
-            outfile << imgName << "\n";
-            
-            // Skip bounding box line (write empty line or placeholder)
-            outfile << "0 0 0 0\n";
-            
-            // Write first 17 landmarks
-            int num_landmarks_to_save = std::min(17, (int)result[0].landmarks.size());
-            for (int i = 0; i < num_landmarks_to_save; ++i) {
-                outfile << result[0].landmarks[i].x << " " 
-                       << result[0].landmarks[i].y << " " 
-                       << result[0].scores[i] << "\n";
-            }
-            
-            LOGI("Processed %{public}s with %{public}d landmarks", imgName.c_str(), num_landmarks_to_save);
-        } else {
-            LOGE("No landmarks detected in %{public}s", imgName.c_str());
-        }
+        inferenceLandmarkModel(selectedImages[i], result, params);
+        Output2Landmarks(result, roi_bboxes[i], outputPath);
     }
-    
-    outfile.close();
+
     HIAIModelManager::GetInstance().UnloadModel();
-    
-    LOGW("Processed %{public}d images in total. It takes %{public}f seconds", totalProcessedImages, 
-         std::chrono::duration<double>(clk::now() - begin).count());
-    
     return 1;
 }
 
 // Wrapper function to match the expected interface
-int ProcessLandmarks(const std::string& scenePath, const std::vector<std::string>& imagePaths) {
-    // Extract model directory from first image path
-    if (imagePaths.empty()) {
-        OH_LOG_ERROR(LOG_APP, "No image paths provided");
-        return 0;
-    }
-    
+int ProcessLandmarks(const std::string& scenePath, std::pair<int, int>& selectedIndices, std::vector<FaceProcessingInfo>& faceInfos){
     size_t lastSlash = scenePath.find_last_of('/');
     std::string baseDir = (lastSlash != std::string::npos) ? 
                           scenePath.substr(0, lastSlash) : ".";
     std::string modelDir = baseDir + "/weights";
     
-    std::string outputPath = scenePath + "/landmarks.txt";
+//     std::string outputPath = scenePath + "/landmarks.txt";
     
-    return ProcessLandmarks(imagePaths, modelDir, outputPath);
+    return ProcessLandmarks(faceInfos, selectedIndices, modelDir, scenePath);
 }
