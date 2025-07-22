@@ -1094,6 +1094,7 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
         
         // Schedule 1: Original 480x640 crops with intrinsics calculation
         cv::Point topLeft;
+        orig_img = cv::imread(data.img_list[imgIndex]); // Reload beautifed face
         cv::Mat cropped_img_480x640 = cropImage(orig_img, scaledFaceCenter, 
                                                 cv::Size(480, 640), topLeft);
         cv::imwrite(scenepath + "/human/images/" + basename, cropped_img_480x640);
