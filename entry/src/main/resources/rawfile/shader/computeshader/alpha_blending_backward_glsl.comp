@@ -223,8 +223,8 @@ void main() {
                 continue;
             }
 
-            // float G = exp(power);
-            float G = 1.0f + power;
+            float G = exp(power);
+            // float G = 1.0f + power;
             float current_opacity = shared_opacity[j];
             float alpha = min(0.99f, current_opacity * G);
             if (alpha < 1.0f / 255.0f){

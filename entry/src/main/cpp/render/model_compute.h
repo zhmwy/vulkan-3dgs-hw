@@ -88,7 +88,7 @@ public:
     
     float low_resolotion_scale = 0.25;
 
-    int flow_steps = 500;
+    int flow_steps = 1000;
     int low_resolution_steps = 500;
     int sh_degree = 1;
     
