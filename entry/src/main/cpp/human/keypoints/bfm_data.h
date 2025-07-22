@@ -13,3 +13,5 @@
 extern const std::vector<float> u_base;  // 204维
 extern const std::vector<float> w_shp_base;  //204 x 40 = 8160维
 extern const std::vector<float> w_exp_base;  //204 x 10 = 2040维
+extern const std::vector<float> param_mean;
+extern const std::vector<float> param_std;

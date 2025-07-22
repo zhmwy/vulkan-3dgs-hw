@@ -1380,9 +1380,6 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
                 // Process faces and create enlarged faces
                 data.max_movement = (data.body_bbox[3] - data.body_bbox[2]) * 0.01;
                 createEnlargedFace(scenepath, data, faceInfos, selectedIndices);
-                
-
-                
                 ProcessLandmarks(scenepath, selectedIndices, faceInfos);
             }
         }

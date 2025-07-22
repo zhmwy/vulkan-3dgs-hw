@@ -1,7 +1,7 @@
 #include "keypoints.h"
 #include "bfm_data.h"
 #include "../../../base/math/vector.h"
-
+#include <Eigen/Dense>
 
 // ----------------------- 2D landmark检测代码 -----------------------
 struct ParamData {
@@ -10,6 +10,17 @@ struct ParamData {
     std::vector<float> alpha_shp; // 形状系数
     std::vector<float> alpha_exp; // 表情系数
 };
+
+void rescale_params(const std::vector<float>& param, std::vector<float>& result) {
+    result.resize(62);
+    
+    Eigen::Map<const Eigen::Vector<float, 62>> vecA(param.data());
+    Eigen::Map<const Eigen::Vector<float, 62>> vecB(param_std.data());
+    Eigen::Map<const Eigen::Vector<float, 62>> vecC(param_mean.data());
+    Eigen::Map<Eigen::Vector<float, 62>> vecResult(result.data());
+    
+    vecResult = vecA.array() * vecB.array() + vecC.array();
+}
 
 Base::Math::Vec4 parse_roi_box_from_bbox(const cv::Rect2d& bbox) {
     float left   = static_cast<float>(bbox.x);
@@ -33,7 +44,9 @@ Base::Math::Vec4 parse_roi_box_from_bbox(const cv::Rect2d& bbox) {
 }
 
 ParamData parse_param(const std::vector<float>& param) {
-    int n = param.size();
+    std::vector<float> param_scaled;
+    rescale_params(param,param_scaled);
+    int n = param_scaled.size();
     int trans_dim = 12, shape_dim = 0, exp_dim = 0;
 
     if (n == 62) {
@@ -54,17 +67,17 @@ ParamData parse_param(const std::vector<float>& param) {
     // 填充 R 矩阵 (3x4)
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 4; ++j)
-            data.R[i][j] = param[i * 4 + j];
+            data.R[i][j] = param_scaled[i * 4 + j];
 
     // offset 是第4列
     data.offset = Base::Math::Vec3(data.R[0][3], data.R[1][3], data.R[2][3]);
 
     // 提取 alpha_shp
-    data.alpha_shp.assign(param.begin() + trans_dim,
-                          param.begin() + trans_dim + shape_dim);
+    data.alpha_shp.assign(param_scaled.begin() + trans_dim,
+                          param_scaled.begin() + trans_dim + shape_dim);
 
     // 提取 alpha_exp
-    data.alpha_exp.assign(param.begin() + trans_dim + shape_dim, param.end());
+    data.alpha_exp.assign(param_scaled.begin() + trans_dim + shape_dim, param_scaled.end());
 
     return data;
 }
@@ -153,7 +166,7 @@ void Output2Landmarks(std::vector<float>& param, cv::Rect2d& face_box, std::stri
     }
 
     // 5. 保存到文件
-    ofstream ofs(savePath, ios::out);
+    ofstream ofs(savePath, ios::app);
     if (!ofs.is_open()) {
         cerr << "Failed to open file for writing: " << savePath << endl;
         return;
