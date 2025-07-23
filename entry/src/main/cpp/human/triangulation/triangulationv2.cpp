@@ -2,6 +2,11 @@
 
 using ms = std::chrono::milliseconds;
 using clk = std::chrono::system_clock;
+// Enum to identify the input type
+enum class InputType {
+    KEYPOINTS,
+    LANDMARKS
+};
 
 void readKeypoints(const std::string& filename, std::map<std::string, FrameData>& frames) {
     std::ifstream infile(filename);
@@ -133,98 +138,160 @@ void multiViewTriangulation(
     const CameraIntrinsics& intrinsics,
     const std::map<std::string, CameraExtrinsics>& extrinsics_map,
     const std::map<std::string, FrameData>& frames,
-    std::vector<cv::Point3d>& keypoints3d)
+    std::vector<cv::Point3d>& keypoints3d,
+    InputType inputType)
 {
-    int num_keypoints = 17;
+    int num_keypoints = (inputType == InputType::LANDMARKS) ? 16 : 17;
     keypoints3d.resize(num_keypoints);
+    
+    // Determine if we should use confidence filtering
+    bool useConfidenceFiltering = (inputType == InputType::KEYPOINTS);
 
     // For each keypoint index:
     for (int k = 0; k < num_keypoints; ++k) {
-        // First pass: collect all confidence values for this keypoint.
-        std::vector<double> all_confidences;
-        for (const auto& frame_pair : frames) {
-            const FrameData& frame = frame_pair.second;
-            if (frame.keypoints.size() > k) {
-                if(frame.keypoints[k].confidence > 0.7){
-                    all_confidences.push_back(frame.keypoints[k].confidence);
+        if (useConfidenceFiltering) {
+            // First pass: collect all confidence values for this keypoint.
+            std::vector<double> all_confidences;
+            for (const auto& frame_pair : frames) {
+                const FrameData& frame = frame_pair.second;
+                if (frame.keypoints.size() > k) {
+                    if(frame.keypoints[k].confidence > 0.7){
+                        all_confidences.push_back(frame.keypoints[k].confidence);
+                    }
                 }
             }
-        }
 
-        double confidence_threshold = 0.8;  // default fallback
-        if (all_confidences.size() >= 2) {
-            // Sort confidences in descending order.
-            std::sort(all_confidences.begin(), all_confidences.end(), std::greater<double>());
-            // For example, choose the value at the 25th percentile index.
-            size_t idx = all_confidences.size() / 4;
-            if (idx >= all_confidences.size()) idx = all_confidences.size() - 1;
-            confidence_threshold = all_confidences[idx];
-        }
-        else {
-            OH_LOG_WARN(LOG_APP, "Not enough observations for keypoint %{public}d", k);
-            keypoints3d[k] = cv::Point3d(0, 0, 0); // Default value
-            continue;
-        }
+            double confidence_threshold = 0.8;  // default fallback
+            if (all_confidences.size() >= 2) {
+                // Sort confidences in descending order.
+                std::sort(all_confidences.begin(), all_confidences.end(), std::greater<double>());
+                // For example, choose the value at the 25th percentile index.
+                size_t idx = all_confidences.size() / 4;
+                if (idx >= all_confidences.size()) idx = all_confidences.size() - 1;
+                confidence_threshold = all_confidences[idx];
+            }
+            else {
+                OH_LOG_WARN(LOG_APP, "Not enough observations for keypoint %{public}d", k);
+                keypoints3d[k] = cv::Point3d(0, 0, 0); // Default value
+                continue;
+            }
+                
+            LOGI("Conf thresh for kpt %{public}d is %{public}f", k, confidence_threshold);
+            std::vector<cv::Mat> As;
+            std::vector<double> confidences;
+
+            // Second pass: process only high-confidence observations.
+            for (const auto& frame_pair : frames) {
+                const std::string& image_name = frame_pair.first;
+                const FrameData& frame = frame_pair.second;
+
+                if (frame.keypoints.size() > k) {
+                    const KeyPoint2D& kp = frame.keypoints[k];
+
+                    if (kp.confidence < confidence_threshold)
+                        continue;
+
+                    auto extr_it = extrinsics_map.find(image_name);
+                    if (extr_it == extrinsics_map.end())
+                        continue;
+
+                    const CameraExtrinsics& extr = extr_it->second;
+
+                    cv::Mat K = (cv::Mat_<double>(3, 3) << intrinsics.fx, 0, intrinsics.cx,
+                                                            0, intrinsics.fy, intrinsics.cy,
+                                                            0, 0, 1);
+                    cv::Mat Rt;
+                    cv::hconcat(extr.R, extr.t, Rt);
+                    cv::Mat P = K * Rt;
+
+                    cv::Mat A(2, 4, CV_64F);
+                    double u = kp.x;
+                    double v = kp.y;
+                    A.row(0) = u * P.row(2) - P.row(0);
+                    A.row(1) = v * P.row(2) - P.row(1);
+
+                    As.push_back(A);
+                    confidences.push_back(kp.confidence);
+                }
+            }
+            LOGI("Using %{public}zu points for the triangulation of point %{public}d", As.size(), k);
+            if (As.size() >= 2) {
+                cv::Mat A_total(2 * As.size(), 4, CV_64F);
+                for (size_t i = 0; i < As.size(); ++i) {
+                    As[i].copyTo(A_total.rowRange(i * 2, i * 2 + 2));
+                }
+
+                cv::Mat u, s, vt;
+                cv::SVD::compute(A_total, s, u, vt, cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
+                cv::Mat X_homogeneous = vt.row(3).t();
+                X_homogeneous = X_homogeneous / X_homogeneous.at<double>(3, 0);
+                cv::Point3d point3d(
+                    X_homogeneous.at<double>(0, 0),
+                    X_homogeneous.at<double>(1, 0),
+                    X_homogeneous.at<double>(2, 0)
+                );
+                keypoints3d[k] = point3d;
+            }
+            else {
+                OH_LOG_WARN(LOG_APP, "Not enough observations for keypoint %{public}d", k);
+                keypoints3d[k] = cv::Point3d(0, 0, 0); // Default value
+            }
+        } else {
+            // For landmarks, no confidence filtering
+            std::vector<cv::Mat> As;
+
+            for (const auto& frame_pair : frames) {
+                const std::string& image_name = frame_pair.first;
+                const FrameData& frame = frame_pair.second;
+
+                if (frame.keypoints.size() > k) {
+                    const KeyPoint2D& kp = frame.keypoints[k];
+
+                    auto extr_it = extrinsics_map.find(image_name);
+                    if (extr_it == extrinsics_map.end())
+                        continue;
+
+                    const CameraExtrinsics& extr = extr_it->second;
+
+                    cv::Mat K = (cv::Mat_<double>(3, 3) << intrinsics.fx, 0, intrinsics.cx,
+                                                            0, intrinsics.fy, intrinsics.cy,
+                                                            0, 0, 1);
+                    cv::Mat Rt;
+                    cv::hconcat(extr.R, extr.t, Rt);
+                    cv::Mat P = K * Rt;
+
+                    cv::Mat A(2, 4, CV_64F);
+                    double u = kp.x;
+                    double v = kp.y;
+                    A.row(0) = u * P.row(2) - P.row(0);
+                    A.row(1) = v * P.row(2) - P.row(1);
+
+                    As.push_back(A);
+                }
+            }
             
-        LOGI("Conf thresh for kpt %{public}d is %{public}f", k, confidence_threshold);
-        std::vector<cv::Mat> As;
-        std::vector<double> confidences;
+            LOGI("Using %{public}zu points for the triangulation of landmark %{public}d", As.size(), k);
+            if (As.size() >= 2) {
+                cv::Mat A_total(2 * As.size(), 4, CV_64F);
+                for (size_t i = 0; i < As.size(); ++i) {
+                    As[i].copyTo(A_total.rowRange(i * 2, i * 2 + 2));
+                }
 
-        // Second pass: process only high-confidence observations.
-        for (const auto& frame_pair : frames) {
-            const std::string& image_name = frame_pair.first;
-            const FrameData& frame = frame_pair.second;
-
-            if (frame.keypoints.size() > k) {
-                const KeyPoint2D& kp = frame.keypoints[k];
-
-                if (kp.confidence < confidence_threshold)
-                    continue;
-
-                auto extr_it = extrinsics_map.find(image_name);
-                if (extr_it == extrinsics_map.end())
-                    continue;
-
-                const CameraExtrinsics& extr = extr_it->second;
-
-                cv::Mat K = (cv::Mat_<double>(3, 3) << intrinsics.fx, 0, intrinsics.cx,
-                                                        0, intrinsics.fy, intrinsics.cy,
-                                                        0, 0, 1);
-                cv::Mat Rt;
-                cv::hconcat(extr.R, extr.t, Rt);
-                cv::Mat P = K * Rt;
-
-                cv::Mat A(2, 4, CV_64F);
-                double u = kp.x;
-                double v = kp.y;
-                A.row(0) = u * P.row(2) - P.row(0);
-                A.row(1) = v * P.row(2) - P.row(1);
-
-                As.push_back(A);
-                confidences.push_back(kp.confidence);
+                cv::Mat u, s, vt;
+                cv::SVD::compute(A_total, s, u, vt, cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
+                cv::Mat X_homogeneous = vt.row(3).t();
+                X_homogeneous = X_homogeneous / X_homogeneous.at<double>(3, 0);
+                cv::Point3d point3d(
+                    X_homogeneous.at<double>(0, 0),
+                    X_homogeneous.at<double>(1, 0),
+                    X_homogeneous.at<double>(2, 0)
+                );
+                keypoints3d[k] = point3d;
             }
-        }
-        LOGI("Using %{public}zu points for the triangulation of point %{public}d", As.size(), k);
-        if (As.size() >= 2) {
-            cv::Mat A_total(2 * As.size(), 4, CV_64F);
-            for (size_t i = 0; i < As.size(); ++i) {
-                As[i].copyTo(A_total.rowRange(i * 2, i * 2 + 2));
+            else {
+                OH_LOG_WARN(LOG_APP, "Not enough observations for landmark %{public}d", k);
+                keypoints3d[k] = cv::Point3d(0, 0, 0); // Default value
             }
-
-            cv::Mat u, s, vt;
-            cv::SVD::compute(A_total, s, u, vt, cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
-            cv::Mat X_homogeneous = vt.row(3).t();
-            X_homogeneous = X_homogeneous / X_homogeneous.at<double>(3, 0);
-            cv::Point3d point3d(
-                X_homogeneous.at<double>(0, 0),
-                X_homogeneous.at<double>(1, 0),
-                X_homogeneous.at<double>(2, 0)
-            );
-            keypoints3d[k] = point3d;
-        }
-        else {
-            OH_LOG_WARN(LOG_APP, "Not enough observations for keypoint %{public}d", k);
-            keypoints3d[k] = cv::Point3d(0, 0, 0); // Default value
         }
     }
 }
@@ -375,10 +442,23 @@ std::map<std::string, double> ProcessTriangulation(std::string inputPath) {
     std::map<std::string, FrameData> frames;
     CameraIntrinsics intrinsics;
     std::map<std::string, CameraExtrinsics> extrinsics_map;
+    InputType inputType;
 
-    // Read keypoints
+    // Check which input file exists to determine the input type
     std::string keypointsFile = inputPath + "/keypoints.txt";
-    readKeypoints(keypointsFile, frames);
+    std::string landmarksFile = inputPath + "/landmarks.txt";
+    
+    if (std::ifstream(landmarksFile).good()) {
+        // Use landmarks file
+        inputType = InputType::LANDMARKS;
+        readKeypoints(landmarksFile, frames);
+        OH_LOG_INFO(LOG_APP, "Using landmarks.txt as input");
+    } else {
+        // Use keypoints file (default)
+        inputType = InputType::KEYPOINTS;
+        readKeypoints(keypointsFile, frames);
+        OH_LOG_INFO(LOG_APP, "Using keypoints.txt as input");
+    }
 
     // Read camera intrinsics
     std::string camerasFile = inputPath + "/cameras.txt";
@@ -392,33 +472,34 @@ std::map<std::string, double> ProcessTriangulation(std::string inputPath) {
 
     // Perform triangulation
     std::vector<cv::Point3d> keypoints3d;
-    multiViewTriangulation(intrinsics, extrinsics_map, frames, keypoints3d);
+    multiViewTriangulation(intrinsics, extrinsics_map, frames, keypoints3d, inputType);
 
-    // Estimate face directions
+    // Estimate face directions only for keypoints
     std::map<std::string, double> faceAngles;
-    estimateFaceDirections(keypoints3d, intrinsics, extrinsics_map, faceAngles);
+    if (inputType == InputType::KEYPOINTS) {
+        estimateFaceDirections(keypoints3d, intrinsics, extrinsics_map, faceAngles);
+        
+        // Save face angles to a file
+        std::string anglesPath = inputPath + "/face_angles.txt";
+        std::ofstream anglesFile(anglesPath);
+        if (anglesFile.is_open()) {
+            for (const auto& angle_pair : faceAngles) {
+                anglesFile << angle_pair.first << " " << angle_pair.second << std::endl;
+            }
+            anglesFile.close();
+            OH_LOG_INFO(LOG_APP, "Face angles saved to %{public}s", anglesPath.c_str());
+        }
+    }
 
     // Save results
-    std::string plyPath = inputPath + "/skeleton.ply";
+    std::string plyPath = (inputType == InputType::LANDMARKS) ? 
+                          inputPath + "/landmarks.ply" : 
+                          inputPath + "/skeleton.ply";
     savePointsAndLinesToPLY(keypoints3d, plyPath);
-    
-    // Optionally save face angles to a file
-    std::string anglesPath = inputPath + "/face_angles.txt";
-    std::ofstream anglesFile(anglesPath);
-    if (anglesFile.is_open()) {
-        for (const auto& angle_pair : faceAngles) {
-            anglesFile << angle_pair.first << " " << angle_pair.second << std::endl;
-        }
-        anglesFile.close();
-        OH_LOG_INFO(LOG_APP, "Face angles saved to %{public}s", anglesPath.c_str());
-    }
     
     gettimeofday(&t2, NULL);
     timeuse = (t2.tv_sec - t1.tv_sec) + (double)(t2.tv_usec - t1.tv_usec) / 1000000.0;
+    OH_LOG_INFO(LOG_APP, "Triangulation completed in %{public}f seconds", timeuse);
+    
     return faceAngles;
-}//
-// Created on 2025/7/8.
-//
-// Node APIs are not fully supported. To solve the compilation error of the interface cannot be found,
-// please include "napi/native_api.h".
-
+}

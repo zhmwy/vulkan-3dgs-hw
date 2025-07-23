@@ -1,7 +1,6 @@
 #include "keypoints.h"
 #include "bfm_data.h"
-#include "../../../base/math/vector.h"
-#include <Eigen/Dense>
+
 
 // ----------------------- 2D landmark检测代码 -----------------------
 struct ParamData {
@@ -145,7 +144,7 @@ void similar_transform(std::vector<Base::Math::Vec3>& pts3d, const Base::Math::V
     }
 }
 
-void Output2Landmarks(std::vector<float>& param, cv::Rect2d& face_box, std::string& savePath){
+std::vector<Base::Math::Vec3> Get2dLandmarks(std::vector<float>& param, cv::Rect2d& face_box, std::string& savePath){
     // 1. 解析3D人脸参数和检测框
     ParamData data = parse_param(param);
     Base::Math::Vec4 roi_box = parse_roi_box_from_bbox(face_box);
@@ -155,28 +154,5 @@ void Output2Landmarks(std::vector<float>& param, cv::Rect2d& face_box, std::stri
 
     // 3. 坐标变换
     similar_transform(pts3d, roi_box, 120);
-
-    // 4. 提取前16个关键点的 x, y
-    vector<string> keypoints_outputs;
-    for (int i = 0; i < 16; ++i) {
-        const auto& pt = pts3d[i];
-        ostringstream oss;
-        oss << fixed << setprecision(6) << pt.x << " " << pt.y << "\n";
-        keypoints_outputs.push_back(oss.str());
-    }
-
-    // 5. 保存到文件
-    ofstream ofs(savePath, ios::app);
-    if (!ofs.is_open()) {
-        cerr << "Failed to open file for writing: " << savePath << endl;
-        return;
-    }
-
-    for (const auto& line : keypoints_outputs) {
-        ofs << line;
-    }
-    ofs.close();
-
-    // 打印日志
-    cout << "Saved 2D landmark to: " << savePath << endl;
+    return pts3d;
 }

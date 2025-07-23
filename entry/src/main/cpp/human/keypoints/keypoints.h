@@ -33,6 +33,9 @@
 
 #include "file/file_operator.h"
 #include "common/common.h"
+#include "../../../base/math/vector.h"
+#include <Eigen/Dense>
+
 #undef LOG_DOMAIN
 #undef LOG_TAG
 #define LOG_DOMAIN 0x3200  // 全局domain宏，标识业务领域
@@ -57,7 +60,7 @@ OH_NN_ReturnCode LoadModel(const std::string& modelPath);
 OH_NN_ReturnCode LoadModel(NativeResourceManager* resourceMgr);
 OH_NN_ReturnCode LoadImage(NativeResourceManager* resourceMgr, const std::string& imagePath, const std::string& sandboxPath, vector<Vec4d>& params);
 // napi_value GetKeypoints(napi_env env, napi_callback_info info);
-void Output2Landmarks(std::vector<float>& param, cv::Rect2d& face_box, std::string& savePath);
+std::vector<Base::Math::Vec3> Get2dLandmarks(std::vector<float>& param, cv::Rect2d& face_box, std::string& savePath);
 int ProcessKeypoints(const std::string& inputPath);
 int ProcessLandmarks(const std::string& scenePath, std::pair<int, int>& selectedIndices, std::vector<FaceProcessingInfo>& faceInfos);
 napi_value InitProgress(napi_env env, napi_callback_info info);

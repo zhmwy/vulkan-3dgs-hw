@@ -1,4 +1,5 @@
 #include "keypoints.h"
+#include "../triangulation/triangulation.h"
 #include <numeric>
 #include <cmath>
 using namespace std;
@@ -184,7 +185,34 @@ int ProcessLandmarks(std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, 
                               selectedImages[i].substr(last_slash + 1) : selectedImages[i];
         
         inferenceLandmarkModel(selectedImages[i], result, params);
-        Output2Landmarks(result, roi_bboxes[i], outputPath);
+        std::vector<Base::Math::Vec3> pts3d = Get2dLandmarks(result, roi_bboxes[i], outputPath);
+        // 4. 提取前16个关键点的 x, y
+        vector<string> keypoints_outputs;
+        std::string imageName = i==0 ? faceInfos[selectedIndices.first].imageName : faceInfos[selectedIndices.second].imageName;
+        keypoints_outputs.push_back(imageName + "\n");
+        keypoints_outputs.push_back("0 0 0 0 \n");
+
+        for (int i = 0; i < 16; ++i) {
+            const auto& pt = pts3d[i];
+            ostringstream oss;
+            oss << fixed << setprecision(6) << pt.x << " " << pt.y << " 1.0\n";
+            keypoints_outputs.push_back(oss.str());
+        }
+    
+        // 5. 保存到文件
+        ofstream ofs(outputPath, ios::app);
+        if (!ofs.is_open()) {
+            cerr << "Failed to open file for writing: " << outputPath << endl;
+            return -1;
+        }
+    
+        for (const auto& line : keypoints_outputs) {
+            ofs << line;
+        }
+        ofs.close();
+    
+        // 打印日志
+        cout << "Saved 2D landmark to: " << outputPath << endl;
     }
 
     HIAIModelManager::GetInstance().UnloadModel();
@@ -199,6 +227,7 @@ int ProcessLandmarks(const std::string& scenePath, std::pair<int, int>& selected
     std::string modelDir = baseDir + "/weights";
     
 //     std::string outputPath = scenePath + "/landmarks.txt";
-    
-    return ProcessLandmarks(faceInfos, selectedIndices, modelDir, scenePath);
+    ProcessLandmarks(faceInfos, selectedIndices, modelDir, scenePath);
+    ProcessTriangulation(scenePath);
+    return 1;
 }

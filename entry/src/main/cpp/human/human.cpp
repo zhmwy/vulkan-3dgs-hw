@@ -28,7 +28,7 @@ std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, double>
             continue;
         }
         
-        float scale_factor = img.size[0] / 640;
+        float scale_factor = img.size[0] / 640.0;
         cv::Point scaledFaceCenter = faceCenters[i] * scale_factor;
         
         // Check if face center is within bounds
