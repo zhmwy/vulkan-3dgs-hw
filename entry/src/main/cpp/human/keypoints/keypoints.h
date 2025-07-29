@@ -63,5 +63,6 @@ OH_NN_ReturnCode LoadImage(NativeResourceManager* resourceMgr, const std::string
 std::vector<Base::Math::Vec3> Get2dLandmarks(std::vector<float>& param, cv::Rect2d& face_box, std::string& savePath);
 int ProcessKeypoints(const std::string& inputPath);
 int ProcessLandmarks(const std::string& scenePath, std::pair<int, int>& selectedIndices, std::vector<FaceProcessingInfo>& faceInfos);
+void detectFace(const std::string& inputPath, std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, int> selectedIndices);
 napi_value InitProgress(napi_env env, napi_callback_info info);
 #endif //POINTRIX_HUMAN_KEYPOINTS_H

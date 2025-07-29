@@ -20,6 +20,11 @@ struct  OutputPose {
 
 };
 
+struct FaceResult {
+    cv::Rect box;
+    float confidence;
+};
+
 struct PoseKeyPoint {
 	float x = 0;
 	float y = 0;
@@ -63,4 +68,5 @@ int Preprocessing(const std::vector<cv::Mat> &SrcImgs,
 int PostProcessing(std::vector<std::vector<float>> result, 
                    std::vector<cv::Vec4d> &params,
                    std::vector<OutputPose> &output);
+int PostProcessingFace(std::vector<std::vector<float>> result, std::vector<cv::Vec4d> &params, std::vector<FaceResult> &output);
 #endif //POINTRIX_HUMAN_UITLS_H

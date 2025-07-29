@@ -1082,7 +1082,7 @@ void DataLoader::createEnlargedFace(const std::string scenepath, DataLoader::Inp
             cv::Point2d half(optimalFaceSize.width * 0.5, optimalFaceSize.height * 0.5);
             cv::Point2d pt1 = center - half;
             cv::Point2d pt2 = center + half;
-            faceInfos[i].roi_bbox = cv::Rect2d(pt1, pt2);
+//            faceInfos[i].roi_bbox = cv::Rect2d(pt1, pt2);
         }
         
         // Schedule 2: Optimal face crops (no intrinsics calculation)
@@ -1231,6 +1231,10 @@ void prependSkyboxPoints(
     data.colors.insert(data.colors.begin(), skyColors.begin(), skyColors.end());
 }
 
+//void detectFace(basic_string<char, char_traits<char>, allocator<char>> scenepath, std::vector<FaceProcessingInfo> faceInfos, std::pair<int, int> selectedIndices) {
+//
+//}
+
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height, int width)
 {
     std::string basePath = data.basepath;
@@ -1376,6 +1380,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
             // Select two images based on analysis
             std::pair<int, int> selectedIndices = selectTwoImageIndices(faceInfos);
             
+            // Detect face region
+            detectFace(scenepath, faceInfos, selectedIndices);
             if (selectedIndices.first != -1 && selectedIndices.second != -1) {
                 // Process faces and create enlarged faces
                 data.max_movement = (data.body_bbox[3] - data.body_bbox[2]) * 0.01;

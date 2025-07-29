@@ -5,6 +5,7 @@
 // please include "napi/native_api.h".
 
 #include "utils.h"
+#include "human/keypoints/keypoints.h"
 using namespace cv;
 using namespace std;
 
@@ -157,5 +158,47 @@ int PostProcessing(std::vector<std::vector<float>> result, std::vector<cv::Vec4d
         result.kps = kpss[idx];
         output.push_back(result);
     }
+    return 0;
+}
+
+int PostProcessingFace(std::vector<std::vector<float>> result, std::vector<cv::Vec4d> &params, std::vector<FaceResult> &output) {
+    const float *all_data = result[0].data();
+    Mat output0 = Mat(Size(8400, 5), CV_32F, (float *)all_data).t(); // [5 ,8400] -> [8400, 5]
+
+    // 一张图片的预测框
+    vector<float> confidences;
+    vector<Rect> boxes;
+    for (int r = 0; r < output0.rows; ++r) {
+        // 预测框坐标映射到原图上
+        float score = output0.at<float>(r, 4);
+        if (score > 0.25) {
+            // rect [x,y,w,h]
+            float x = (output0.at<float>(r, 0) - params[0][2]) / params[0][0]; // x
+            float y = (output0.at<float>(r, 1) - params[0][3]) / params[0][1]; // y
+            float w = output0.at<float>(r, 2) / params[0][0];                          // w
+            float h = output0.at<float>(r, 3) / params[0][1];                          // h
+
+            int left = MAX(int(x - 0.5 * w + 0.5), 0);
+            int top = MAX(int(y - 0.5 * h + 0.5), 0);
+
+            confidences.push_back(score);
+            boxes.push_back(Rect(left, top, int(w + 0.5), int(h + 0.5)));
+        }
+    }
+
+    // 对一张图的预测框执行NMS处理
+    vector<int> nms_result;
+    cv::dnn::NMSBoxes(boxes, confidences, 0.25, 0.45, nms_result); // 还需要classThreshold？
+
+    // 对一张图片：依据NMS处理得到的索引，得到类别id、confidence、box，并置于结构体OutputDet的容器中
+    for (size_t i = 0; i < nms_result.size(); ++i) {
+        int idx = nms_result[i];
+        FaceResult result;
+
+        result.confidence = confidences[idx];
+        result.box = boxes[idx];
+        output.push_back(result);
+    }
+
     return 0;
 }

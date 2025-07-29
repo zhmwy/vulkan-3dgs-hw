@@ -379,3 +379,87 @@ int ProcessKeypoints(const std::string& inputPath) {
 
     return 1;
 }
+
+
+void inferenceFaceModel(const std::string& imgPath, std::vector<FaceResult>& result)
+{
+    vector<Vec4d> params;
+    LoadImage(imgPath, params);
+    RunModel();
+    auto model_output = HIAIModelManager::GetInstance().GetResult();
+    
+    std::vector<float> subvec(model_output[0].end() - 8420, model_output[0].end() - 8380);
+    PostProcessingFace(HIAIModelManager::GetInstance().GetResult(), params, result);
+}
+
+void processSingleImage(const std::string& imgPath, const std::string& outputDir, FaceProcessingInfo& faceInfo)
+{
+    // Detect face
+    std::vector<FaceResult> result;
+    inferenceFaceModel(imgPath, result);
+    
+    // Load image
+    cv::Mat frame = cv::imread(imgPath);
+    if (frame.empty()) {
+        OH_LOG_ERROR(LOG_APP, "Failed to read image: %{public}s", imgPath.c_str());
+        return;
+    }
+    // Max score bbox
+    if (!result.empty()) {
+        const FaceResult& face = result[0];
+        cv::Rect box = face.box;
+        cv::Rect safeBox(
+            std::max(0, box.x),
+            std::max(0, box.y),
+            std::min(box.width, frame.cols - box.x),
+            std::min(box.height, frame.rows - box.y)
+        );
+        // Update roi bbox in faceInfo
+        faceInfo.roi_bbox = safeBox;
+        
+        // Save cropped face image
+        size_t lastSlash = imgPath.find_last_of('/');
+        std::string imgName = imgPath.substr(lastSlash + 1);
+        std::string outputPath = outputDir + "face_" + imgName;
+        if (safeBox.width > 0 && safeBox.height > 0) {
+            cv::Mat cropped = frame(safeBox);
+            bool success = cv::imwrite(outputPath, cropped);
+            if (success) {
+                OH_LOG_INFO(LOG_APP, "Saved cropped face to: %{public}s", outputPath.c_str());
+            } else {
+                OH_LOG_ERROR(LOG_APP, "Failed to save image: %{public}s", outputPath.c_str());
+            }
+        } else {
+            OH_LOG_WARN(LOG_APP, "Invalid crop box for image %{public}s", imgPath.c_str());
+        }
+    } else {
+        OH_LOG_WARN(LOG_APP, "No face detected in image: %{public}s", imgPath.c_str());
+    }
+}
+
+void detectFace(const std::string& inputPath, std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, int> selectedIndices)
+{
+    // Construct model path
+    size_t lastSlash = inputPath.find_last_of('/');
+    std::string modelPath = inputPath.substr(0, lastSlash) + "/weights/yolov11-face.om";
+    
+    if (LoadModel(modelPath) != OH_NN_SUCCESS) {
+        OH_LOG_ERROR(LOG_APP, "Model loading failed");
+        return;
+    }
+    
+    // Construct output path
+    std::string outputDir = inputPath + "/human/selectedFace/";
+    std::filesystem::create_directories(inputPath + "/human");
+    std::filesystem::create_directories(outputDir);
+    
+    // Process images
+//    std::string testImageName = "1181002925921078.jpg";
+    
+    // Save box
+    processSingleImage(inputPath + "/images/" + faceInfos[selectedIndices.first].imageName, outputDir, faceInfos[selectedIndices.first]);
+    processSingleImage(inputPath + "/images/" + faceInfos[selectedIndices.second].imageName, outputDir, faceInfos[selectedIndices.second]);
+//    
+//    processSingleImage(inputPath + "/images/" + testImageName, outputDir, faceInfos[selectedIndices.second]);
+    HIAIModelManager::GetInstance().UnloadModel();
+}
