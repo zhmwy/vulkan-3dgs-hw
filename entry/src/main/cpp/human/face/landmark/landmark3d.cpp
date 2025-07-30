@@ -1,7 +1,9 @@
-#include "keypoints.h"
-#include "../triangulation/triangulation.h"
+#include "human/keypoints/keypoints.h"
+#include "human/triangulation/triangulation.h"
+#include "landmark.h"
 #include <numeric>
 #include <cmath>
+
 using namespace std;
 using namespace cv;
 using namespace cv::dnn;
@@ -185,7 +187,7 @@ int ProcessLandmarks(std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, 
                               selectedImages[i].substr(last_slash + 1) : selectedImages[i];
         
         inferenceLandmarkModel(selectedImages[i], result, params);
-        std::vector<Base::Math::Vec3> pts3d = Get2dLandmarks(result, roi_bboxes[i], outputPath);
+        std::vector<Base::Math::Vec3> pts3d = Get2dLandmarks(result, roi_bboxes[i]);
         // 提取前16个关键点的 x, y
         vector<string> keypoints_outputs;
         std::string imageName = i==0 ? faceInfos[selectedIndices.first].imageName : faceInfos[selectedIndices.second].imageName;
@@ -195,7 +197,7 @@ int ProcessLandmarks(std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, 
         for (int i = 0; i < 17; ++i) {
             const auto& pt = pts3d[i];
             ostringstream oss;
-            oss << fixed << setprecision(6) << pt.x << " " << pt.y << " 1.0\n";
+            oss << fixed << setprecision(6) << pt.x / 3.0 << " " << pt.y / 3.0 << " 1.0\n";
             keypoints_outputs.push_back(oss.str());
         }
     

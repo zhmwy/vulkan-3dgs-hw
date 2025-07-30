@@ -12,15 +12,11 @@
 #include "keypoints/keypoints.h"
 #include "SMPL/include/fit_smpl.h"
 #include "segmentation/segment.h"
-#include "head_mask/manageHeadMasks.h"
+#include "face/manageHeadMasks.h"
+#include "face/face.h"
+#include "cores/dataloader.h"
 
 
-std::string getBaseName(const std::string& path);
-std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, double>& faceAngles,
-                                            const std::vector<cv::Point>& faceCenters,
-                                            const std::vector<std::string>& imgList);
-std::pair<int, int> selectTwoImageIndices(const std::vector<FaceProcessingInfo>& faceInfos);
 napi_value HumanPreprocess_napi(napi_env env, napi_callback_info info);
 std::vector<std::string> selectTwoImages(const std::map<std::string, double>& faceAngles, const std::string& folderPath);
-bool HumanPreprocess(std::string inputPath, std::vector<float>& head_bbox, 
-                    std::vector<float>& body_bbox, std::map<std::string, double>& faceAngles);
+bool HumanPreprocess(std::string inputPath, DataLoader::InputInitStruct& data);

@@ -9,7 +9,6 @@
 #include <Eigen/Dense>
 
 #include "file/file_operator.h"
-#include "human/human.h"
 #include "base/math/vector.h"
 
 
@@ -86,11 +85,10 @@ public:
     
     static void loadInputTo(const std::string _scenepath, DataLoader::InputInitStruct& data);
     static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height = 640, int width = 480);
-    static void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
-                                   std::vector<FaceProcessingInfo>& faceInfos,
-                                   const std::pair<int, int>& selectedIndices);
-    
-    static std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);
+//     static void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
+//                                    std::vector<FaceProcessingInfo>& faceInfos,
+//                                    const std::pair<int, int>& selectedIndices);
+//     static std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);
     
     static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head = false);
     static void printPlyHeader(const std::string& filepath);

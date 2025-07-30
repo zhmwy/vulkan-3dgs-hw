@@ -1,6 +1,5 @@
-#include "keypoints.h"
 #include "bfm_data.h"
-
+#include "landmark.h"
 
 // ----------------------- 2D landmark检测代码 -----------------------
 struct ParamData {
@@ -123,7 +122,7 @@ void similar_transform(std::vector<Base::Math::Vec3>& pts3d, const cv::Rect2d& r
     }
 }
 
-std::vector<Base::Math::Vec3> Get2dLandmarks(std::vector<float>& param, cv::Rect2d& face_box, std::string& savePath){
+std::vector<Base::Math::Vec3> Get2dLandmarks(std::vector<float>& param, cv::Rect2d& face_box){
     // 1. 解析3D人脸参数和检测框
     ParamData data = parse_param(param);
 

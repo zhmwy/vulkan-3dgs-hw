@@ -1,92 +1,6 @@
 #include "human.h"
 
-std::string getBaseName(const std::string& path){
-    size_t pos = path.find_last_of('/');
-    std::string basename = path.substr(pos + 1);
-    return basename;
-}
 
-// Modified function to check face validity without requiring saved images
-std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, double>& faceAngles,
-                                            const std::vector<cv::Point>& faceCenters,
-                                            const std::vector<std::string>& imgList) {
-    std::vector<FaceProcessingInfo> faceInfos;
-    
-    // Build face processing info for each image
-    for (int i = 0; i < imgList.size() && i < faceCenters.size(); ++i) {
-        std::string basename = getBaseName(imgList[i]);
-        
-        // Check if this image has angle information
-        auto angleIt = faceAngles.find(basename);
-        if (angleIt == faceAngles.end()) {
-            continue;
-        }
-        
-        // Read image to get dimensions
-        cv::Mat img = cv::imread(imgList[i]);
-        if (img.empty()) {
-            continue;
-        }
-        
-        float scale_factor = img.size[0] / 640.0;
-        cv::Point scaledFaceCenter = faceCenters[i] * scale_factor;
-        
-        // Check if face center is within bounds
-        bool isWithinBounds = (scaledFaceCenter.x > 0 && 
-                              scaledFaceCenter.y > 0 && 
-                              scaledFaceCenter.x < img.cols && 
-                              scaledFaceCenter.y < img.rows);
-        
-        FaceProcessingInfo info;
-        info.imageName = basename;
-        info.faceCenter = scaledFaceCenter;
-        info.angle = angleIt->second;
-        info.isWithinBounds = isWithinBounds;
-        
-        faceInfos.push_back(info);
-    }
-    
-    return faceInfos;
-}
-
-// New function to select two images based on face info (without requiring saved files)
-std::pair<int, int> selectTwoImageIndices(const std::vector<FaceProcessingInfo>& faceInfos) {
-    std::pair<int, int> result(-1, -1);
-    
-    // Filter valid faces (within bounds and angle < 90)
-    std::vector<std::pair<int, double>> validFaces;
-    for (int i = 0; i < faceInfos.size(); ++i) {
-        if (faceInfos[i].isWithinBounds && faceInfos[i].angle < 90.0) {
-            validFaces.push_back({i, faceInfos[i].angle});
-        }
-    }
-    
-    if (validFaces.empty()) {
-        return result;
-    }
-    
-    // Sort by angle
-    std::sort(validFaces.begin(), validFaces.end(),
-              [](const auto& a, const auto& b) { return a.second < b.second; });
-    
-    // First image is the one with smallest angle
-    result.first = validFaces[0].first;
-    double smallestAngle = validFaces[0].second;
-    
-    // Find second image closest to target angle
-    double targetAngle = smallestAngle + 30.0;
-    double minDifference = std::numeric_limits<double>::max();
-    
-    for (int i = 1; i < validFaces.size(); ++i) {
-        double difference = std::abs(validFaces[i].second - targetAngle);
-        if (difference < minDifference) {
-            minDifference = difference;
-            result.second = validFaces[i].first;
-        }
-    }
-    
-    return result;
-}
 
 std::vector<std::string> selectTwoImages(const std::map<std::string, double>& faceAngles, 
                                          const std::string& folderPath) {
@@ -163,18 +77,36 @@ std::vector<std::string> selectTwoImages(const std::map<std::string, double>& fa
     return result;
 }
 
-bool HumanPreprocess(std::string inputPath, std::vector<float>& head_bbox, 
-                    std::vector<float>& body_bbox, std::map<std::string, double>& faceAngles) {
+bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data) {
     // Execute core logic
     auto begin = clk::now();
     
-    int isHumanCentric = ProcessKeypoints(inputPath);
+    int isHumanCentric = ProcessKeypoints(scenepath);
     if(isHumanCentric){
         OH_LOG_WARN(LOG_APP, "Dataset is human centric. Default to 3DGS on human.");
-        faceAngles = ProcessTriangulation(inputPath);
-        FitSMPL(inputPath, head_bbox, body_bbox);
+        std::map<std::string, double> faceAngles = ProcessTriangulation(scenepath);
+        
+        FitSMPL(scenepath, data.head_bbox, data.body_bbox);
         OH_LOG_INFO(LOG_APP, "SMPL estimation finished.");
-                
+                    
+        // Calculate face centers
+        std::vector<cv::Point> faceCenters = projectHeadCenter(data);
+            
+        // Analyze faces without requiring saved images
+        std::vector<FaceProcessingInfo> faceInfos = analyzeFaces(faceAngles, faceCenters, data.img_list);
+            
+        // Select two images based on analysis
+        std::pair<int, int> selectedIndices = selectTwoImageIndices(faceInfos);
+        
+        // Detect face region
+        detectFace(scenepath, faceInfos, selectedIndices);
+        if (selectedIndices.first != -1 && selectedIndices.second != -1) {
+            // Process faces and create enlarged faces
+            data.max_movement = (data.body_bbox[3] - data.body_bbox[2]) * 0.01;
+            createEnlargedFace(scenepath, data, faceInfos, selectedIndices);
+            ProcessLandmarks(scenepath, selectedIndices, faceInfos);
+        }
+        
         LOGW("Human preprocessing takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
         return true;
     }
