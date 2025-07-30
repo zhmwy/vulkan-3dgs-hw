@@ -168,8 +168,8 @@ int ProcessLandmarks(std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, 
     }
 
     std::vector<std::string> selectedImages;
-    selectedImages.push_back(scenePath + "/human/faces/" + faceInfos[selectedIndices.first].imageName);
-    selectedImages.push_back(scenePath + "/human/faces/" + faceInfos[selectedIndices.second].imageName);
+    selectedImages.push_back(scenePath + "/human/selectedFace/" + faceInfos[selectedIndices.first].imageName);
+    selectedImages.push_back(scenePath + "/human/selectedFace/" + faceInfos[selectedIndices.second].imageName);
     std::vector<cv::Rect2d> roi_bboxes;
     roi_bboxes.push_back(faceInfos[selectedIndices.first].roi_bbox);
     roi_bboxes.push_back(faceInfos[selectedIndices.second].roi_bbox);
@@ -186,13 +186,13 @@ int ProcessLandmarks(std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, 
         
         inferenceLandmarkModel(selectedImages[i], result, params);
         std::vector<Base::Math::Vec3> pts3d = Get2dLandmarks(result, roi_bboxes[i], outputPath);
-        // 4. 提取前16个关键点的 x, y
+        // 提取前16个关键点的 x, y
         vector<string> keypoints_outputs;
         std::string imageName = i==0 ? faceInfos[selectedIndices.first].imageName : faceInfos[selectedIndices.second].imageName;
         keypoints_outputs.push_back(imageName + "\n");
         keypoints_outputs.push_back("0 0 0 0 \n");
 
-        for (int i = 0; i < 16; ++i) {
+        for (int i = 0; i < 17; ++i) {
             const auto& pt = pts3d[i];
             ostringstream oss;
             oss << fixed << setprecision(6) << pt.x << " " << pt.y << " 1.0\n";

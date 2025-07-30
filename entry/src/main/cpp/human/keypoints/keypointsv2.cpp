@@ -392,6 +392,25 @@ void inferenceFaceModel(const std::string& imgPath, std::vector<FaceResult>& res
     PostProcessingFace(HIAIModelManager::GetInstance().GetResult(), params, result);
 }
 
+cv::Rect2d parse_roi_box_from_bbox(const cv::Rect2d& bbox) {
+    float left   = static_cast<float>(bbox.x);
+    float top    = static_cast<float>(bbox.y);
+    float right  = static_cast<float>(bbox.x + bbox.width);
+    float bottom = static_cast<float>(bbox.y + bbox.height);
+
+    float old_size = (right - left + bottom - top) / 2.0f;
+    float center_x = right - (right - left) / 2.0f;
+    float center_y = bottom - (bottom - top) / 2.0f + old_size * 0.14f;
+    float size = old_size * 1.58f;
+
+    cv::Rect2d roi_box;
+    roi_box.x = center_x - size / 2.0f; // x1
+    roi_box.y = center_y - size / 2.0f; // y1
+    roi_box.width = size;
+    roi_box.height = size;
+    return roi_box;
+}
+
 void processSingleImage(const std::string& imgPath, const std::string& outputDir, FaceProcessingInfo& faceInfo)
 {
     // Detect face
@@ -415,14 +434,14 @@ void processSingleImage(const std::string& imgPath, const std::string& outputDir
             std::min(box.height, frame.rows - box.y)
         );
         // Update roi bbox in faceInfo
-        faceInfo.roi_bbox = safeBox;
+        faceInfo.roi_bbox = parse_roi_box_from_bbox(safeBox);
         
         // Save cropped face image
         size_t lastSlash = imgPath.find_last_of('/');
         std::string imgName = imgPath.substr(lastSlash + 1);
-        std::string outputPath = outputDir + "face_" + imgName;
+        std::string outputPath = outputDir + imgName;
         if (safeBox.width > 0 && safeBox.height > 0) {
-            cv::Mat cropped = frame(safeBox);
+            cv::Mat cropped = frame(faceInfo.roi_bbox);
             bool success = cv::imwrite(outputPath, cropped);
             if (success) {
                 OH_LOG_INFO(LOG_APP, "Saved cropped face to: %{public}s", outputPath.c_str());

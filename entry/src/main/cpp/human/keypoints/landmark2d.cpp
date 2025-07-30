@@ -21,27 +21,6 @@ void rescale_params(const std::vector<float>& param, std::vector<float>& result)
     vecResult = vecA.array() * vecB.array() + vecC.array();
 }
 
-Base::Math::Vec4 parse_roi_box_from_bbox(const cv::Rect2d& bbox) {
-    float left   = static_cast<float>(bbox.x);
-    float top    = static_cast<float>(bbox.y);
-    float right  = static_cast<float>(bbox.x + bbox.width);
-    float bottom = static_cast<float>(bbox.y + bbox.height);
-
-    float old_size = (right - left + bottom - top) / 2.0f;
-    float center_x = right - (right - left) / 2.0f;
-    float center_y = bottom - (bottom - top) / 2.0f + old_size * 0.14f;
-
-    float size = old_size * 1.58f;
-
-    Base::Math::Vec4 roi_box;
-    roi_box.x = center_x - size / 2.0f; // x1
-    roi_box.y = center_y - size / 2.0f; // y1
-    roi_box.z = roi_box.x + size;       // x2
-    roi_box.w = roi_box.y + size;       // y2
-
-    return roi_box;
-}
-
 ParamData parse_param(const std::vector<float>& param) {
     std::vector<float> param_scaled;
     rescale_params(param,param_scaled);
@@ -120,11 +99,11 @@ std::vector<Base::Math::Vec3> compute_pts3d(const ParamData& data) {
     return pts3d;
 }
 
-void similar_transform(std::vector<Base::Math::Vec3>& pts3d, const Base::Math::Vec4& roi_box, int size) {
+void similar_transform(std::vector<Base::Math::Vec3>& pts3d, const cv::Rect2d& roi_box, int size) {
     float sx = roi_box.x;
     float sy = roi_box.y;
-    float ex = roi_box.z;
-    float ey = roi_box.w;
+    float ex = roi_box.x + roi_box.width;
+    float ey = roi_box.y + roi_box.height;
 
     float scale_x = (ex - sx) / size;
     float scale_y = (ey - sy) / size;
@@ -139,20 +118,19 @@ void similar_transform(std::vector<Base::Math::Vec3>& pts3d, const Base::Math::V
     // 变换坐标
     for (auto& pt : pts3d) {
         pt.x = (pt.x - 1.0f) * scale_x + sx;
-        pt.y = (size - (pt.y - 1.0f)) * scale_y + sy;
-        pt.z = (pt.z - min_z) * s;
+        pt.y = (size - pt.y) * scale_y + sy;
+        pt.z = (pt.z - 1.0f) * s - min_z;
     }
 }
 
 std::vector<Base::Math::Vec3> Get2dLandmarks(std::vector<float>& param, cv::Rect2d& face_box, std::string& savePath){
     // 1. 解析3D人脸参数和检测框
     ParamData data = parse_param(param);
-    Base::Math::Vec4 roi_box = parse_roi_box_from_bbox(face_box);
 
     // 2. 构建 3D 点
     std::vector<Base::Math::Vec3> pts3d = compute_pts3d(data);
 
     // 3. 坐标变换
-    similar_transform(pts3d, roi_box, 120);
+    similar_transform(pts3d, face_box, 120);
     return pts3d;
 }
