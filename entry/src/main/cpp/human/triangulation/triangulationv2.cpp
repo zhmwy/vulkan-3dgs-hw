@@ -1,3 +1,4 @@
+#include "human/info.h"
 #include "triangulation.h"
 
 using ms = std::chrono::milliseconds;
@@ -425,9 +426,11 @@ void estimateFaceDirections(
         // Calculate angle in radians and convert to degrees
         double angle_rad = std::acos(dot_product);
         double angle_deg = angle_rad * 180.0 / CV_PI;
-        
+        if(flip_axis){
+            angle_deg = 180 - angle_deg;
+        }
         faceAngles[camera_name] = angle_deg;
-        
+
         OH_LOG_INFO(LOG_APP, "Face angle for camera %{public}s: %{public}f degrees", 
                     camera_name.c_str(), angle_deg);
     }

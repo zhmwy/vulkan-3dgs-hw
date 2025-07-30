@@ -1,9 +1,10 @@
 #include "human.h"
 #include "info.h"
 
-int RATIO;
+float RATIO;
 int WIDTH;
 int HEIGHT;
+bool flip_axis = true;
 
 void GetImageInfo(std::string imgPath){
     cv::Mat origImg = cv::imread(imgPath);
