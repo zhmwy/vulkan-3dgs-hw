@@ -197,7 +197,7 @@ int ProcessLandmarks(std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, 
         for (int i = 0; i < 17; ++i) {
             const auto& pt = pts3d[i];
             ostringstream oss;
-            oss << fixed << setprecision(6) << pt.x / 3.0 << " " << pt.y / 3.0 << " 1.0\n";
+            oss << fixed << setprecision(6) << pt.x / RATIO << " " << pt.y / RATIO << " 1.0\n";
             keypoints_outputs.push_back(oss.str());
         }
     

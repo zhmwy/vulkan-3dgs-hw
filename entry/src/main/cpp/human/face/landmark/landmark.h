@@ -33,6 +33,7 @@
 #include "common/common.h"
 #include "../../../base/math/vector.h"
 #include <Eigen/Dense>
+#include <human/info.h>
 
 struct FaceProcessingInfo {
     std::string imageName;

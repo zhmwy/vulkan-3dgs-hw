@@ -87,15 +87,12 @@ void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct
         std::vector<float> first_intrinsic = data.intr_tmp[0];
         data.intr_tmp.resize(N, first_intrinsic);
     }
-    
-    cv::Mat orig_img = cv::imread(data.img_list[0]);
-    float scale_factor = orig_img.size[0] / 640.0;
-    
+
     // Parse keypoints file to calculate optimal face dimensions
     std::string keypointsPath = scenepath + "/keypoints.txt";
     std::vector<KeypointData> keypoints = parseKeypointsFile(keypointsPath);
     cv::Size optimalFaceSize = calculateOptimalFaceDimensions(keypoints);
-    optimalFaceSize = cv::Size(optimalFaceSize.width * scale_factor, optimalFaceSize.height * scale_factor);
+    optimalFaceSize = cv::Size(optimalFaceSize.width * RATIO, optimalFaceSize.height * RATIO);
     
     LOGI("Optimal face dimensions: width=%{public}d, height=%{public}d", 
          optimalFaceSize.width, optimalFaceSize.height);
@@ -150,7 +147,7 @@ void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct
         // Calculate new intrinsics for the 480x640 crop
         std::vector<float> intr = data.intr_tmp[0];
         std::vector<float> new_intr = calculateNewIntrinsics(intr[0], intr[1], intr[2], intr[3], 
-                                                            topLeft, cv::Size(480, 640), scale_factor);
+                                                            topLeft, cv::Size(480, 640), RATIO);
         LOGI("fx:%{public}f fy:%{public}f cx:%{public}f cy:%{public}f", 
              new_intr[0], new_intr[1], new_intr[2], new_intr[3]);
         data.intr_tmp.push_back(new_intr);

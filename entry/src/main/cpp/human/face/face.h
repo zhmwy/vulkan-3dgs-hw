@@ -19,6 +19,7 @@
 #include <algorithm>
 #include "common/common.h"
 #include "landmark/landmark.h"
+#include "human/info.h"
 
 // Helper struct to store keypoint data
 struct KeypointData {

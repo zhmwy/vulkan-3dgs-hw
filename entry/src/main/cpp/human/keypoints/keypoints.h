@@ -37,6 +37,7 @@
 #include "common/common.h"
 #include "../../../base/math/vector.h"
 #include <Eigen/Dense>
+#include "human/info.h"
 
 #undef LOG_DOMAIN
 #undef LOG_TAG

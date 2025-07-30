@@ -1,8 +1,22 @@
 #include "human.h"
+#include "info.h"
+
+int RATIO;
+int WIDTH;
+int HEIGHT;
+
+void GetImageInfo(std::string imgPath){
+    cv::Mat origImg = cv::imread(imgPath);
+    WIDTH = origImg.cols;
+    HEIGHT = origImg.rows;
+    RATIO = HEIGHT / 640.0;
+    assert(RATIO == WIDTH / 480.0);
+}
 
 bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data) {
     // Execute core logic
     auto begin = clk::now();
+    GetImageInfo(data.img_list[0]);
     
     int isHumanCentric = ProcessKeypoints(scenepath);
     if(isHumanCentric){

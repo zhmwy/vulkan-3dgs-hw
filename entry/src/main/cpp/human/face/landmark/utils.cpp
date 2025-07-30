@@ -28,20 +28,13 @@ std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, double>
             continue;
         }
         
-        // Read image to get dimensions
-        cv::Mat img = cv::imread(imgList[i]);
-        if (img.empty()) {
-            continue;
-        }
-        
-        float scale_factor = img.size[0] / 640.0;
-        cv::Point scaledFaceCenter = faceCenters[i] * scale_factor;
+        cv::Point scaledFaceCenter = faceCenters[i] * RATIO;
         
         // Check if face center is within bounds
         bool isWithinBounds = (scaledFaceCenter.x > 0 && 
                               scaledFaceCenter.y > 0 && 
-                              scaledFaceCenter.x < img.cols && 
-                              scaledFaceCenter.y < img.rows);
+                              scaledFaceCenter.x < WIDTH && 
+                              scaledFaceCenter.y < HEIGHT);
         
         FaceProcessingInfo info;
         info.imageName = basename;

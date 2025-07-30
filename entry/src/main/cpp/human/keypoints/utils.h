@@ -48,18 +48,6 @@ struct MaskParams {
 	cv::Vec4d params;
 };
 
-void LetterBox(const cv::Mat& image, cv::Mat& outImage,
-               cv::Vec4d& params,
-               const cv::Size& newShape = cv::Size(640, 640),
-               bool autoShape = false,
-               bool scaleFill=false,
-               bool scaleUp=true,
-               int stride= 32,
-               const cv::Scalar& color = cv::Scalar(114,114,114));
-
-int Preprocessing(const std::vector<cv::Mat> &SrcImgs,
-                              std::vector<cv::Mat> &OutSrcImgs,
-                              std::vector<cv::Vec4d> &params, int imgSize=640);
 
 int PostProcessing(std::vector<std::vector<float>> result, 
                    std::vector<cv::Vec4d> &params,
