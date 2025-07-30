@@ -45,8 +45,9 @@ add_library(3dgs SHARED
     cores/dataloader.cpp
     cores/tinyply.cpp
 #    cores/video2images.cpp
+    human/HiAI/HIAIModelManager.cpp human/HiAI/utils.cpp
     human/face/manageHeadMasks.cpp human/face/beauty_filters.cpp human/face/createEnlargedFace.cpp human/human.cpp
-    human/keypoints/keypointsv2.cpp human/keypoints/HIAIModelManager.cpp human/keypoints/utils.cpp
+    human/keypoints/keypointsv2.cpp human/keypoints/utils.cpp
     human/triangulation/triangulationv2.cpp
     human/SMPL/src/fit_smplv2.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
     human/SMPL/src/smpl/BlendShape.cpp human/SMPL/src/smpl/JointRegression.cpp human/SMPL/src/smpl/WorldTransformation.cpp

@@ -12,7 +12,6 @@
 #include "keypoints/keypoints.h"
 #include "SMPL/include/fit_smpl.h"
 #include "segmentation/segment.h"
-#include "face/manageHeadMasks.h"
 #include "face/face.h"
 #include "cores/dataloader.h"
 

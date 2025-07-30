@@ -3,7 +3,8 @@
 //
 // Node APIs are not fully supported. To solve the compilation error of the interface cannot be found,
 // please include "napi/native_api.h".
-#include "human/keypoints/HIAIModelManager.h"
+#include "human/HiAI/HIAIModelManager.h"
+#include "human/HiAI/utils.h"
 #include "human/keypoints/keypoints.h"
 #include "landmark.h"
 #include "base/math/vector.h"
