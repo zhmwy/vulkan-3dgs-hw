@@ -16,7 +16,7 @@ static const float pi = 3.1415926;
 static const float lambda_dssim = 0.2;
 static const float densify_grad_threshold = 0.00015;
 static const int skybox_num = 10000;
-
+static const float lamda_mask = 0.1;
 
 
 uint t2i(uint i, uint j, uint width) {
