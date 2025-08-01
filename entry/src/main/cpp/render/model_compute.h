@@ -162,7 +162,8 @@ public:
         vkgs::Buffer tile_range;
         vkgs::Buffer background;
         vkgs::Buffer rfeat;
-        vkgs::Buffer rfeat_alpha;
+        vkgs::Buffer rfeat_alpha;     // TODO: to delete
+        vkgs::Buffer alpha_array;
         vkgs::Buffer final_T;
         vkgs::Buffer ncontrib;
 
@@ -203,14 +204,18 @@ public:
         // for groundtruth
         vkgs::Buffer input_image_array;
         vkgs::Buffer input_image_alpha_array;
+        vkgs::Buffer input_mask_array;
 
         vkgs::Buffer dL_drfeat;
+        vkgs::Buffer dL_dalpha_array;
+        
         vkgs::Buffer dL_dconic;
         vkgs::Buffer dL_dopacity;
         vkgs::Buffer dL_dfeature;
         vkgs::Buffer dL_dndc;
         vkgs::Buffer dL_dbackground;
         vkgs::Buffer dL_dshs_array;
+        
 
         vkgs::Buffer dL_dmap;
         vkgs::Buffer dm_dmu1;
@@ -282,6 +287,7 @@ public:
     
     Compute3DGS pipe_blending_int;
     Compute3DGS pipe_int2float;
+    Compute3DGS pipe_blending_object;
     
     Compute3DGS pipe_optimize;
     Compute3DGS pipe_post_flow_optimize;
@@ -290,6 +296,8 @@ public:
     
     Compute3DGS pipe_loss;
     Compute3DGS pipe_ssim;
+    Compute3DGS pipe_loss_mask;
+    
     Compute3DGS pipe_copy_img2buffer;
     Compute3DGS pipe_copy_buffer2img; 
     Compute3DGS pipe_buffer_fill;
@@ -384,6 +392,8 @@ public:
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
     void setAlphaBlendingIntPipeline();
+    void setAlphaBlendingObjectPipeline();
+    
     void setIntToFloatGradientPipeline();
     void setOptimizationPipeline();
     void setPostFlowOptimPipeline();
@@ -392,6 +402,8 @@ public:
     
     void setLossPipeline();
     void setSSIMPipeline();
+    void setLossMaskPipeline();
+    
     void setComputeSHPipeline();
     void setComputeSHRenderPipeline();
     

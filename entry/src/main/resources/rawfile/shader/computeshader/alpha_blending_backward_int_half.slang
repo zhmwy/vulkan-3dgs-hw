@@ -28,6 +28,7 @@ static const float SCALE_FEATURE = 1.0e9;
 
 [[vk::binding(16)]] RWStructuredBuffer<float> dL_dbackground_array;
 
+
 groupshared int32_t shared_idx[SHARE_CHUNK_SIZE];
 groupshared half3 shared_uvd[SHARE_CHUNK_SIZE];
 groupshared half3 shared_invcov[SHARE_CHUNK_SIZE];

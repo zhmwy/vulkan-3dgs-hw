@@ -184,7 +184,6 @@ void VulkanComputeGS::createGpu2CpuCopys()
 
 //     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
     createGpu2CpuCopy(splat_buffers.rfeat);
-    createGpu2CpuCopy(splat_buffers.rfeat_alpha);
     
     createGpu2CpuCopy(splat_buffers.input_image_array); 
     createGpu2CpuCopy(splat_buffers.input_image_alpha_array);
@@ -466,17 +465,35 @@ void VulkanComputeGS::imageToBufferCmd()
             1,
             &copyRegionI
         );
+        
+        vkCmdCopyImageToBufferGS(
+            compute.commandBuffer,
+            inputGaussian.masks[current_img_idx].vkImage,
+            inputGaussian.masks[current_img_idx].vkImageLayout,
+            splat_buffers.input_mask_array,
+            1,
+            &copyRegionI
+        );
     }
     else
     {
         vkCmdCopyImageToBufferGS(
-                compute.commandBuffer,
-                inputGaussian.images_low_res[current_img_idx].vkImage,
-                inputGaussian.images_low_res[current_img_idx].vkImageLayout,
-                splat_buffers.input_image_alpha_array,
-                1,
-                &copyRegionI
-            );
+            compute.commandBuffer,
+            inputGaussian.images_low_res[current_img_idx].vkImage,
+            inputGaussian.images_low_res[current_img_idx].vkImageLayout,
+            splat_buffers.input_image_alpha_array,
+            1,
+            &copyRegionI
+        );
+        
+        vkCmdCopyImageToBufferGS(
+            compute.commandBuffer,
+            inputGaussian.masks_low_res[current_img_idx].vkImage,
+            inputGaussian.masks_low_res[current_img_idx].vkImageLayout,
+            splat_buffers.input_mask_array,
+            1,
+            &copyRegionI
+        );
     }
     
     if (training_step >= flow_steps)
@@ -544,6 +561,11 @@ void VulkanComputeGS::zeroGradCmd()
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
     
+    if(isObject) {
+        vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.alpha_array, 0, VK_WHOLE_SIZE, 0);
+        vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dalpha_array, 0, VK_WHOLE_SIZE, 0);
+    }
+    
 //     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dmap, 0, VK_WHOLE_SIZE, 0);
 //     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dmu1, 0, VK_WHOLE_SIZE, 0);
 //     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dm_dsigma1_sq, 0, VK_WHOLE_SIZE, 0);
@@ -588,7 +610,12 @@ void VulkanComputeGS::forwardCmd()
 
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_blending, FORWARD_PIPE, X, Y, 1);
+    if (isObject)
+        bindPipeline2CommandBuffer(pipe_blending_object, FORWARD_PIPE, X, Y, 1);
+    else
+        bindPipeline2CommandBuffer(pipe_blending, FORWARD_PIPE, X, Y, 1);
+    
+    
 
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
@@ -651,10 +678,14 @@ void VulkanComputeGS::forwardCmdTime()
     queryCmdTimeStart("13. forward_blend");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
-    bindPipeline2CommandBuffer(pipe_blending, FORWARD_PIPE, X, Y, 1);
+    if(isObject)
+        bindPipeline2CommandBuffer(pipe_blending_object, FORWARD_PIPE, X, Y, 1);
+    else
+        bindPipeline2CommandBuffer(pipe_blending, FORWARD_PIPE, X, Y, 1);
     queryCmdTimeEnd("13. forward_blend");
     /*********************  Alpha blending ***********************/
 
+    
     queryCmdTimeStart("14. forward_copy_buffer2img");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
@@ -681,6 +712,9 @@ void VulkanComputeGS::backwardCmd()
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
     bindPipeline2CommandBuffer(pipe_ssim, BACKWARD_PIPE, X, Y, 1, true);
     
+    if(isObject)
+        bindPipeline2CommandBuffer(pipe_loss_mask, FORWARD_PIPE, X, Y, 1, false);
+    
     queryCmdTimeEnd("15. L1_loss");
     /*********************  l1 loss ***********************/
 
@@ -692,7 +726,10 @@ void VulkanComputeGS::backwardCmd()
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
 
 //     bindPipeline2CommandBuffer(pipe_blending, BACKWARD_PIPE, X, Y, 1);
-    bindPipeline2CommandBuffer(pipe_blending_int, BACKWARD_PIPE, X, Y, 1);
+    if (isObject)
+        bindPipeline2CommandBuffer(pipe_blending_object, BACKWARD_PIPE, X, Y, 1);
+    else
+        bindPipeline2CommandBuffer(pipe_blending_int, BACKWARD_PIPE, X, Y, 1);
     X = (splat_count + 256 - 1) / 256; // Ceiling division
     bindPipeline2CommandBuffer(pipe_int2float, BACKWARD_PIPE, X, 1, 1);
     queryCmdTimeEnd("16. Backward_blending");
@@ -1296,6 +1333,23 @@ void VulkanComputeGS::prepare3dgsBuffers()
         allocator, image_width * image_height * 3 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    
+    if (this->isObject) {
+        splat_buffers.alpha_array = vkgs::Buffer(
+            allocator, image_width * image_height * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        
+        splat_buffers.dL_dalpha_array = vkgs::Buffer(
+            allocator, image_width * image_height * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.input_mask_array = vkgs::Buffer(
+            allocator, image_width * image_height * sizeof(uint8_t),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+    }
+    
     splat_buffers.final_T = vkgs::Buffer(
         allocator, image_width * image_height * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1444,6 +1498,7 @@ void VulkanComputeGS::prepare3dgsBuffers()
         allocator, image_width * image_height * 4 * sizeof(uint8_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    
     splat_buffers.rfeat_alpha = vkgs::Buffer(
         allocator, image_width * image_height * 4 * sizeof(uint8_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -2099,7 +2154,7 @@ void VulkanComputeGS::setAlphaBlendingIntPipeline()
 
     shaderCode = getPath("shader/computeshader/alpha_blending_backward_int.comp.spv");
 #ifdef VULKAN_PC
-    shaderCode = "../../shaders/glsl/computeshader/alpha_blending_backward.comp.spv";
+    shaderCode = "../../shaders/glsl/computeshader/alpha_blending_backward_int.comp.spv";
     std::cout << "[setAlphaBlendingPipeline] shaderCode: " << shaderCode << std::endl;
 #endif
 
@@ -2116,6 +2171,84 @@ void VulkanComputeGS::setAlphaBlendingIntPipeline()
 
     std::cout << "[setAlphaBlendingPipeline] Alpha blending pipeline set" << std::endl;
 }
+
+
+void VulkanComputeGS::setAlphaBlendingObjectPipeline()
+{
+    const uint32_t bindingCount = 19;
+    createPipelineLayout(
+        pipe_blending_object,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.uvd,       //0
+        &splat_buffers.conic,     //1
+        &splat_buffers.opacity_act_array,   //2
+        &splat_buffers.feature,   //3
+        &sort_buffers.sorted_idx_array,            //4
+        &splat_buffers.tile_range,      //5
+        &splat_buffers.background,//6
+        &splat_buffers.rfeat,     //7
+        &splat_buffers.final_T,   //8
+        &splat_buffers.ncontrib,  //9
+        &splat_buffers.dL_drfeat,  //10
+        &splat_buffers.dL_duvd_int,  //11
+        &splat_buffers.dL_dconic_int,  //12
+        &splat_buffers.dL_dopacity_act_array_int,  //13
+        &splat_buffers.dL_dfeature_int,  //14
+        &splat_buffers.dL_dndc_int,  //15
+        &splat_buffers.dL_dbackground,  //16
+        &splat_buffers.alpha_array,
+        &splat_buffers.dL_dalpha_array
+    };
+
+    updateDescriptorSet(pipe_blending_object.descriptorSet, splatBuffers);
+
+    pipe_blending_object.pipelines.resize(2);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/alpha_blending_forward_object.comp.spv");
+#ifdef VULKAN_PC
+    shaderCode = "../../shaders/glsl/computeshader/alpha_blending_forward.comp.spv";
+    std::cout << "[setAlphaBlendingPipeline] shaderCode: " << shaderCode << std::endl;
+#endif
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_blending_object.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_blending_object.pipelines[FORWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setAlphaBlendingPipeline] Alpha blending pipeline set" << std::endl;
+
+    shaderCode = getPath("shader/computeshader/alpha_blending_backward_object.comp.spv");
+#ifdef VULKAN_PC
+    shaderCode = "../../shaders/glsl/computeshader/alpha_blending_backward_int.comp.spv";
+    std::cout << "[setAlphaBlendingPipeline] shaderCode: " << shaderCode << std::endl;
+#endif
+
+    pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_blending_object.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_blending_object.pipelines[BACKWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setAlphaBlendingPipeline] Alpha blending pipeline set" << std::endl;
+}
+
 
 void VulkanComputeGS::setIntToFloatGradientPipeline()
 {
@@ -2600,6 +2733,43 @@ void VulkanComputeGS::setSSIMPipeline()
     );
 
     std::cout << "[setSSIMPipeline] ssim pipeline set" << std::endl;
+}
+
+void VulkanComputeGS::setLossMaskPipeline()
+{
+    const uint32_t bindingCount = 3;
+    createPipelineLayout(
+        pipe_loss_mask,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.input_mask_array,                // 0
+        &splat_buffers.alpha_array,              // 1
+        &splat_buffers.dL_dalpha_array             // 2
+    };
+
+    updateDescriptorSet(pipe_loss_mask.descriptorSet, splatBuffers);
+
+    pipe_loss_mask.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/loss_mask.comp.spv");
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
+    pipelineInfo.layout = pipe_loss_mask.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_loss_mask.pipelines[FORWARD_PIPE]
+        )
+    );
+
+    std::cout << "[setLossPipeline] Loss Pipeline set" << std::endl;
 }
 
 void VulkanComputeGS::setComputeKeyPipeline()
@@ -3601,6 +3771,33 @@ void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scal
             
             cv::bitwise_and(img, mask, img);
             cv::bitwise_and(dsp_img, dsp_mask, dsp_img);
+            
+            
+            cv::cvtColor(mask, mask, cv::COLOR_BGR2GRAY);
+            cv::cvtColor(dsp_mask, dsp_mask, cv::COLOR_BGR2GRAY);
+            
+            vkbase::Texture2DGS texture_original;
+            texture_original.fromImageBuffer(
+                mask.data,
+                origin_width * origin_height,
+                VK_FORMAT_R8_UINT,
+                origin_width, origin_height, 
+                vulkanDevice, compute.queue,
+                VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
+            );
+            
+            vkbase::Texture2DGS texture_resized;
+            texture_resized.fromImageBuffer(
+                dsp_mask.data,
+                dsp_width * dsp_height,
+                VK_FORMAT_R8_UINT,
+                dsp_width, dsp_height, 
+                vulkanDevice, compute.queue,
+                VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
+            );
+            
+            inputGaussian.masks.push_back(texture_original);
+            inputGaussian.masks_low_res.push_back(texture_resized);
         }
         
         cv::cvtColor(img, img, cv::COLOR_BGR2RGBA);
@@ -4013,6 +4210,13 @@ bool VulkanComputeGS::prepare()
     
     setLossPipeline();
     setSSIMPipeline();
+    
+    if (isObject){
+        setLossMaskPipeline();
+        setAlphaBlendingObjectPipeline();
+    }
+    
+    
     setImage2BufferPipeline();
     setBuffer2ImagePipeline();
     setBufferFillPipeline();
