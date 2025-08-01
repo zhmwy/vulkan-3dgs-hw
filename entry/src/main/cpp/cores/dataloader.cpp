@@ -330,30 +330,7 @@ void DataLoader::InputInitStruct::denormalizePoints() {
         scale = scale + Base::Math::Vec3(logdev, logdev, logdev);
     }
 }
-/*
-void DataLoader::InputInitStruct::computePositionStats() {
-    if (positions.empty()) {
-        std::cerr << "Error: No position data available!" << std::endl;
-        return;
-    }
-    
-    mean = glm::vec3(0.0, 0.0, 0.0);
-    for (const auto& pos : positions) {
-        mean += pos;
-    }
-    mean /= static_cast<float>(positions.size());
-    
-    double sum = 0;
-    for (const auto& pos : positions) {
-        float dist = glm::length(pos - mean);  // **计算欧几里得距离**
-        sum += dist * dist;  // **累加平方距离**
-    }
-    variance = sum / static_cast<double>(positions.size());  // **求均值**
-    
-    
-    std::cout << "Position Mean: (" << mean.x << ", " << mean.y << ", " << mean.z << ")" << std::endl;
-    std::cout << "Position Variance: " << variance << std::endl;  // **variance 现在是单个 float**
-}*/
+
 
 double quatDist(DataLoader::InputInitStruct::DataExtr& A, DataLoader::InputInitStruct::DataExtr& B){
     return A.values[0] * B.values[0] + A.values[1] * B.values[1] + A.values[2] * B.values[2] + A.values[3] * B.values[3];
@@ -1286,6 +1263,10 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         DataLoader::InputInitStruct::DataExtr extr = { qw / norm, qx / norm, qy / norm, qz / norm, tx, ty, tz };
         data.extr_tmp.push_back(extr);
         data.img_list.push_back(scenepath + "/images/" + imageName);
+        
+        std::string maskName = imageName.substr(0, imageName.find_last_of(".")) + ".png";
+        data.mask_list.push_back(scenepath + "/masks/" + maskName);
+        
         data.time_stamps.push_back(float(idx));
         ++idx;
 

@@ -3574,30 +3574,63 @@ void VulkanComputeGS::setBufferFillPipeline()
 void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scale) {
     std::cout << "Loading assets..." << std::endl;
     
-//     std::string filename = inputGaussian.img_list[0];
-//     cv::Mat imgText = cv::imread(filename);
-//     if (imgText.empty()){
-//         std::cerr << "Failed to load image file: " << filename << std::endl;
-//         return;
-//     }
-//     cv::resize(imgText, imgText, cv::Size(origin_width, origin_height));
-//     cv::cvtColor(imgText, imgText, cv::COLOR_BGR2RGBA);
-//     textureColorMap.fromImageBuffer(
-//         imgText.data,
-//         origin_width * origin_height * 4,
-//         VK_FORMAT_R8G8B8A8_UNORM,
-//         origin_width, origin_height, 
-//         vulkanDevice, compute.queue,
-//         VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
-//     );
-//     image_width = textureColorMap.width;
-//     image_height = textureColorMap.height;
     image_width = origin_width;
     image_height = origin_height;
     
-//     LOGI("Load Assets: loading images.");
+    for(int i = 0; i < inputGaussian.img_list.size(); i++){
+        std::string& filename = inputGaussian.img_list[i];
+        
+        
+        cv::Mat img = cv::imread(filename);
+        cv::resize(img, img, cv::Size(origin_width, origin_height));
+        
+        int dsp_width = static_cast<int>(origin_width * scale);
+        int dsp_height = static_cast<int>(origin_height * scale);
+        cv::Mat dsp_img;
+        cv::resize(img, dsp_img, cv::Size(dsp_width, dsp_height));
+        
+        
+        if (isObject){
+            std::string& maskname = inputGaussian.mask_list[i];
+            cv::Mat mask = cv::imread(maskname);
+            cv::Mat dsp_mask;
+            cv::resize(mask, mask, cv::Size(origin_width, origin_height));
+            cv::resize(mask, dsp_mask, cv::Size(dsp_width, dsp_height));
+            mask = mask > 0;
+            dsp_mask = dsp_mask > 0;
+            
+            cv::bitwise_and(img, mask, img);
+            cv::bitwise_and(dsp_img, dsp_mask, dsp_img);
+        }
+        
+        cv::cvtColor(img, img, cv::COLOR_BGR2RGBA);
+        cv::cvtColor(dsp_img, dsp_img, cv::COLOR_BGR2RGBA);
+        
+        vkbase::Texture2DGS texture_original;
+        texture_original.fromImageBuffer(
+            img.data,
+            origin_width * origin_height * 4,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            origin_width, origin_height, 
+            vulkanDevice, compute.queue,
+            VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
+        );
+        
+        vkbase::Texture2DGS texture_resized;
+        texture_resized.fromImageBuffer(
+            dsp_img.data,
+            dsp_width * dsp_height * 4,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            dsp_width, dsp_height, 
+            vulkanDevice, compute.queue,
+            VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
+        );
+        
+        inputGaussian.images.push_back(texture_original);
+        inputGaussian.images_low_res.push_back(texture_resized);
+    }
+    
     for (const std::string& filename : inputGaussian.img_list) {
-//         LOGI("Load Assets: loading image %{public}s", filename.c_str());
         cv::Mat img = cv::imread(filename);
         if (img.empty()){
             std::cerr << "Failed to load image file: " << filename << std::endl;
@@ -3635,6 +3668,43 @@ void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scal
         
         inputGaussian.images.push_back(texture_original);
         inputGaussian.images_low_res.push_back(texture_resized);
+    }
+    
+    for (const std::string& filename : inputGaussian.mask_list) {
+        cv::Mat img = cv::imread(filename, 0);
+        if (img.empty()){
+            std::cerr << "Failed to load image file: " << filename << std::endl;
+            return;
+        }
+        cv::resize(img, img, cv::Size(origin_width, origin_height));
+        
+        int dsp_width = static_cast<int>(origin_width * scale);
+        int dsp_height = static_cast<int>(origin_height * scale);
+        cv::Mat dsp_img;
+        cv::resize(img, dsp_img, cv::Size(dsp_width, dsp_height));
+        
+        vkbase::Texture2DGS texture_original;
+        texture_original.fromImageBuffer(
+            img.data,
+            origin_width * origin_height,
+            VK_FORMAT_R8_UINT,
+            origin_width, origin_height, 
+            vulkanDevice, compute.queue,
+            VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
+        );
+        
+        vkbase::Texture2DGS texture_resized;
+        texture_resized.fromImageBuffer(
+            dsp_img.data,
+            dsp_width * dsp_height,
+            VK_FORMAT_R8_UINT,
+            dsp_width, dsp_height, 
+            vulkanDevice, compute.queue,
+            VK_FILTER_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL
+        );
+        
+        inputGaussian.masks.push_back(texture_original);
+        inputGaussian.masks_low_res.push_back(texture_resized);
     }
     
 }
@@ -3994,7 +4064,6 @@ bool VulkanComputeGS::prepare()
     prepareCompute();
     prepareSyncSemaphore();
     
-//     loadAssets(low_resolotion_scale);
     loadAssets(WIDTH, HEIGHT, low_resolotion_scale);
 
     // 3dgs specific
@@ -4521,7 +4590,7 @@ void VulkanComputeGS::renderRGB2Cpu(int i, std::string &dataFolder, int width, i
 //     LOGI("Saving rendered image to: %{public}s", filename.c_str());
 //     LOGI("PSNR: %{public}f;   PSNR_mask: %{public}f", psnr_each, psnr_mask);
 
-//     cv::imwrite(filename, image);
+    cv::imwrite(filename, image);
 }
 
 void VulkanComputeGS::render() {

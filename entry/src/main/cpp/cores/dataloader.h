@@ -38,13 +38,15 @@ public:
         struct DataExtr{
             float values[7];  
         };
-
         
         std::vector<Data> colors;         // RGB colors (r, g, b)
         std::vector<vkbase::Texture2DGS> images;   // Images
         std::vector<vkbase::Texture2DGS> images_low_res;
-
+        std::vector<vkbase::Texture2DGS> masks;   // masks
+        std::vector<vkbase::Texture2DGS> masks_low_res;
+        
         std::vector<std::string> img_list;
+        std::vector<std::string> mask_list;
         std::vector<DataExtr> extr_tmp;  
         std::vector<DataExtr> extr_tmp_test; 
         std::vector<std::vector<float>> intr_tmp;
