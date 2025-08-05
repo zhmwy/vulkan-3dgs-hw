@@ -2,16 +2,15 @@
 #include "info.h"
 
 float RATIO;
-int WIDTH;
-int HEIGHT;
-bool flip_axis = true;
+int ORIG_WIDTH;
+int ORIG_HEIGHT;
 
 void GetImageInfo(std::string imgPath){
     cv::Mat origImg = cv::imread(imgPath);
-    WIDTH = origImg.cols;
-    HEIGHT = origImg.rows;
-    RATIO = HEIGHT / 640.0;
-    assert(RATIO == WIDTH / 480.0);
+    ORIG_WIDTH = origImg.cols;
+    ORIG_HEIGHT = origImg.rows;
+    RATIO = ORIG_HEIGHT / 640.0;
+    assert(RATIO == ORIG_WIDTH / 480.0);
 }
 
 bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data) {

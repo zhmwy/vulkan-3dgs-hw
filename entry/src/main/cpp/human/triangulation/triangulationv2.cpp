@@ -355,6 +355,32 @@ void savePointsAndLinesToPLY(const std::vector<cv::Point3d>& points,
         OH_LOG_INFO(LOG_APP, "Writing skeleton to %{public}s", filename.c_str());
 }
 
+bool upward_vec(const std::vector<cv::Point3d>& keypoints3d, cv::Vec3d& upVec){
+    cv::Point3d left_hip = keypoints3d[11];
+    cv::Point3d right_hip = keypoints3d[12];
+    cv::Point3d left_shoulder = keypoints3d[5];
+    cv::Point3d right_shoulder = keypoints3d[6];
+    cv::Vec3d leftUpVec(left_shoulder.x - left_hip.x,
+                        left_shoulder.y - left_hip.y,
+                        left_shoulder.z - left_hip.z);
+    cv::Vec3d rightUpVec(right_shoulder.x - right_hip.x,
+                        right_shoulder.y - right_hip.y,
+                        right_shoulder.z - right_hip.z);
+    upVec[0] = (leftUpVec[0] + rightUpVec[0]) / 2.0;
+    upVec[1] = (leftUpVec[1] + rightUpVec[1]) / 2.0,
+    upVec[2] = (leftUpVec[2] + rightUpVec[2]) / 2.0;
+    double upVec_norm = cv::norm(upVec);
+    
+    if (upVec_norm > 0) {
+        upVec /= upVec_norm;
+    } else {
+        OH_LOG_WARN(LOG_APP, "Face direction vector has zero norm");
+        return false;
+    }
+    double dot_product = upVec.dot(cv::Vec3d(0, 1, 0));
+    return dot_product > 0;
+}
+
 // New function to estimate face direction angles for each camera
 void estimateFaceDirections(
     const std::vector<cv::Point3d>& keypoints3d,
@@ -372,6 +398,8 @@ void estimateFaceDirections(
     cv::Point3d nose = keypoints3d[0];
     cv::Point3d left_ear = keypoints3d[3];
     cv::Point3d right_ear = keypoints3d[4];
+    cv::Vec3d upVec;
+    bool flip_axis = upward_vec(keypoints3d, upVec);
     
     // Calculate the middle point between the two ears
     cv::Point3d mid_ears((left_ear.x + right_ear.x) / 2.0,

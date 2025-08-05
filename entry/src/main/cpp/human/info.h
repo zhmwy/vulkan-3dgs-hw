@@ -8,8 +8,7 @@
 #define VULKAN_3DGS_HW_INFO_H
 
 extern float RATIO;
-extern int WIDTH;
-extern int HEIGHT; 
-extern bool flip_axis;
+extern int ORIG_WIDTH;
+extern int ORIG_HEIGHT; 
 
 #endif //VULKAN_3DGS_HW_INFO_H

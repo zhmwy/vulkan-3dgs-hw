@@ -33,8 +33,8 @@ std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, double>
         // Check if face center is within bounds
         bool isWithinBounds = (scaledFaceCenter.x > 0 && 
                               scaledFaceCenter.y > 0 && 
-                              scaledFaceCenter.x < WIDTH && 
-                              scaledFaceCenter.y < HEIGHT);
+                              scaledFaceCenter.x < ORIG_WIDTH && 
+                              scaledFaceCenter.y < ORIG_HEIGHT);
         
         FaceProcessingInfo info;
         info.imageName = basename;

@@ -112,7 +112,7 @@ int ProcessKeypoints(const std::string& inputPath) {
     
             // 检查是否有检测结果在图片中心
             for (const auto& pose : result) {
-                if (isHumanCentered(pose.box, WIDTH, HEIGHT)) {
+                if (isHumanCentered(pose.box, ORIG_WIDTH, ORIG_HEIGHT)) {
                     human_centered_count++;
                     break; // 每张图片只计一次
                 }

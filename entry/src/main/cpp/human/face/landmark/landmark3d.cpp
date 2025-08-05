@@ -154,7 +154,7 @@ int ProcessLandmarks(std::vector<FaceProcessingInfo>& faceInfos, std::pair<int, 
     int totalProcessedImages = 0;
     
     // Construct model path
-    std::string modelPath = modelDir + "/debug.om";
+    std::string modelPath = modelDir + "/3ddfa.om";
     
     if (LoadModel(modelPath) != OH_NN_SUCCESS) {
         OH_LOG_ERROR(LOG_APP, "Model loading failed");

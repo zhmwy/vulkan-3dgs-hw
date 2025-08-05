@@ -1,7 +1,7 @@
 #include "interface.h"
 #include "common/common.h"
 #include "file/file_operator.h"
-
+#include "human/human.h"
 #include "render/model_compute.h"
 
 #include <multimedia/image_framework/image_source_mdk.h>
