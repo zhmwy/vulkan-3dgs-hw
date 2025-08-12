@@ -870,7 +870,7 @@ void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::I
 }
 
 
-void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
+void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data, bool filter=false){
     std::ifstream pointsFile(pointsFilePath);
     if (!pointsFile.is_open()) {
         LOGE("Failed to open %{public}s file.", pointsFilePath.c_str());
@@ -893,6 +893,13 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
         // Check for duplicate points
         if (uniquePoints.find(pos) != uniquePoints.end()) {
             continue;
+        }
+        if(filter && data.body_bbox.size() > 0){
+            if(x < data.body_bbox[0] || x > data.body_bbox[1] || 
+                y < data.body_bbox[2] || y > data.body_bbox[3] || 
+                z < data.body_bbox[4] || z > data.body_bbox[5]){
+                continue;
+            }
         }
         uniquePoints.insert(pos);
         
@@ -1159,7 +1166,10 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
 //         bool is_human = false;
         if (!(is_human && isObject)){
             std::string pointsFilePath = slampath + "/points3D.txt";
-            load3DPoints(pointsFilePath, data);
+            load3DPoints(pointsFilePath, data, false);
+        }else{
+            std::string pointsFilePath = slampath + "/points3D.txt";
+            load3DPoints(pointsFilePath, data, true);
         }
         
         if (is_human) {
