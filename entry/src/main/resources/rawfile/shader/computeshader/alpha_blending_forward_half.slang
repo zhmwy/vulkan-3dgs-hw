@@ -127,7 +127,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
                 // alpha pruning
                 half alpha;
-                if (training_step > 2000)
+                if (training_step > 0)
                     alpha = min(0.99hf, shared_opacity[j] * exp(power));
                 else
                     alpha = min(0.99hf, shared_opacity[j] * (1.0hf + power));

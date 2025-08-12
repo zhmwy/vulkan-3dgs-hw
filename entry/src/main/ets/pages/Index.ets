@@ -14,7 +14,7 @@ const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
 // const caseName: string = "2025-06-04_15_57_44";
-let caseName = "human_bie";
+let caseName = "jingtai";
 const caseNames: string[] = [
   // "jingtai",
   "2025-06-04_15_34_45",
@@ -190,7 +190,7 @@ struct Index {
         // Convert foreground image to binary
         let binaryPixelMap = await this.convertToBinaryImage(data.fullSubject.foregroundImage);
 
-        let fileName = path.split('/').pop() || 'unknown.jpg'
+        let fileName = path.split('/').pop();
         let savePath = getContext().filesDir + `/${caseName}/segmented/` + fileName;
         // hilog.info(0x0000, TAG, `目标路径: ${savePath}`);
         let file = fs.openSync(savePath, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE);

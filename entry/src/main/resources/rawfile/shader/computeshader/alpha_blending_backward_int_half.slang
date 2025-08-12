@@ -161,7 +161,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             }
 
             half G;
-            if (training_step > 2000)
+            if (training_step > 0)
                 G = exp(power);
             else
                 G = 1.0hf + power;

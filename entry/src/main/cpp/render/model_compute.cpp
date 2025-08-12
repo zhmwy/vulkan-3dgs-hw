@@ -1,7 +1,7 @@
 #define VMA_IMPLEMENTATION
 
 #include "model_compute.h"
-
+#include "human/human.h"
 
 /********************* For Unit Test ****************************/
 void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
@@ -4314,6 +4314,8 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian, save_head);
+    
+    FaceTune(inputGaussian, dataPath);
 }
 
 
