@@ -181,9 +181,7 @@ void VulkanComputeGS::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.extr_params_render);
     createGpu2CpuCopy(splat_buffers.intr_params);
     createGpu2CpuCopy(splat_buffers.uvd);
-
-//     createGpu2CpuCopy(sort_buffers.splat_visible_point_count);
-    createGpu2CpuCopy(splat_buffers.rfeat);
+    
     
     createGpu2CpuCopy(splat_buffers.input_image_array); 
     createGpu2CpuCopy(splat_buffers.input_image_alpha_array);
@@ -195,7 +193,9 @@ void VulkanComputeGS::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.dL_dshs_array);
     createGpu2CpuCopy(splat_buffers.dL_drotate);
     
-
+    createGpu2CpuCopy(splat_buffers.dL_dalpha_array);
+    createGpu2CpuCopy(splat_buffers.alpha_array);
+    
     createGpu2CpuCopy(splat_buffers.dL_duvd_int);
     createGpu2CpuCopy(splat_buffers.dL_dconic_int);
     createGpu2CpuCopy(splat_buffers.dL_dfeature_int);
@@ -308,36 +308,16 @@ void VulkanComputeGS::printGpuBuffers()
 //     printGpuBuffer<uint32_t>("curPointsNum", splat_buffers.curPointsNum, 1, 1);
 //     printGpuBuffer<float>("extr_mat", splat_buffers.extr_mat, 3, 4);
 //     printGpuBuffer<float>("extr_act", splat_buffers.extr_act, 1, 6);
-//    
+
     printGpuBuffer<float>("xyz_array", splat_buffers.xyz_array, 4, 3);
-//     printGpuBuffer<float>("scale_array", splat_buffers.scale_array, 4, 3);
-//    
-//     printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
-//
-//     ///////////////////
-//     printGpuBuffer<float>("cov2d", splat_buffers.cov2d, 4, 3);
-//     printGpuBuffer<uint32_t>("radius", splat_buffers.radius, 4, 1);
-
-    printGpuBuffer<uint32_t>("visible", splat_buffers.visible, 4, 1);
-    printGpuBuffer<float>("timestamp", splat_buffers.time_stamp, 1, 1);
-    printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
-    printGpuBuffer<float>("dL_dxyz_flow", splat_buffers.dL_dxyz_flow, 4, 18);
-
-//     printGpuBuffer<float>("xyz_flow_params", splat_buffers.xyz_flow_params, 4, 18);
-//     printGpuBuffer<float>("xyz_flow", splat_buffers.xyz_flow, 4, 3);
-//     printGpuBuffer<float>("rot_flow", splat_buffers.rot_flow, 4, 4);
+    printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
     
-//     printGpuBuffer<float>("rot_flow_params", splat_buffers.rot_flow_params, 4, 24);
-    printGpuBuffer<int32_t>("is_body_point", splat_buffers.is_body_point, 4, 1);
-
-    printGpuBuffer<float>("extr_params", splat_buffers.extr_params, 1, 7);
-    printGpuBuffer<float>("intr_params", splat_buffers.intr_params, 1, 4);
+    printGpuBuffer<float>("alpha_array", splat_buffers.alpha_array, 1, 3);
+    printGpuBuffer<float>("rfeat", splat_buffers.rfeat, 1, 3);
+    printGpuBuffer<float>("dL_duvd", splat_buffers.dL_duvd, 4, 3);
+    printGpuBuffer<float>("dL_dalpha_array", splat_buffers.dL_dalpha_array, 1, 3);
     
-//     printGpuBuffer<float>("dL_dxyz", splat_buffers.dL_dxyz, 4, 3);
-//     printGpuBuffer<float>("dL_dopacity", splat_buffers.dL_dopacity, 4, 1);
-//     printGpuBuffer<float>("dL_dscale", splat_buffers.dL_dscale, 4, 3);
-//     printGpuBuffer<float>("dL_dshs_array", splat_buffers.dL_dshs_array, 3, 48);
-//     printGpuBuffer<float>("dL_drotate", splat_buffers.dL_drotate, 4, 4);
+
 }
 
 void VulkanComputeGS::radixSortCmd(uint32_t numInstances)
@@ -4390,7 +4370,7 @@ void VulkanComputeGS::printLog(bool train)
     }
     queryEventTime();
     if ((training_step >= 50000) && train){
-//         printGpuBuffers();
+        printGpuBuffers();
     }
 
 }
