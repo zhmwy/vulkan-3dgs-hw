@@ -3,62 +3,6 @@ using namespace std;
 using namespace cv;
 using namespace cv::dnn;
 
-// Modified LoadModel to use direct file access
-OH_NN_ReturnCode LoadModel(const std::string& modelPath) {
-    FILE* modelFile = fopen(modelPath.c_str(), "rb");
-    if (!modelFile) {
-        OH_LOG_ERROR(LOG_APP, "Failed to open model file at %{public}s", modelPath.c_str());
-        return OH_NN_FAILED;
-    }
-
-    fseek(modelFile, 0, SEEK_END);
-    long modelSize = ftell(modelFile);
-    fseek(modelFile, 0, SEEK_SET);
-
-    std::unique_ptr<uint8_t[]> modelData = std::make_unique<uint8_t[]>(modelSize);
-    size_t bytesRead = fread(modelData.get(), 1, modelSize, modelFile);
-    fclose(modelFile);
-
-    if (bytesRead != static_cast<size_t>(modelSize)) {
-        OH_LOG_ERROR(LOG_APP, "Incomplete model read");
-        return OH_NN_FAILED;
-    }
-
-    return HIAIModelManager::GetInstance().LoadModelFromBuffer(modelData.get(), modelSize);
-}
-
-// Function to run the model
-OH_NN_ReturnCode RunModel() {
-    OH_NN_ReturnCode ret = HIAIModelManager::GetInstance().RunModel();
-    if (ret != OH_NN_SUCCESS) {
-        OH_LOG_ERROR(LOG_APP, "RunModel failed");
-        return ret;
-    }
-
-    OH_LOG_INFO(LOG_APP, "RunModel success");
-    return ret;
-}
-
-// Modified LoadImage to use direct OpenCV loading
-OH_NN_ReturnCode LoadImage(const std::string& imagePath, vector<Vec4d>& params) {
-    cv::Mat frame = cv::imread(imagePath);
-    
-    if (frame.empty()) {
-        OH_LOG_ERROR(LOG_APP, "Failed to read image: %s", imagePath.c_str());
-        return OH_NN_FAILED;
-    }
-
-    vector<cv::Mat> srcs{frame};
-    vector<cv::Mat> input_images;
-    Preprocessing(srcs, input_images, params);
-
-    cv::Mat blob = cv::dnn::blobFromImages(input_images, 1/255.0, cv::Size(640, 640));
-    std::vector<std::pair<float*, size_t>> inputDataList{
-        {reinterpret_cast<float*>(blob.data), blob.total()}
-    };
-
-    return HIAIModelManager::GetInstance().InitIOTensors(inputDataList);
-}
 
 // 判断人体是否居中
 bool isHumanCentered(const Rect& box, int imgWidth=480, int imgHeight=640) {
@@ -152,11 +96,6 @@ int ProcessKeypoints(const std::string& inputPath) {
     int human_centered_count = 0;
 
     int id = 0;
-    cv::Mat imgSample = cv::imread(imgDir + sampled_image_paths[0]);
-    int width = imgSample.cols;
-    int height = imgSample.rows;
-    float ratio = width / 480.0;
-    assert(ratio == height/640.0);
     
     for (const auto& imgName : sampled_image_paths) {
         int idx = selectedIndices[id];
@@ -173,7 +112,7 @@ int ProcessKeypoints(const std::string& inputPath) {
     
             // 检查是否有检测结果在图片中心
             for (const auto& pose : result) {
-                if (isHumanCentered(pose.box, width, height)) {
+                if (isHumanCentered(pose.box, ORIG_WIDTH, ORIG_HEIGHT)) {
                     human_centered_count++;
                     break; // 每张图片只计一次
                 }
@@ -190,11 +129,11 @@ int ProcessKeypoints(const std::string& inputPath) {
             // 累积关键点数据到 keypoints_outputs
             for (size_t i = 0; i < 1; ++i) {
                 string data = imgName + "\n";
-                data += to_string(result[0].box.x / ratio) + " " + to_string(result[0].box.y / ratio) + " " + 
-                        to_string(result[0].box.width / ratio) + " " + to_string(result[0].box.height / ratio) + "\n";
+                data += to_string(result[0].box.x / RATIO) + " " + to_string(result[0].box.y / RATIO) + " " + 
+                        to_string(result[0].box.width / RATIO) + " " + to_string(result[0].box.height / RATIO) + "\n";
                 for (size_t k = 0; k < result[i].kps.size(); k += 3) {
-                    float x = result[0].kps[k] / ratio;        
-                    float y = result[0].kps[k + 1] / ratio;
+                    float x = result[0].kps[k] / RATIO;        
+                    float y = result[0].kps[k + 1] / RATIO;
                     float conf = result[0].kps[k + 2];
                     if (conf >= 0.75) {
                         keypoint_count[k / 3]++;
@@ -332,11 +271,11 @@ int ProcessKeypoints(const std::string& inputPath) {
                             keypoints_outputs.resize(1);
                         string file_name = image_paths[neighbor];
                         string data = file_name + "\n";
-                        data += to_string(result[0].box.x / ratio) + " " + to_string(result[0].box.y / ratio) + " " + 
-                                to_string(result[0].box.width / ratio) + " " + to_string(result[0].box.height / ratio) + "\n";
+                        data += to_string(result[0].box.x / RATIO) + " " + to_string(result[0].box.y / RATIO) + " " + 
+                                to_string(result[0].box.width / RATIO) + " " + to_string(result[0].box.height / RATIO) + "\n";
                         for (size_t k = 0; k < result[0].kps.size(); k += 3) {
-                            float x = result[0].kps[k] / ratio;
-                            float y = result[0].kps[k+1] / ratio;
+                            float x = result[0].kps[k] / RATIO;
+                            float y = result[0].kps[k+1] / RATIO;
                             float conf = result[0].kps[k+2];
                             data += to_string(x) + " " + to_string(y) + " " + to_string(conf) + "\n";
                         }

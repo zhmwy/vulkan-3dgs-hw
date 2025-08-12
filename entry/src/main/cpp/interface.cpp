@@ -2,7 +2,6 @@
 #include "common/common.h"
 #include "file/file_operator.h"
 
-#include "human/head_mask/manageHeadMasks.h"
 #include "render/model_compute.h"
 
 #include <multimedia/image_framework/image_source_mdk.h>

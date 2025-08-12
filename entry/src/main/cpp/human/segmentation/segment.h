@@ -23,7 +23,7 @@
 #include <sys/time.h>
 
 #include <rawfile/raw_file_manager.h>
-#include "../keypoints/HIAIModelManager.h"
+#include "human/HiAI/HIAIModelManager.h"
 #include "../keypoints/keypoints.h"
 #include "../keypoints/utils.h"
 #include <fstream>

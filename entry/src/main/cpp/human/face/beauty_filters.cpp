@@ -1,4 +1,4 @@
-#include "manageHeadMasks.h"
+#include "face.h"
 
 // Beauty filter functions converted from Python
 cv::Mat createSkinMaskColor(const cv::Mat& image) {

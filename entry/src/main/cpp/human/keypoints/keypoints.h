@@ -7,7 +7,6 @@
 #ifndef POINTRIX_HUMAN_KEYPOINTS_H
 #define POINTRIX_HUMAN_KEYPOINTS_H
 
-#endif //POINTRIX_HUMAN_KEYPOINTS_H
 #include "napi/native_api.h"
 #include "neural_network_runtime/neural_network_runtime.h"
 #include "neural_network_runtime/neural_network_core.h"
@@ -24,7 +23,9 @@
 
 #include <rawfile/raw_file_manager.h>
 
-#include "HIAIModelManager.h"
+#include "human/HiAI/HIAIModelManager.h"
+#include "human/HiAI/utils.h"
+
 #include "utils.h"
 #include <fstream>
 #include <sys/stat.h> // For mkdir
@@ -34,6 +35,10 @@
 
 #include "file/file_operator.h"
 #include "common/common.h"
+#include "../../../base/math/vector.h"
+#include <Eigen/Dense>
+#include "human/info.h"
+
 #undef LOG_DOMAIN
 #undef LOG_TAG
 #define LOG_DOMAIN 0x3200  // 全局domain宏，标识业务领域
@@ -46,8 +51,7 @@ using ms = std::chrono::milliseconds;
 using clk = std::chrono::system_clock;
 
 OH_NN_ReturnCode RunModel();
-OH_NN_ReturnCode LoadModel(NativeResourceManager* resourceMgr);
-OH_NN_ReturnCode LoadImage(NativeResourceManager* resourceMgr, const std::string& imagePath, const std::string& sandboxPath, vector<Vec4d>& params);
+OH_NN_ReturnCode LoadModel(const std::string& modelPath);
+OH_NN_ReturnCode LoadImage(const std::string& imagePath, vector<Vec4d>& params);
 // napi_value GetKeypoints(napi_env env, napi_callback_info info);
-int ProcessKeypoints(const std::string& inputPath);
-napi_value InitProgress(napi_env env, napi_callback_info info);
+#endif //POINTRIX_HUMAN_KEYPOINTS_H
