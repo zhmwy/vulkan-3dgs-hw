@@ -18,4 +18,4 @@
 
 napi_value HumanPreprocess_napi(napi_env env, napi_callback_info info);
 std::vector<std::string> selectTwoImages(const std::map<std::string, double>& faceAngles, const std::string& folderPath);
-bool HumanPreprocess(std::string inputPath, DataLoader::InputInitStruct& data);
+bool HumanPreprocess(std::string inputPath, DataLoader::InputInitStruct& data, bool includeFace=true);

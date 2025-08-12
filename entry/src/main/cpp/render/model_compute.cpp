@@ -24,7 +24,7 @@ void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
     }
     else {
         bool resumed = false;
-        DataLoader::loadInput12(dataFolder, inputGaussian, resumed, HEIGHT, WIDTH);
+        DataLoader::loadInput12(dataFolder, inputGaussian, resumed, isObject, HEIGHT, WIDTH);
 //         DataLoader::loadInputTo(dataFolder, inputGaussian);
         if(resumed) hasKNN = true;
         

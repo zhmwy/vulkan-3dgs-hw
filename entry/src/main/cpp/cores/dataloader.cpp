@@ -1038,7 +1038,8 @@ void prependSkyboxPoints(
     data.colors.insert(data.colors.begin(), skyColors.begin(), skyColors.end());
 }
 
-void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int height, int width)
+void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, bool& isObject,
+                            int height, int width)
 {
     std::string basePath = data.basepath;
     std::string scenepath = _scenepath;
@@ -1129,8 +1130,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         data.extr_tmp.push_back(extr);
         data.img_list.push_back(scenepath + "/images/" + imageName);
         
-        std::string maskName = imageName.substr(0, imageName.find_last_of(".")) + ".png";
-        data.mask_list.push_back(scenepath + "/masks/" + maskName);
+        std::string maskName = imageName.substr(0, imageName.find_last_of(".")) + ".jpg";
+        data.mask_list.push_back(scenepath + "/segmented/" + maskName);
         
         data.time_stamps.push_back(float(idx));
         ++idx;
@@ -1154,10 +1155,12 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
-        bool is_human = HumanPreprocess(scenepath, data);
-        
-        std::string pointsFilePath = slampath + "/points3D.txt";
-        load3DPoints(pointsFilePath, data);
+        bool is_human = HumanPreprocess(scenepath, data, false);
+//         bool is_human = false;
+        if (!(is_human && isObject)){
+            std::string pointsFilePath = slampath + "/points3D.txt";
+            load3DPoints(pointsFilePath, data);
+        }
         
         if (is_human) {
             std::string smplPath = scenepath + "/smpl.txt";
