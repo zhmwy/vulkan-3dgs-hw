@@ -8,6 +8,8 @@
 [[vk::binding(5)]] RWStructuredBuffer<float> rotate_array;
 [[vk::binding(6)]] RWByteAddressBuffer curPointsNum;
 [[vk::binding(7)]] RWStructuredBuffer<float> grads;
+[[vk::binding(8)]] RWStructuredBuffer<float> opacity_mask;
+
 
 [[vk::push_constant]]
 cbuffer PushConstants
@@ -53,5 +55,5 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     uint32_t toInsertIdx = 0;
     curPointsNum.InterlockedAdd(0, 1, toInsertIdx);
 
-    replaceGS(xyz_array, shs_array, DD, opacity_array, scale_array, rotate_array, toDensifyIdx_reg, toInsertIdx);
+    replaceGS(xyz_array, shs_array, DD, opacity_array, opacity_mask, scale_array, rotate_array, toDensifyIdx_reg, toInsertIdx);
 }

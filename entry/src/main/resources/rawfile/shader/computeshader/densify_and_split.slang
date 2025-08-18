@@ -54,6 +54,12 @@ float3 normalRandomXYZ(float3 xyz, float3 std) {
 
 [[vk::binding(17)]] RWStructuredBuffer<float> grads;
 
+[[vk::binding(18)]] RWStructuredBuffer<float> opacity_mask;
+[[vk::binding(19)]] RWStructuredBuffer<float> opacity_mask_exp_avg;
+[[vk::binding(20)]] RWStructuredBuffer<float> opacity_mask_avg;
+
+
+
 [[vk::push_constant]]
 cbuffer PushConstants
 {
@@ -76,7 +82,8 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         return;
 
     uint32_t toDensifyIdx_reg = toDensifyIdx_array[idx];
-    if (1 / (1 + exp(-opacity_array[toDensifyIdx_reg])) < min_opacity) {
+    if (1 / (1 + exp(-opacity_array[toDensifyIdx_reg])) < min_opacity || 
+        1 / (1 + exp(-opacity_mask[toDensifyIdx_reg])) < min_opacity) {
         return;
     }
 
@@ -176,6 +183,8 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     }
 
     opacity_array[toInsertIdx] = opacity_array[toDensifyIdx_reg];
+    opacity_mask[toInsertIdx] = opacity_mask[toDensifyIdx_reg];
+    
 
     scale_array[t2i(toInsertIdx, 0, 3)] = new_scale12[0];
     scale_array[t2i(toInsertIdx, 1, 3)] = new_scale12[1];
@@ -187,6 +196,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     rotate_array[t2i(toInsertIdx, 3, 4)] = rotate_array[t2i(toDensifyIdx_reg, 3, 4)];
 
     // reset exp_avg and exp_avg_sq
-    resetGS(xyz_array_exp_avg, shs_array_exp_avg, DD, opacity_array_exp_avg, scale_array_exp_avg, rotate_array_exp_avg, toDensifyIdx_reg);
-    resetGS(xyz_array_avg, shs_array_avg, DD, opacity_array_avg, scale_array_avg, rotate_array_avg, toDensifyIdx_reg);
+    resetGS(xyz_array_exp_avg, shs_array_exp_avg, DD, opacity_array_exp_avg, opacity_mask_exp_avg, scale_array_exp_avg, rotate_array_exp_avg, toDensifyIdx_reg);
+    resetGS(xyz_array_avg, shs_array_avg, DD, opacity_array_avg, opacity_mask_avg, scale_array_avg, rotate_array_avg, toDensifyIdx_reg);
 }

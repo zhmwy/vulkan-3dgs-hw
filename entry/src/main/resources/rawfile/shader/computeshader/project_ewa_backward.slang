@@ -51,6 +51,10 @@ float3x3 unit_quaternion_to_rotmatrix(float4 rotate) {
 [[vk::binding(25)]] RWStructuredBuffer<float> extr_act;
 
 
+[[vk::binding(27)]] RWStructuredBuffer<float> opacity_mask_act;
+[[vk::binding(28)]] RWStructuredBuffer<float> dL_dopacity_mask_act;
+[[vk::binding(29)]] RWStructuredBuffer<float> dL_dopacity_mask;
+
 [[vk::push_constant]]
 cbuffer PushConstants
 {
@@ -144,6 +148,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     dL_dxyz_reg.z += (intr_reg[1] * (extr[6] * xc.z - xc.y * extr[10]) * norm2) * dL_duvd_reg.y;
     dL_dxyz_reg.z += extr[10] * dL_duvd_reg.z;
 
+    /*
     // if (dL_dintr_params.data_ptr() != nullptr) {
         // dL_dintr_reg[0] += xc.x * norm * dL_duvd_reg.x;
         // dL_dintr_reg[1] += xc.y * norm * dL_duvd_reg.y;
@@ -178,6 +183,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         dL_dextr_reg[11] += -intr_reg[1] * xc.y * norm2 * dL_duvd_reg.y;
         dL_dextr_reg[11] += dL_duvd_reg.z;
     // }
+    */
 
     float3x3 Rw2c = float3x3(
         extr[0], extr[1], extr[2],
@@ -246,6 +252,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     dL_dzc = -dL_dJ00 * intr_reg[0] * norm2 + dL_dJ02 * 2 * intr_reg[0] * xc.x * norm3 -
               dL_dJ11 * intr_reg[1] * norm2 + dL_dJ12 * 2 * intr_reg[1] * xc.y * norm3;
 
+    /*
     // if (dL_dintr_params.data_ptr() != nullptr) {
         // dL_dintr_reg[0] += dL_dJ00 * norm - dL_dJ02 * xc.x * norm2;
         // dL_dintr_reg[1] += dL_dJ11 * norm - dL_dJ12 * xc.y * norm2;
@@ -285,7 +292,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     dL_dextr_reg[9] += dL_dzc * xw.y;
     dL_dextr_reg[10] += dL_dzc * xw.z;
     dL_dextr_reg[11] += dL_dzc;
-
+    
     float oldvalue = 0.0;
 
     // dL_dextr
@@ -342,7 +349,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         dL_dextr_params.InterlockedAddF32(6 * sizeof(float), dL_dextr_reg[11], oldvalue);
 
     }
-
+    */
 
 
     // 1->1->1->1->2 dL_dxyz = dL_dxc * dxc_dxw
@@ -459,4 +466,5 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     dL_drotate_array[4 * idx + 3] = dL_dqz_act;
 
     dL_dopacity_array[idx] = dL_dopacity_act_array[idx] * opacity_act_array[idx] * (1 - opacity_act_array[idx]);
+    dL_dopacity_mask[idx] = dL_dopacity_mask_act[idx] * opacity_mask_act[idx] * (1 - opacity_mask_act[idx]);
 }

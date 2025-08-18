@@ -2987,48 +2987,6 @@ void VulkanComputeGS::setClonePipeline()
     std::cout << "[setClonePipeline] Compute tile pipeline set" << std::endl;
 }
 
-void VulkanComputeGS::setClone3DGSPipeline()
-{
-    const uint32_t bindingCount = 8;
-    createPipelineLayout(
-        pipe_clone_3dgs,
-        bindingCount,  // Number of descriptor set bindings
-        true,
-        sizeof(uint32_t) * 8 // Push constant size (xyz_size; width; height;)
-    );
-
-    std::vector<vkgs::Buffer*> splatBuffers = {
-        &sort_buffers.densify_idx,                           //0
-        &splat_buffers.xyz_array,                  //1
-        &splat_buffers.sh_coeff,                         //2
-        &splat_buffers.opacity,     //3
-        &splat_buffers.scale_array,                   //4
-        &splat_buffers.rotate_array,              //5
-        &splat_buffers.curPointsNum,   //6
-        &splat_buffers.xyz_gradient_mean
-    };
-
-    updateDescriptorSet(pipe_clone_3dgs.descriptorSet, splatBuffers);
-
-    pipe_clone_3dgs.pipelines.resize(1);
-
-    // Load SPIR-V shader code
-    std::string shaderCode = getPath("shader/computeshader/densify_and_clone_3dgs.comp.spv");
-    
-    VkComputePipelineCreateInfo pipelineInfo = {};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
-    pipelineInfo.layout = pipe_clone_3dgs.pipelineLayout;
-
-    VK_CHECK_RESULT(
-        vkCreateComputePipelinesGS(
-            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_clone_3dgs.pipelines[FORWARD_PIPE]
-        )
-    );
-
-    std::cout << "[setClone3DGSPipeline] Clone 3dgs pipeline set" << std::endl;
-}
-
 void VulkanComputeGS::setPrunePipeline()
 {
     const uint32_t bindingCount = 17;
@@ -3143,48 +3101,6 @@ void VulkanComputeGS::setSplitPipeline()
     );
 
     std::cout << "[setSplitPipeline] Compute tile pipeline set" << std::endl;
-}
-
-void VulkanComputeGS::setSplit3DGSPipeline()
-{
-    const uint32_t bindingCount = 8;
-    createPipelineLayout(
-        pipe_split_3dgs,
-        bindingCount,  // Number of descriptor set bindings
-        true,
-        sizeof(uint32_t) * 8 // Push constant size (xyz_size; width; height;)
-    );
-
-    std::vector<vkgs::Buffer*> splatBuffers = {
-        &sort_buffers.densify_idx,                           //0
-        & splat_buffers.xyz_array,                  //1
-        & splat_buffers.sh_coeff,                         //2
-        & splat_buffers.opacity,     //3
-        &splat_buffers.scale_array,                   //4
-        & splat_buffers.rotate_array,              //5
-        & splat_buffers.curPointsNum,   //6
-        &splat_buffers.xyz_gradient_mean
-    };
-
-    updateDescriptorSet(pipe_split_3dgs.descriptorSet, splatBuffers);
-
-    pipe_split_3dgs.pipelines.resize(1);
-
-    // Load SPIR-V shader code
-    std::string shaderCode = getPath("shader/computeshader/densify_and_split_3dgs.comp.spv");
-    
-    VkComputePipelineCreateInfo pipelineInfo = {};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);;
-    pipelineInfo.layout = pipe_split_3dgs.pipelineLayout;
-
-    VK_CHECK_RESULT(
-        vkCreateComputePipelinesGS(
-            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_split_3dgs.pipelines[FORWARD_PIPE]
-        )
-    );
-
-    std::cout << "[setSplit3DGSPipeline] Split 3dgs pipeline set" << std::endl;
 }
 
 void VulkanComputeGS::setResetOpacityPipeline()
@@ -4205,8 +4121,8 @@ bool VulkanComputeGS::prepare()
     setComputeSHRenderPipeline();
     setClonePipeline();
     setSplitPipeline();
-    setClone3DGSPipeline();
-    setSplit3DGSPipeline();
+//     setClone3DGSPipeline();
+//     setSplit3DGSPipeline();
     setDensificationStatsPipeline();
     setMeanGradPipeline();
     setResetOpacityPipeline();

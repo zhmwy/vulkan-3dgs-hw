@@ -60,6 +60,9 @@ int4 get_rect(
 [[vk::binding(24)]] RWStructuredBuffer<float> extr;         // 12 parameters
 [[vk::binding(25)]] RWStructuredBuffer<float> extr_act;     // [w, x, y, z, tx, ty, tz]  normalized
 
+[[vk::binding(26)]] RWStructuredBuffer<float> opacity_mask;
+[[vk::binding(27)]] RWStructuredBuffer<float> opacity_mask_act;
+
 
 [[vk::push_constant]]
 cbuffer PushConstants
@@ -100,18 +103,11 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
     float3 scale_act_reg = exp(scale_reg);
     opacity_act_array[idx] = 1 / (1 + exp(-opacity_array[idx]));
-    if (opacity_act_array[idx] < min_opacity) {
+    opacity_mask_act[idx] = 1 / (1 + exp(-opacity_mask[idx]));
+    if (opacity_act_array[idx] < min_opacity || opacity_mask_act[idx] < min_opacity) {
         visible_array[idx] = 0;
         return;
     }
-
-
-    // if (training_step >= 501 && (training_step - 1) % 100 == 0) {
-    //     if (opacity_act_array[idx] < min_opacity) {
-    //         visible_array[idx] = 0;
-    //         return;
-    //     }
-    // }
 
     float norm_rotate = sqrt(rotate_reg[0] * rotate_reg[0] +
                              rotate_reg[1] * rotate_reg[1] +
@@ -120,7 +116,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float4 rotate_act_reg = rotate_reg / norm_rotate;
 
     // 1. project point
-    // float3 xw = xyz_array[idx];
     float3 xw = {
         xyz_array[3 * idx],
         xyz_array[3 * idx + 1],

@@ -385,8 +385,6 @@ public:
     void setClonePipeline();
     void setPrunePipeline();
     void setSplitPipeline();
-    void setClone3DGSPipeline();
-    void setSplit3DGSPipeline();
     
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();

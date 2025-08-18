@@ -23,6 +23,9 @@ groupshared float3 shared_feature[SHARE_CHUNK_SIZE];
 
 [[vk::binding(17)]] RWStructuredBuffer<float> alpha_array;
 
+[[vk::binding(19)]] RWStructuredBuffer<float> opacity_mask_array;
+
+
 [[vk::push_constant]]
 cbuffer PushConstants
 {

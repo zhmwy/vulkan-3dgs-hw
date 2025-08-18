@@ -30,6 +30,7 @@ void replaceGS(
     RWStructuredBuffer<float> xyz,
     RWStructuredBuffer<float> shs, int D,
     RWStructuredBuffer<float> opacity,
+    RWStructuredBuffer<float> opacity_mask,
     RWStructuredBuffer<float> scale,
     RWStructuredBuffer<float> rotate,
     int32_t src_idx,
@@ -47,7 +48,8 @@ void replaceGS(
     }
 
     opacity[dst_idx] = opacity[src_idx];
-
+    opacity_mask[dst_idx] = opacity_mask[src_idx];
+    
     scale[t2i(dst_idx, 0, 3)] = scale[t2i(src_idx, 0, 3)];
     scale[t2i(dst_idx, 1, 3)] = scale[t2i(src_idx, 1, 3)];
     scale[t2i(dst_idx, 2, 3)] = scale[t2i(src_idx, 2, 3)];
@@ -148,6 +150,7 @@ void resetGS(
     RWStructuredBuffer<float> xyz,
     RWStructuredBuffer<float> shs, int D,
     RWStructuredBuffer<float> opacity,
+    RWStructuredBuffer<float> opacity_mask,
     RWStructuredBuffer<float> scale,
     RWStructuredBuffer<float> rotate,
     int32_t idx,
@@ -164,7 +167,8 @@ void resetGS(
     }
 
     opacity[idx] = 0;
-
+    opacity_mask[idx] = 0;
+    
     scale[t2i(idx, 0, 3)] = 0;
     scale[t2i(idx, 1, 3)] = 0;
     scale[t2i(idx, 2, 3)] = 0;

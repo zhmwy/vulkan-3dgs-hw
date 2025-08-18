@@ -30,6 +30,9 @@ void computeKeysKernel(
 [[vk::binding(8)]] StructuredBuffer<float> conic;
 [[vk::binding(9)]] StructuredBuffer<float> opacity_act;
 
+[[vk::binding(10)]] StructuredBuffer<float> opacity_mask_act;
+
+
 
 [[vk::push_constant]]
 cbuffer PushConstants
@@ -138,6 +141,8 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     int grid_width = (W + BLOCK_X - 1) / BLOCK_X;
 
     const float opacity_factor_threshold = log(opacity_act[idx] * 255.0f);
+    const float opacity_factor_threshold2 = log(opacity_mask_act[idx] * 255.0f);
+    
     float3 conic_reg = {
         conic[t2i(idx, 0, 3)],
         conic[t2i(idx, 1, 3)],
@@ -158,7 +163,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             uint32_t bits = float32ToFloat20(uvd_reg.z);
             key |= bits;
 
-            if (max_opac_factor <= opacity_factor_threshold) {
+            if (max_opac_factor <= opacity_factor_threshold || max_opac_factor <= opacity_factor_threshold2) {
                 unsorted_keys_array[offset] = key;
                 unsorted_idx_array[offset] = idx;
                 offset++;

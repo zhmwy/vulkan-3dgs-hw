@@ -62,6 +62,15 @@ layout(std430, binding = 9) buffer _dL_dndc_array {
     float dL_dndc_array[];
 };
 
+layout(std430, binding = 10) buffer _dL_dopacity_mask_int {
+    int dL_dopacity_mask_int[];
+};
+
+layout(std430, binding = 11) buffer _dL_dopacity_mask {
+    float dL_dopacity_mask[];
+};
+
+
 void main() {
     uint index = gl_GlobalInvocationID.x;
     if (index >= _xyz_size){
@@ -80,6 +89,8 @@ void main() {
     dL_duvd_array[index * 3 + 1] = float(dL_duvd_array_int[index * 3 + 1]) / SCALE_UVD;
 
     dL_dopacity_array[index] = float(dL_dopacity_array_int[index]) / SCALE_OPACITY;
+    dL_dopacity_mask[index] = float(dL_dopacity_mask_int[index]) / SCALE_OPACITY;
+    
 
     // dL_dndc_array[index * 2 + 0] = float(dL_dndc_array_int[index * 2 + 0]) / SCALE;
     // dL_dndc_array[index * 2 + 1] = float(dL_dndc_array_int[index * 2 + 1]) / SCALE;
