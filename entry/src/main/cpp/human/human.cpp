@@ -13,7 +13,7 @@ void GetImageInfo(std::string imgPath){
     assert(RATIO == ORIG_WIDTH / 480.0);
 }
 
-bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data, bool includeFace) {
+bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data, bool masked) {
     // Execute core logic
     auto begin = clk::now();
     GetImageInfo(data.img_list[0]);
@@ -26,7 +26,7 @@ bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data, b
         FitSMPL(scenepath, data.head_bbox, data.body_bbox);
         OH_LOG_INFO(LOG_APP, "SMPL estimation finished.");
         
-        if(includeFace){
+        if(masked){
             // Calculate face centers
             std::vector<cv::Point> faceCenters = projectHeadCenter(data);
                 
@@ -41,7 +41,7 @@ bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data, b
             if (selectedIndices.first != -1 && selectedIndices.second != -1) {
                 // Process faces and create enlarged faces
                 data.max_movement = (data.body_bbox[3] - data.body_bbox[2]) * 0.01;
-                createEnlargedFace(scenepath, data, faceInfos, selectedIndices);
+                createEnlargedFace(scenepath, data, faceInfos, selectedIndices, masked);
                 ProcessLandmarks(scenepath, selectedIndices, faceInfos);
             }
         }

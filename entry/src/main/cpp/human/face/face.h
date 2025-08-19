@@ -55,6 +55,6 @@ std::vector<float> calculateNewIntrinsics(
 std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);
 void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
                                    std::vector<FaceProcessingInfo>& faceInfos,
-                                   const std::pair<int, int>& selectedIndices);
+                                   const std::pair<int, int>& selectedIndices, const bool& masked=false);
 void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath);
 #endif //VULKAN_3DGS_HW_FACE_H

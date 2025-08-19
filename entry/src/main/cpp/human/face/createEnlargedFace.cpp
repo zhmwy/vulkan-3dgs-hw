@@ -75,11 +75,12 @@ std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data)
 // Modified createEnlargedFace function
 void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
                                    std::vector<FaceProcessingInfo>& faceInfos,
-                                   const std::pair<int, int>& selectedIndices) {
+                                   const std::pair<int, int>& selectedIndices, const bool& masked) {
     // Create directories
     std::filesystem::create_directories(scenepath + "/human");
     std::filesystem::create_directories(scenepath + "/human/images");
     std::filesystem::create_directories(scenepath + "/human/faces");
+    std::filesystem::create_directories(scenepath + "/human/segmented");
     
     // Copy intr_tmp multiple times to support adding face regions
     if (data.intr_tmp.size() == 1 && data.extr_tmp.size() > 1) {
@@ -143,6 +144,14 @@ void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct
                                                 cv::Size(480, 640), topLeft);
         cv::imwrite(scenepath + "/human/images/" + basename, cropped_img_480x640);
         data.img_list.push_back(scenepath + "/human/images/" + basename);
+        
+        if(masked){
+            cv::Mat orig_mask = cv::imread(data.mask_list[imgIndex]); // Load binary mask
+            cv::Mat cropped_mask_480x640 = cropImage(orig_mask, scaledFaceCenter, 
+                                                    cv::Size(480, 640), topLeft);
+            cv::imwrite(scenepath + "/human/segmented/" + basename, cropped_mask_480x640);
+            data.mask_list.push_back(scenepath + "/human/segmented/" + basename);
+        }
         
         // Calculate new intrinsics for the 480x640 crop
         std::vector<float> intr = data.intr_tmp[0];
