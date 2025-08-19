@@ -50,7 +50,7 @@ cv::Mat skinSmoothing(const cv::Mat& image, float smoothing_level = 0.5f) {
     
     // Apply multiple passes of smaller bilateral filters
     cv::Mat temp;
-      for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 2; ++i) {
         cv::bilateralFilter(smoothed, temp, 5, 30, 30);
         smoothed = temp.clone();
     }

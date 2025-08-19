@@ -67,37 +67,6 @@ std::vector<Base::Math::Vec3> readLandmark3D(const std::string& filename) {
 using Vec3 = Base::Math::Vec3;
 using PointCloud = std::vector<Vec3>;
 
-//// 生成半边的收缩距离
-//std::vector<float> generate_shrink_distance(int N, float max_value = 0.003f) {
-//    int half = N / 2;
-//    std::vector<float> result;
-//    
-//    // 功能类似numpy.linspace()
-//    auto linspace = [](float start, float end, int count) {
-//        std::vector<float> values(count);
-//        for (int i = 0; i < count; ++i) {
-//            float t = static_cast<float>(i) / (count - 1);
-//            values[i] = start + t * (end - start);
-//        }
-//        return values;
-//    };
-//    
-//    // 下颌线的3D关键点收缩位移值：由鬓角到下巴的数值先上升后下降 0 -> Max -> 0
-//    if (N % 2 == 0) {
-//        auto up = linspace(0.0f, max_value, half);
-//        auto down = linspace(max_value, 0.0f, half);
-//        result.insert(result.end(), up.begin(), up.end());
-//        result.insert(result.end(), down.begin(), down.end());
-//    } else {
-//        auto up = linspace(0.0f, max_value, half + 1);
-//        auto down = linspace(max_value, 0.0f, half + 1);
-//        result.insert(result.end(), up.begin(), up.end());
-//        result.insert(result.end(), down.begin() + 1, down.end()); // skip first to avoid duplication
-//    }
-//
-//    return result;
-//}
-
 // 对应np.linspace()
 auto linspace = [](float start, float end, int count) {
     std::vector<float> values(count);
@@ -232,6 +201,16 @@ PointCloud shrink_head(
     return new_pcd3d;
 }
 
+// Helper function to check if a point is within the bounding box
+bool isPointInBBox(const Vec3& point, const std::vector<float>& bbox) {
+    if (bbox.size() != 6) {
+        return false;
+    }
+    return point.x >= bbox[0] && point.x <= bbox[1] &&
+           point.y >= bbox[2] && point.y <= bbox[3] &&
+           point.z >= bbox[4] && point.z <= bbox[5];
+}
+
 void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath)
 {
     std::string landmarkFile = scenePath + "/landmarks.ply";
@@ -242,15 +221,42 @@ void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath)
         std::cerr << "Warning: Expected 17 landmarks, got " << landmarks_3d.size() << std::endl;
     }
     
-    // max_shrink_value 和 decay_rate可能需要调整，分别代表了收缩幅度、高斯点受关键点影响随距离的衰减率
-    // max_shrink_value越大，收缩效果越明显；decay_rate越大，对场景的影响范围越小。
-    auto new_cloud = shrink_head(inputGaussian.positions, landmarks_3d,0.015f, 1.0f);
-    
-    // 更新高斯点
-    inputGaussian.positions.clear();
-    inputGaussian.positions.reserve(new_cloud.size());
-    for (const auto& pt : new_cloud) {
-        inputGaussian.positions.emplace_back(pt.x, pt.y, pt.z);
+    // Check if body_bbox is valid
+    if (inputGaussian.body_bbox.size() != 6) {
+        std::cerr << "Warning: Invalid body_bbox, processing all points" << std::endl;
+        // Fall back to original behavior if bbox is invalid
+        auto new_cloud = shrink_head(inputGaussian.positions, landmarks_3d, 0.015f, 1.0f);
+        
+        inputGaussian.positions.clear();
+        inputGaussian.positions.reserve(new_cloud.size());
+        for (const auto& pt : new_cloud) {
+            inputGaussian.positions.emplace_back(pt.x, pt.y, pt.z);
+        }
+    } else {
+        // Filter points within the bounding box
+        PointCloud filtered_points;
+        std::vector<size_t> indices_in_bbox;
+        
+        for (size_t i = 0; i < inputGaussian.positions.size(); ++i) {
+            if (isPointInBBox(inputGaussian.positions[i], inputGaussian.body_bbox)) {
+                filtered_points.push_back(inputGaussian.positions[i]);
+                indices_in_bbox.push_back(i);
+            }
+        }
+        
+        // Only process if there are points in the bbox
+        if (!filtered_points.empty()) {
+            // max_shrink_value 和 decay_rate可能需要调整，分别代表了收缩幅度、高斯点受关键点影响随距离的衰减率
+            // max_shrink_value越大，收缩效果越明显；decay_rate越大，对场景的影响范围越小。
+            auto new_cloud = shrink_head(filtered_points, landmarks_3d, 0.015f, 1.0f);
+            
+            // Update only the points that were within the bbox
+            for (size_t i = 0; i < indices_in_bbox.size(); ++i) {
+                inputGaussian.positions[indices_in_bbox[i]] = new_cloud[i];
+            }
+        } else {
+            std::cerr << "Warning: No points found within body_bbox" << std::endl;
+        }
     }
     
     // 保存

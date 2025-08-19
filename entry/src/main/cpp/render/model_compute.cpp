@@ -4499,7 +4499,9 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian, save_head);
     
+    auto begin = clk::now();
     FaceTune(inputGaussian, dataPath);
+    LOGW("Face Thinner takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
 }
 
 
