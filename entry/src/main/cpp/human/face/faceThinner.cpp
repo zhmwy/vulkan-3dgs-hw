@@ -222,7 +222,7 @@ void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath)
     }
     
     // Check if body_bbox is valid
-    if (inputGaussian.body_bbox.size() != 6) {
+    if (inputGaussian.body_bboxes.size() != 6) {
         std::cerr << "Warning: Invalid body_bbox, processing all points" << std::endl;
         // Fall back to original behavior if bbox is invalid
         auto new_cloud = shrink_head(inputGaussian.positions, landmarks_3d, 0.015f, 1.0f);
@@ -238,7 +238,7 @@ void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath)
         std::vector<size_t> indices_in_bbox;
         
         for (size_t i = 0; i < inputGaussian.positions.size(); ++i) {
-            if (isPointInBBox(inputGaussian.positions[i], inputGaussian.body_bbox)) {
+            if (isPointInBBox(inputGaussian.positions[i], inputGaussian.body_bboxes)) {
                 filtered_points.push_back(inputGaussian.positions[i]);
                 indices_in_bbox.push_back(i);
             }

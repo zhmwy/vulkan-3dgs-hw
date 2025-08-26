@@ -46,16 +46,18 @@ add_library(3dgs SHARED
     cores/tinyply.cpp
 #    cores/video2images.cpp
     human/HiAI/HIAIModelManager.cpp human/HiAI/utils.cpp
-    human/face/manageHeadMasks.cpp human/face/beauty_filters.cpp human/face/createEnlargedFace.cpp human/human.cpp
-    human/keypoints/keypointsv2.cpp human/keypoints/utils.cpp
-    human/triangulation/triangulationv2.cpp
-    human/SMPL/src/fit_smplv2.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
+    human/human.cpp
+    human/keypoints/keypoints_multiperson.cpp human/keypoints/utils.cpp
+    human/triangulation/triangulation_multiperson.cpp
+    human/SMPL/src/fit_smpl_multiperson.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
     human/SMPL/src/smpl/BlendShape.cpp human/SMPL/src/smpl/JointRegression.cpp human/SMPL/src/smpl/WorldTransformation.cpp
     human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp
     human/SMPL/src/smpl/smpl_male.cpp
     human/segmentation/segment.cpp human/segmentation/utils.cpp
-    human/face/landmark/landmark2d.cpp human/face/landmark/bfm_data.cpp human/face/landmark/landmark3d.cpp
-    human/face/landmark/faceDetect.cpp human/face/landmark/utils.cpp human/face/faceThinner.cpp
+    human/face/createEnlargedFace.cpp
+#    human/face/manageHeadMasks.cpp human/face/beauty_filters.cpp human/face/createEnlargedFace.cpp
+#    human/face/landmark/landmark2d.cpp human/face/landmark/bfm_data.cpp human/face/landmark/landmark3d.cpp
+#    human/face/landmark/faceDetect.cpp human/face/landmark/utils.cpp human/face/faceThinner.cpp human/face/faceWhiten.cpp
 )
 
 

@@ -50,9 +50,9 @@ public:
         std::vector<DataExtr> extr_tmp;  
         std::vector<DataExtr> extr_tmp_test; 
         std::vector<std::vector<float>> intr_tmp;
-
-        std::vector<float> head_bbox;
-        std::vector<float> body_bbox;
+        
+        std::vector<std::vector<float>> head_bboxes;
+        std::vector<std::vector<float>> body_bboxes;
         float max_movement;
         
         std::vector<Base::Math::Vec3> cam_centers;
@@ -99,7 +99,7 @@ public:
     
     static std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);
     
-    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data, bool save_head = false);
+    static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data);
     static void printPlyHeader(const std::string& filepath);
     
     static void saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data);

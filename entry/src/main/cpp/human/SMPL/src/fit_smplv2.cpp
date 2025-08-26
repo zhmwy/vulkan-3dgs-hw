@@ -96,23 +96,26 @@ bool calculate_head_bbox(const Eigen::MatrixXd& keypoints, const std::vector<boo
     // Calculate the center point as the mean of the two ears
     Eigen::Vector3d left_ear(keypoints(3, 0), keypoints(3, 1), keypoints(3, 2));
     Eigen::Vector3d right_ear(keypoints(4, 0), keypoints(4, 1), keypoints(4, 2));
-    Eigen::Vector3d center = (left_ear + right_ear) / 2.0;
+    Eigen::Vector3d center_ears = (left_ear + right_ear) / 2.0;
+    Eigen::Vector3d left_shoulder(keypoints(5, 0), keypoints(5, 1), keypoints(5, 2));
+    Eigen::Vector3d right_shoulder(keypoints(6, 0), keypoints(6, 1), keypoints(6, 2));
+    Eigen::Vector3d center_shoulders = (left_shoulder + right_shoulder) / 2.0;
     
     // Calculate the distance between the ears
-    double ear_distance = (left_ear - right_ear).norm();
+    double distance = (center_ears - center_shoulders).norm();
     
     // The bounding box size is 1.1 times the ear distance
-    double bbox_size = ear_distance * 1.1;
+    double bbox_size = distance;
     double half_size = bbox_size / 2.0;
     
     // Calculate the bounding box
     head_bbox = {
-        static_cast<float>(center[0] - half_size), // x_min
-        static_cast<float>(center[0] + half_size), // x_max
-        static_cast<float>(center[1] - half_size), // y_min
-        static_cast<float>(center[1] + half_size), // y_max
-        static_cast<float>(center[2] - half_size), // z_min
-        static_cast<float>(center[2] + half_size)  // z_max
+        static_cast<float>(center_ears[0] - half_size), // x_min
+        static_cast<float>(center_ears[0] + half_size), // x_max
+        static_cast<float>(center_ears[1] - half_size), // y_min
+        static_cast<float>(center_ears[1] + half_size), // y_max
+        static_cast<float>(center_ears[2] - half_size), // z_min
+        static_cast<float>(center_ears[2] + half_size)  // z_max
     };
     
     return true;

@@ -52,9 +52,12 @@ std::vector<float> calculateNewIntrinsics(
     const cv::Size& highres_crop_size,
     float scale_factor);
 
-std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);
+std::vector<std::vector<cv::Point>> projectHeadCenter(DataLoader::InputInitStruct& data);
 void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
                                    std::vector<FaceProcessingInfo>& faceInfos,
                                    const std::pair<int, int>& selectedIndices, const bool& masked=false);
 void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath);
+bool isPointInBBox(const Base::Math::Vec3& point, const std::vector<float>& bbox);
+float length2(const Base::Math::Vec3& v);
+void BeautifyGaussians(DataLoader::InputInitStruct& inputGaussian, std::string scenePath);
 #endif //VULKAN_3DGS_HW_FACE_H

@@ -21,14 +21,16 @@ bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data, b
     int isHumanCentric = ProcessKeypoints(scenepath);
     if(isHumanCentric){
         OH_LOG_WARN(LOG_APP, "Dataset is human centric. Default to 3DGS on human.");
-        std::map<std::string, double> faceAngles = ProcessTriangulation(scenepath);
+        std::map<std::string, std::vector<double>> faceAngles = ProcessTriangulation(scenepath);
         
-        FitSMPL(scenepath, data.head_bbox, data.body_bbox);
+        FitSMPL(scenepath, data.head_bboxes, data.body_bboxes);
         OH_LOG_INFO(LOG_APP, "SMPL estimation finished.");
         
+        std::vector<std::vector<cv::Point>> faceCenters = projectHeadCenter(data);
+        
+#if 0
         if(masked){
             // Calculate face centers
-            std::vector<cv::Point> faceCenters = projectHeadCenter(data);
                 
             // Analyze faces without requiring saved images
             std::vector<FaceProcessingInfo> faceInfos = analyzeFaces(faceAngles, faceCenters, data.img_list);
@@ -45,7 +47,7 @@ bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data, b
                 ProcessLandmarks(scenepath, selectedIndices, faceInfos);
             }
         }
-
+#endif
         
         LOGW("Human preprocessing takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
         return true;

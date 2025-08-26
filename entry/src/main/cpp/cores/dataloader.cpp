@@ -622,145 +622,7 @@ DataLoader::InputInitStruct  DataLoader::loadHeadGaussians(std::string dataPath,
     return data;
 }
 
-void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLoader::InputInitStruct& data, bool save_head) {
-    if (!data.head_bbox.empty() && data.head_bbox.size() == 6 && save_head) {
-        float x_min = data.head_bbox[0];
-        float x_max = data.head_bbox[1];
-        float y_min = data.head_bbox[2];
-        float y_max = data.head_bbox[3];
-        float z_min = data.head_bbox[4];
-        float z_max = data.head_bbox[5];
-        
-        float x_range = x_max - x_min;
-        float y_range = y_max - y_min;
-        float z_range = z_max - z_min;
-        
-        x_min -= x_range * 0.1;
-        x_max += x_range * 0.1;
-        y_min -= y_range * 0.1;
-        y_max += y_range * 0.1;
-        z_min -= z_range * 0.1;
-        z_max += z_range * 0.1;
-
-        std::vector<float> head_positions, head_scales, head_rotations, head_opacities, head_colors, head_f_rest;
-        std::vector<float> other_positions, other_scales, other_rotations, other_opacities, other_colors, other_f_rest;
-
-        size_t numPoints = data.positions.size();
-        float stddev = sqrt(data.variance) + 1e-6f;
-
-        head_positions.reserve(numPoints * 3);
-        head_scales.reserve(numPoints * 3);
-        head_rotations.reserve(numPoints * 4);
-        head_opacities.reserve(numPoints);
-        head_colors.reserve(numPoints * 3);
-        head_f_rest.reserve(numPoints * 45);
-
-        other_positions.reserve(numPoints * 3);
-        other_scales.reserve(numPoints * 3);
-        other_rotations.reserve(numPoints * 4);
-        other_opacities.reserve(numPoints);
-        other_colors.reserve(numPoints * 3);
-        other_f_rest.reserve(numPoints * 45);
-
-        for (size_t i = 0; i < numPoints; ++i) {
-            Base::Math::Vec3 pos = data.positions[i];
-//             glm::vec3 orig_pos = data.positions[i] * stddev + data.mean;
-            
-            bool inside = (pos.x >= x_min && pos.x <= x_max) &&
-                          (pos.y >= y_min && pos.y <= y_max) &&
-                          (pos.z >= z_min && pos.z <= z_max);
-            LOGI("x: %{public}f, y: %{public}f, z: %{public}f", pos.x, pos.y, pos.z);
-            Base::Math::Vec3 scale = (i < data.scales.size()) ? data.scales[i] : Base::Math::Vec3(1.0f, 1.0f, 1.0f);
-            Base::Math::Vec4 rotation = (i < data.rotations.size()) ? data.rotations[i] : Base::Math::Vec4(0, 0, 0, 1);
-            float opacity = (i < data.opacities.size()) ? data.opacities[i] : 1.0f;
-            Base::Math::Vec3 color(1.0f, 1.0f, 1.0f);
-            std::vector<float> f_rest_values;
-
-            if (i < data.colors.size()) {
-                color = Base::Math::Vec3(
-                    data.colors[i].values[0 * 16],
-                    data.colors[i].values[1 * 16],
-                    data.colors[i].values[2 * 16]
-                );
-                for (int j = 1; j < 16; ++j) {
-                    f_rest_values.push_back(data.colors[i].values[0 * 16 + j]);
-                    f_rest_values.push_back(data.colors[i].values[1 * 16 + j]);
-                    f_rest_values.push_back(data.colors[i].values[2 * 16 + j]);
-                }
-            }
-            if (inside) {
-                head_positions.insert(head_positions.end(), {pos.x, pos.y, pos.z});
-                head_scales.insert(head_scales.end(), {scale.x, scale.y, scale.z});
-                head_rotations.insert(head_rotations.end(), {rotation.x, rotation.y, rotation.z, rotation.w});
-                head_opacities.push_back(opacity);
-                head_colors.insert(head_colors.end(), {color.x, color.y, color.z});
-                head_f_rest.insert(head_f_rest.end(), f_rest_values.begin(), f_rest_values.end());
-            } else {
-                other_positions.insert(other_positions.end(), {pos.x, pos.y, pos.z});
-                other_scales.insert(other_scales.end(), {scale.x, scale.y, scale.z});
-                other_rotations.insert(other_rotations.end(), {rotation.x, rotation.y, rotation.z, rotation.w});
-                other_opacities.push_back(opacity);
-                other_colors.insert(other_colors.end(), {color.x, color.y, color.z});
-                other_f_rest.insert(other_f_rest.end(), f_rest_values.begin(), f_rest_values.end());
-            }
-        }
-
-        size_t head_numPoints = head_positions.size() / 3;
-        if (head_numPoints > 0) {
-            std::filesystem::create_directories(fullDataPath + "/head");
-            
-            std::string head_gaussians_path = fullDataPath + "/head/point_cloud.ply";
-            std::ofstream headOutFile(head_gaussians_path, std::ios::binary);
-            if (headOutFile.is_open()) {
-                tinyply::PlyFile headPlyFile;
-                headPlyFile.add_properties_to_element("vertex", {"x", "y", "z"}, tinyply::Type::FLOAT32, head_numPoints, reinterpret_cast<uint8_t*>(head_positions.data()), tinyply::Type::INVALID, 0);
-                headPlyFile.add_properties_to_element("vertex", {"scale_0", "scale_1", "scale_2"}, tinyply::Type::FLOAT32, head_numPoints, reinterpret_cast<uint8_t*>(head_scales.data()), tinyply::Type::INVALID, 0);
-                headPlyFile.add_properties_to_element("vertex", {"rot_0", "rot_1", "rot_2", "rot_3"}, tinyply::Type::FLOAT32, head_numPoints, reinterpret_cast<uint8_t*>(head_rotations.data()), tinyply::Type::INVALID, 0);
-                headPlyFile.add_properties_to_element("vertex", {"opacity"}, tinyply::Type::FLOAT32, head_numPoints, reinterpret_cast<uint8_t*>(head_opacities.data()), tinyply::Type::INVALID, 0);
-                headPlyFile.add_properties_to_element("vertex", {"f_dc_0", "f_dc_1", "f_dc_2"}, tinyply::Type::FLOAT32, head_numPoints, reinterpret_cast<uint8_t*>(head_colors.data()), tinyply::Type::INVALID, 0);
-
-                for (int i = 0; i < 45; ++i) {
-                    headPlyFile.add_properties_to_element("vertex", {"f_rest_" + std::to_string(i)}, tinyply::Type::FLOAT32, head_numPoints, reinterpret_cast<uint8_t*>(&head_f_rest[i * head_numPoints]), tinyply::Type::INVALID, 0);
-                }
-
-                headPlyFile.write(headOutFile, true);
-                headOutFile.close();
-                LOGI("Saved %{public}zu head points to head_gaussians.ply", head_numPoints);
-            } else {
-                LOGE("Error: Unable to open head_gaussians.ply");
-            }
-        } else {
-            LOGI("No head points to save.");
-        }
-
-        size_t other_numPoints = other_positions.size() / 3;
-        if (other_numPoints > 0) {
-            std::string other_gaussians_path = fullDataPath + "/head/other_gaussians.ply";
-            
-            std::ofstream otherOutFile(other_gaussians_path, std::ios::binary);
-            if (otherOutFile.is_open()) {
-                tinyply::PlyFile otherPlyFile;
-                otherPlyFile.add_properties_to_element("vertex", {"x", "y", "z"}, tinyply::Type::FLOAT32, other_numPoints, reinterpret_cast<uint8_t*>(other_positions.data()), tinyply::Type::INVALID, 0);
-                otherPlyFile.add_properties_to_element("vertex", {"scale_0", "scale_1", "scale_2"}, tinyply::Type::FLOAT32, other_numPoints, reinterpret_cast<uint8_t*>(other_scales.data()), tinyply::Type::INVALID, 0);
-                otherPlyFile.add_properties_to_element("vertex", {"rot_0", "rot_1", "rot_2", "rot_3"}, tinyply::Type::FLOAT32, other_numPoints, reinterpret_cast<uint8_t*>(other_rotations.data()), tinyply::Type::INVALID, 0);
-                otherPlyFile.add_properties_to_element("vertex", {"opacity"}, tinyply::Type::FLOAT32, other_numPoints, reinterpret_cast<uint8_t*>(other_opacities.data()), tinyply::Type::INVALID, 0);
-                otherPlyFile.add_properties_to_element("vertex", {"f_dc_0", "f_dc_1", "f_dc_2"}, tinyply::Type::FLOAT32, other_numPoints, reinterpret_cast<uint8_t*>(other_colors.data()), tinyply::Type::INVALID, 0);
-
-                for (int i = 0; i < 45; ++i) {
-                    otherPlyFile.add_properties_to_element("vertex", {"f_rest_" + std::to_string(i)}, tinyply::Type::FLOAT32, other_numPoints, reinterpret_cast<uint8_t*>(&other_f_rest[i * other_numPoints]), tinyply::Type::INVALID, 0);
-                }
-
-                otherPlyFile.write(otherOutFile, true);
-                otherOutFile.close();
-                LOGI("Saved %{public}zu other points to other_gaussians.ply", other_numPoints);
-            } else {
-                LOGE("Error: Unable to open other_gaussians.ply");
-            }
-        } else {
-            LOGI("No other points to save.");
-        }
-    } 
-    else {
+void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLoader::InputInitStruct& data) {
         std::string filename = fullDataPath + "/model.ply";
         std::ofstream outFile(filename, std::ios::binary);
         if (!outFile.is_open()) {
@@ -828,7 +690,6 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
         outFile.close();
         std::cout << "Saved " << numPoints << " points to " << filename << " using tinyply." << std::endl;
     }
-}
 
 
 void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data){
@@ -894,13 +755,13 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
         if (uniquePoints.find(pos) != uniquePoints.end()) {
             continue;
         }
-        if(filter && data.body_bbox.size() > 0){
-            if(x < data.body_bbox[0] || x > data.body_bbox[1] || 
-                y < data.body_bbox[2] || y > data.body_bbox[3] || 
-                z < data.body_bbox[4] || z > data.body_bbox[5]){
-                continue;
-            }
-        }
+//         if(filter && data.body_bbox.size() > 0){
+//             if(x < data.body_bbox[0] || x > data.body_bbox[1] || 
+//                 y < data.body_bbox[2] || y > data.body_bbox[3] || 
+//                 z < data.body_bbox[4] || z > data.body_bbox[5]){
+//                 continue;
+//             }
+//         }
         uniquePoints.insert(pos);
         
         // Store the point position.
@@ -1163,20 +1024,21 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
         bool is_human = HumanPreprocess(scenepath, data, isObject);
-//         bool is_human = false;
-        if (!(is_human && isObject)){
-            std::string pointsFilePath = slampath + "/points3D.txt";
-            load3DPoints(pointsFilePath, data, false);
-        }else{
-            std::string pointsFilePath = slampath + "/points3D.txt";
-            load3DPoints(pointsFilePath, data, true);
-        }
+
+        std::string pointsFilePath = slampath + "/points3D.txt";
+        load3DPoints(pointsFilePath, data, (is_human && isObject));
+        
         
         if (is_human) {
-            std::string smplPath = scenepath + "/smpl.txt";
-            load3DPoints(smplPath, data);
-            for(int i=0; i<data.body_bbox.size(); ++i){
-                LOGI("body bbox: %{public}f", data.body_bbox[i]);
+            int personIndex = 1;
+            while (true) {
+                std::string smplPath = scenepath + "/" + "smpl" + std::to_string(personIndex) + ".txt";
+                std::ifstream file(smplPath);
+                if (!file.good()) {
+                    break;
+                }
+                load3DPoints(smplPath, data);
+                ++personIndex;
             }
         }
     }

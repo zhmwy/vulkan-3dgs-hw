@@ -92,9 +92,7 @@ bool read_ply_file(const string& filename, map<string, Vector3d>& joint_coords, 
     return true;
 }
 
-int get_theta_from_skeleton(string path, std::vector<Vector3d>& thetas) {
-    string filename = path + "/skeleton.ply";
-
+int get_theta_from_skeleton(string filename, std::vector<Vector3d>& thetas) {
     // Read the skeleton data and track valid points
     if (!read_ply_file(filename, current_joint_coords, is_valid_joint)) {
         cerr << "Failed to read skeleton data from " << filename << endl;

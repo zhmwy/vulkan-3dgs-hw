@@ -3,79 +3,98 @@
 using ms = std::chrono::milliseconds;
 using clk = std::chrono::system_clock;
 
-std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data)
+std::vector<std::vector<cv::Point>> projectHeadCenter(DataLoader::InputInitStruct& data)
 {
-    // Calculate the center of the 3D bounding box
-    float center_x = (data.head_bbox[0] + data.head_bbox[1]) / 2.0f;
-    float center_y = (data.head_bbox[2] + data.head_bbox[3]) / 2.0f;
-    float center_z = (data.head_bbox[4] + data.head_bbox[5]) / 2.0f;
+    // Vector to store results for all persons
+    std::vector<std::vector<cv::Point>> all_projected_points;
+    all_projected_points.reserve(data.head_bboxes.size());
     
-    // Create a 3D point for the center in homogeneous coordinates
-    Eigen::Vector4f point_3d(center_x, center_y, center_z, 1.0f);
-    
-    // Vector to store results
-    std::vector<cv::Point> projected_points;
-    projected_points.reserve(data.extr_tmp.size());
-    
-    // For each camera pose
-    for (size_t i = 0; i < data.extr_tmp.size(); ++i) {
-        // Get the current extrinsics
-        const DataLoader::InputInitStruct::DataExtr extr = data.extr_tmp[i];
+    // Process each person's head bbox
+    for (size_t person_idx = 0; person_idx < data.head_bboxes.size(); ++person_idx) {
+        const std::vector<float>& head_bbox = data.head_bboxes[person_idx];
         
-        // Get the corresponding intrinsics (either shared or per-camera)
-        const std::vector<float> intr = (data.intr_tmp.size() == 1) ? data.intr_tmp[0] : data.intr_tmp[i];
-        if (intr.size() != 4) {
-            throw std::invalid_argument("Intrinsics must have 4 elements (fx, fy, cx, cy)");
+        // Validate bbox has correct number of elements (6 for 3D bbox: xmin, xmax, ymin, ymax, zmin, zmax)
+        if (head_bbox.size() != 6) {
+            throw std::invalid_argument("Head bbox must have 6 elements (xmin, xmax, ymin, ymax, zmin, zmax)");
         }
         
-        // Extract quaternion components and translation vector
-        float qw = extr.values[0];
-        float qx = extr.values[1];
-        float qy = extr.values[2];
-        float qz = extr.values[3];
-        float tx = extr.values[4];
-        float ty = extr.values[5];
-        float tz = extr.values[6];
+        // Calculate the center of the 3D bounding box
+        float center_x = (head_bbox[0] + head_bbox[1]) / 2.0f;
+        float center_y = (head_bbox[2] + head_bbox[3]) / 2.0f;
+        float center_z = (head_bbox[4] + head_bbox[5]) / 2.0f;
         
-        // Convert quaternion to rotation matrix
-        Eigen::Quaternionf q(qw, qx, qy, qz);
-        Eigen::Matrix3f R = q.normalized().toRotationMatrix();
+        // Create a 3D point for the center in homogeneous coordinates
+        Eigen::Vector4f point_3d(center_x, center_y, center_z, 1.0f);
         
-        // Create transformation matrix (extrinsic matrix)
-        Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
-        T.block<3, 3>(0, 0) = R;
-        T.block<3, 1>(0, 3) = Eigen::Vector3f(tx, ty, tz);
+        // Vector to store results for current person
+        std::vector<cv::Point> projected_points;
+        projected_points.reserve(data.extr_tmp.size());
         
-        // Transform 3D point from world to camera coordinates
-        Eigen::Vector4f point_camera = T * point_3d;
-        
-        // Check if the point is in front of the camera
-        if (point_camera[2] <= 0) {
-            // Point is behind the camera, store an invalid point
-            projected_points.push_back(cv::Point(-1, -1));
-            continue;
+        // For each camera pose
+        for (size_t i = 0; i < data.extr_tmp.size(); ++i) {
+            // Get the current extrinsics
+            const DataLoader::InputInitStruct::DataExtr extr = data.extr_tmp[i];
+            
+            // Get the corresponding intrinsics (either shared or per-camera)
+            const std::vector<float> intr = (data.intr_tmp.size() == 1) ? data.intr_tmp[0] : data.intr_tmp[i];
+            if (intr.size() != 4) {
+                throw std::invalid_argument("Intrinsics must have 4 elements (fx, fy, cx, cy)");
+            }
+            
+            // Extract quaternion components and translation vector
+            float qw = extr.values[0];
+            float qx = extr.values[1];
+            float qy = extr.values[2];
+            float qz = extr.values[3];
+            float tx = extr.values[4];
+            float ty = extr.values[5];
+            float tz = extr.values[6];
+            
+            // Convert quaternion to rotation matrix
+            Eigen::Quaternionf q(qw, qx, qy, qz);
+            Eigen::Matrix3f R = q.normalized().toRotationMatrix();
+            
+            // Create transformation matrix (extrinsic matrix)
+            Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+            T.block<3, 3>(0, 0) = R;
+            T.block<3, 1>(0, 3) = Eigen::Vector3f(tx, ty, tz);
+            
+            // Transform 3D point from world to camera coordinates
+            Eigen::Vector4f point_camera = T * point_3d;
+            
+            // Check if the point is in front of the camera
+            if (point_camera[2] <= 0) {
+                // Point is behind the camera, store an invalid point
+                projected_points.push_back(cv::Point(-1, -1));
+                continue;
+            }
+            
+            // Project 3D point to 2D image coordinates
+            float fx = intr[0];
+            float fy = intr[1];
+            float cx = intr[2];
+            float cy = intr[3];
+            
+            float x_2d = (fx * point_camera[0] / point_camera[2]) + cx;
+            float y_2d = (fy * point_camera[1] / point_camera[2]) + cy;
+            LOGI("Person %{public}zu, Camera %{public}zu: x_2d: %{public}f, y_2d: %{public}f", 
+                 person_idx, i, x_2d, y_2d);
+            
+            // Store the projected 2D point
+            projected_points.push_back(cv::Point(x_2d, y_2d));
         }
         
-        // Project 3D point to 2D image coordinates
-        float fx = intr[0];
-        float fy = intr[1];
-        float cx = intr[2];
-        float cy = intr[3];
-        
-        float x_2d = (fx * point_camera[0] / point_camera[2]) + cx;
-        float y_2d = (fy * point_camera[1] / point_camera[2]) + cy; 
-        LOGI("x_2d: %{public}f, y_2d: %{public}f", x_2d, y_2d);
-        // Store the projected 2D point
-        projected_points.push_back(cv::Point(x_2d, y_2d));
+        // Add this person's projected points to the result
+        all_projected_points.push_back(projected_points);
     }
     
-    return projected_points;
+    return all_projected_points;
 }
 
+#if 0
 // Modified createEnlargedFace function
 void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
-                                   std::vector<FaceProcessingInfo>& faceInfos,
-                                   const std::pair<int, int>& selectedIndices, const bool& masked) {
+                                   std::vector<FaceProcessingInfo>& faceInfos, const bool& masked) {
     // Create directories
     std::filesystem::create_directories(scenepath + "/human");
     std::filesystem::create_directories(scenepath + "/human/images");
@@ -123,15 +142,6 @@ void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct
         cv::Mat orig_img = cv::imread(data.img_list[imgIndex]);
         cv::Point scaledFaceCenter = faceInfos[i].faceCenter;
         
-        // Check if this is one of the selected images and calculate roi_bbox
-        if (i == selectedIndices.first || i == selectedIndices.second) {
-            cv::Point2d center(scaledFaceCenter.x, scaledFaceCenter.y);
-            cv::Point2d half(optimalFaceSize.width * 0.5, optimalFaceSize.height * 0.5);
-            cv::Point2d pt1 = center - half;
-            cv::Point2d pt2 = center + half;
-//            faceInfos[i].roi_bbox = cv::Rect2d(pt1, pt2);
-        }
-        
         // Schedule 2: Optimal face crops (no intrinsics calculation)
         auto begin = clk::now();
         cropAndSaveFace(orig_img, scaledFaceCenter, optimalFaceSize, scenepath, basename);
@@ -166,3 +176,4 @@ void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct
     
     data.extr_tmp_test = data.extr_tmp;
 }
+#endif

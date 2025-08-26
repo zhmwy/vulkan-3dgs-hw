@@ -31,7 +31,7 @@
 #include"human/info.h"
 
 // napi_value ProcessTriangulation(napi_env env, napi_callback_info info);
-std::map<std::string, double> ProcessTriangulation(std::string inputPath);
+std::map<std::string, std::vector<double>> ProcessTriangulation(std::string inputPath);
 
 #undef LOG_DOMAIN
 #undef LOG_TAG

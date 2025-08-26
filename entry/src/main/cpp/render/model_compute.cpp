@@ -122,10 +122,10 @@ void VulkanComputeGS::encodeCpu2Gpu()
         compute.commandBuffer,
         inputGaussian.extr_tmp.data()
     );
-    if(inputGaussian.body_bbox.size() == 6){
+    if(inputGaussian.body_bboxes.size() == 6){
         splat_buffers.body_bbox.FromCpu(
             compute.commandBuffer,
-            inputGaussian.body_bbox.data()
+            inputGaussian.body_bboxes.data()
         );
         splat_buffers.max_movement.FromCpu(
             compute.commandBuffer,
@@ -4497,11 +4497,12 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
 //     inputGaussian.denormalizePoints();
     
     LOGI("Successfully copied GPU buffers to inputGaussian!");
-    DataLoader::saveToPLY_tinyply(dataPath, inputGaussian, save_head);
+    DataLoader::saveToPLY_tinyply(dataPath, inputGaussian);
     
-    auto begin = clk::now();
-    FaceTune(inputGaussian, dataPath);
-    LOGW("Face Thinner takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+//     FaceTune(inputGaussian, dataPath);
+//     auto begin = clk::now();
+//     BeautifyGaussians(inputGaussian, dataPath);
+//     LOGW("3DGS smoothing and whitening takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
 }
 
 

@@ -14,7 +14,7 @@ const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
 // const caseName: string = "2025-06-04_15_57_44";
-let caseName = "jingtai";
+let caseName = "multi-person";
 const caseNames: string[] = [
   // "jingtai",
   "2025-06-04_15_34_45",
@@ -94,7 +94,7 @@ struct Index {
       // }
       await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件kl;lkm
       hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-      this.segmentAllImagesInSandbox();
+      // await this.segmentAllImagesInSandbox();
       await nativeRender.train3DGS(this.resmgr, inputPath);  // for循环
       this.message = "Training Complete!";
     } catch (error) {
