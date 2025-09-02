@@ -446,14 +446,17 @@ void VulkanComputeGS::imageToBufferCmd()
             &copyRegionI
         );
         
-        vkCmdCopyImageToBufferGS(
-            compute.commandBuffer,
-            inputGaussian.masks[current_img_idx].vkImage,
-            inputGaussian.masks[current_img_idx].vkImageLayout,
-            splat_buffers.input_mask_array,
-            1,
-            &copyRegionI
-        );
+        if (isObject) {
+            vkCmdCopyImageToBufferGS(
+                compute.commandBuffer,
+                inputGaussian.masks[current_img_idx].vkImage,
+                inputGaussian.masks[current_img_idx].vkImageLayout,
+                splat_buffers.input_mask_array,
+                1,
+                &copyRegionI
+            );
+        }
+
     }
     else
     {
@@ -466,14 +469,17 @@ void VulkanComputeGS::imageToBufferCmd()
             &copyRegionI
         );
         
-        vkCmdCopyImageToBufferGS(
-            compute.commandBuffer,
-            inputGaussian.masks_low_res[current_img_idx].vkImage,
-            inputGaussian.masks_low_res[current_img_idx].vkImageLayout,
-            splat_buffers.input_mask_array,
-            1,
-            &copyRegionI
-        );
+        if (isObject) {
+            vkCmdCopyImageToBufferGS(
+                compute.commandBuffer,
+                inputGaussian.masks_low_res[current_img_idx].vkImage,
+                inputGaussian.masks_low_res[current_img_idx].vkImageLayout,
+                splat_buffers.input_mask_array,
+                1,
+                &copyRegionI
+            );
+        }
+
     }
     
     if (training_step >= flow_steps)
@@ -593,7 +599,7 @@ void VulkanComputeGS::forwardCmd()
     if (isObject)
         bindPipeline2CommandBuffer(pipe_blending_object, FORWARD_PIPE, X, Y, 1);
     else
-        bindPipeline2CommandBuffer(pipe_blending, FORWARD_PIPE, X, Y, 1);
+        bindPipeline2CommandBuffer(pipe_blending_int, FORWARD_PIPE, X, Y, 1);
     
     
 
@@ -661,7 +667,7 @@ void VulkanComputeGS::forwardCmdTime()
     if(isObject)
         bindPipeline2CommandBuffer(pipe_blending_object, FORWARD_PIPE, X, Y, 1);
     else
-        bindPipeline2CommandBuffer(pipe_blending, FORWARD_PIPE, X, Y, 1);
+        bindPipeline2CommandBuffer(pipe_blending_int, FORWARD_PIPE, X, Y, 1);
     queryCmdTimeEnd("13. forward_blend");
     /*********************  Alpha blending ***********************/
 

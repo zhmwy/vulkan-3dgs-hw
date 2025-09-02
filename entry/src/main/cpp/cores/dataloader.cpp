@@ -998,8 +998,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         data.extr_tmp.push_back(extr);
         data.img_list.push_back(scenepath + "/images/" + imageName);
         
-        std::string maskName = imageName.substr(0, imageName.find_last_of(".")) + ".jpg";
-        data.mask_list.push_back(scenepath + "/segmented/" + maskName);
+        std::string maskName = imageName.substr(0, imageName.find_last_of(".")) + ".png";
+        data.mask_list.push_back(scenepath + "/masks/" + maskName);
         
         data.time_stamps.push_back(float(idx));
         ++idx;

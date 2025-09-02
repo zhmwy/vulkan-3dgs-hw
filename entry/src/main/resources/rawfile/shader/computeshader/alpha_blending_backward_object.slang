@@ -33,10 +33,10 @@ static const float SCALE_FEATURE = 1.0e9;
 
 
 groupshared int32_t shared_idx[SHARE_CHUNK_SIZE];
-groupshared float3 shared_uvd[SHARE_CHUNK_SIZE];
-groupshared float3 shared_invcov[SHARE_CHUNK_SIZE];
-groupshared float shared_opacity[SHARE_CHUNK_SIZE];
-groupshared float3 shared_feature[SHARE_CHUNK_SIZE];
+groupshared half3 shared_uvd[SHARE_CHUNK_SIZE];
+groupshared half3 shared_invcov[SHARE_CHUNK_SIZE];
+groupshared half shared_opacity[SHARE_CHUNK_SIZE];
+groupshared half3 shared_feature[SHARE_CHUNK_SIZE];
 
 groupshared int32_t shared_dL_duv[SHARE_CHUNK_SIZE * 2];
 groupshared int32_t shared_dL_dconic[SHARE_CHUNK_SIZE * 3];
@@ -81,20 +81,20 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     int32_t gaussian_num = gaussian_range.y - gaussian_range.x;
     int32_t num_chunk = (gaussian_num + SHARE_CHUNK_SIZE - 1) / SHARE_CHUNK_SIZE;
 
-    float3 dL_duvd_reg;
-    float3 dL_dconic_reg;
-    float dL_dopacity_reg;
+    half3 dL_duvd_reg;
+    half3 dL_dconic_reg;
+    half dL_dopacity_reg;
 
-    float final_trans = withinBounds ? float(final_T_array[t2i(p.y, p.x, W)]) : 0.0;
-    float trans = final_trans;
+    half final_trans = withinBounds ? half(final_T_array[t2i(p.y, p.x, W)]) : 0.0hf;
+    half trans = final_trans;
     int remain_gaussian_num = gaussian_num;
     int current_process_idx = gaussian_num;
     int last_involved = withinBounds ? ncontrib_array[t2i(p.y, p.x, W)] : 0;
 
     int skipCount = gaussian_num - last_involved;
 
-    float3 accum_feat_term = float3(0.0, 0.0, 0.0);
-    float accum_mask_term = 0.0;
+    half3 accum_feat_term = half3(0.0hf, 0.0hf, 0.0hf);
+    half accum_mask_term = 0.0hf;
 
     for (int i = 0; i < num_chunk; i++, remain_gaussian_num -= SHARE_CHUNK_SIZE) {
 
@@ -107,25 +107,26 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
             shared_idx[item_idx] = gidx;
 
-            shared_uvd[item_idx] = float3(
-                float(uvd_array[3 * gidx]),
-                float(uvd_array[3 * gidx + 1]),
-                float(uvd_array[3 * gidx + 2])
+            shared_uvd[item_idx] = half3(
+                half(uvd_array[3 * gidx]),
+                half(uvd_array[3 * gidx + 1]),
+                half(uvd_array[3 * gidx + 2])
             );
 
-            shared_invcov[item_idx] = float3(
-                float(conic_array[3 * gidx]),
-                float(conic_array[3 * gidx + 1]),
-                float(conic_array[3 * gidx + 2])
+            shared_invcov[item_idx] = half3(
+                half(conic_array[3 * gidx]),
+                half(conic_array[3 * gidx + 1]),
+                half(conic_array[3 * gidx + 2])
             );
 
-            shared_opacity[item_idx] = float(opacity_array[gidx]);
+            shared_opacity[item_idx] = half(opacity_array[gidx]);
 
-            shared_feature[item_idx] = float3(
-                float(feature_array[3 * gidx]),
-                float(feature_array[3 * gidx + 1]),
-                float(feature_array[3 * gidx + 2])
+            shared_feature[item_idx] = half3(
+                half(feature_array[3 * gidx]),
+                half(feature_array[3 * gidx + 1]),
+                half(feature_array[3 * gidx + 2])
             );
+
 
             shared_dL_duv[item_idx * 2 + 0] = 0;
             shared_dL_duv[item_idx * 2 + 1] = 0;
@@ -149,58 +150,58 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         skipCount = max(0, skipCount - num_to_process);
 
         for (; j < num_to_process; j++){
-            float2 vec = float2(
-                shared_uvd[j].x - float(p.x),
-                shared_uvd[j].y - float(p.y)
+            half2 vec = half2(
+                shared_uvd[j].x - half(p.x),
+                shared_uvd[j].y - half(p.y)
             );
 
             // squared Mahalanobis distance
-            float3 shared_invcov_reg = shared_invcov[j];
-            float maha_distance = shared_invcov_reg.x * vec.x * vec.x
-                                 + shared_invcov_reg.y * vec.x * vec.y * 2.0
+            half3 shared_invcov_reg = shared_invcov[j];
+            half maha_distance = shared_invcov_reg.x * vec.x * vec.x
+                                 + shared_invcov_reg.y * vec.x * vec.y * 2.0hf
                                  + shared_invcov_reg.z * vec.y * vec.y;
 
-            float power = -0.5 * maha_distance;
-            if (power > 0.0) {
+            half power = -0.5hf * maha_distance;
+            if (power > 0.0hf) {
                 continue;
             }
 
-            float G;
-            if (training_step > 2000)
-                G = 1.0 + power;
+            half G;
+            if (training_step > 0)
+                G = exp(power);
             else
                 G = exp(power);
                 
-            float current_opacity = shared_opacity[j];
-            float alpha = min(0.99, current_opacity * G);
+            half current_opacity = shared_opacity[j];
+            half alpha = min(0.99hf, current_opacity * G);
             if (alpha < 1.0 / 255.0) {
                 continue;
             }
 
-            float tmp = 1.0 / (1.0 - alpha);
+            half tmp = 1.0hf / (1.0hf - alpha);
             trans = trans * tmp;
 
-            float3 dL_dalpha = float3(0.0, 0.0, 0.0);
-            float dL_dmask = 0.0;
+            half3 dL_dalpha = half3(0.0hf, 0.0hf, 0.0hf);
+            half dL_dmask = 0.0hf;
 
-            float2 dG_dvec = float2(
+            half2 dG_dvec = half2(
                 -G * vec.x * shared_invcov_reg.x - G * vec.y * shared_invcov_reg.y,
                 -G * vec.y * shared_invcov_reg.z - G * vec.x * shared_invcov_reg.y
             );
 
-            dL_duvd_reg = float3(0.0);
-            dL_dconic_reg = float3(0.0);
-            dL_dopacity_reg = 0.0;
+            dL_duvd_reg = half3(0.0);
+            dL_dconic_reg = half3(0.0);
+            dL_dopacity_reg = 0.0hf;
 
             // MTR
             // from feature_array
-            float3 current_feature = shared_feature[j];
-            float3 dL_drfeat_reg = float3(
-                float(dL_drfeat_array[t2i(uint(0), p.y, p.x, H, W)]),
-                float(dL_drfeat_array[t2i(uint(1), p.y, p.x, H, W)]),
-                float(dL_drfeat_array[t2i(uint(2), p.y, p.x, H, W)])
+            half3 current_feature = shared_feature[j];
+            half3 dL_drfeat_reg = half3(
+                half(dL_drfeat_array[t2i(uint(0), p.y, p.x, H, W)]),
+                half(dL_drfeat_array[t2i(uint(1), p.y, p.x, H, W)]),
+                half(dL_drfeat_array[t2i(uint(2), p.y, p.x, H, W)])
             );
-            float dL_dalpha_reg = float(dL_dalpha_array[t2i(uint(0), p.y, p.x, H, W)]);
+            half dL_dalpha_reg = half(dL_dalpha_array[t2i(uint(0), p.y, p.x, H, W)]);
             
             dL_dalpha = (current_feature * trans - accum_feat_term * tmp) * dL_drfeat_reg;
             accum_feat_term += alpha * current_feature * trans;
@@ -208,15 +209,15 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             dL_dmask = (trans - accum_mask_term * tmp) * dL_dalpha_reg;
             accum_mask_term += alpha * trans;
 
-            float dL_dalpha_sum = dL_dalpha.x + dL_dalpha.y + dL_dalpha.z + dL_dmask;
-            float dL_dG_sum = current_opacity * dL_dalpha_sum;
+            half dL_dalpha_sum = dL_dalpha.x + dL_dalpha.y + dL_dalpha.z + dL_dmask;
+            half dL_dG_sum = current_opacity * dL_dalpha_sum;
 
             dL_duvd_reg.x += dL_dG_sum * dG_dvec.x;
             dL_duvd_reg.y += dL_dG_sum * dG_dvec.y;
 
-            dL_dconic_reg.x += -0.5 * G * vec.x * vec.x * dL_dG_sum;
+            dL_dconic_reg.x += -0.5hf * G * vec.x * vec.x * dL_dG_sum;
             dL_dconic_reg.y += -G * vec.x * vec.y * dL_dG_sum;
-            dL_dconic_reg.z += -0.5 * G * vec.y * vec.y * dL_dG_sum;
+            dL_dconic_reg.z += -0.5hf * G * vec.y * vec.y * dL_dG_sum;
             dL_dopacity_reg += G * dL_dalpha_sum;
 
             dL_drfeat_reg = alpha * trans * dL_drfeat_reg;

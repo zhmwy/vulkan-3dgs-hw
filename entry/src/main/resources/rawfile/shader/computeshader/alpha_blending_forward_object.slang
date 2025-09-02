@@ -3,10 +3,10 @@
 #define SHARE_CHUNK_SIZE 32
 
 // groupshared int32_t shared_idx[SHARE_CHUNK_SIZE];
-groupshared float3 shared_uvd[SHARE_CHUNK_SIZE];
-groupshared float3 shared_invcov[SHARE_CHUNK_SIZE];
-groupshared float shared_opacity[SHARE_CHUNK_SIZE];
-groupshared float3 shared_feature[SHARE_CHUNK_SIZE];
+groupshared half3 shared_uvd[SHARE_CHUNK_SIZE];
+groupshared half3 shared_invcov[SHARE_CHUNK_SIZE];
+groupshared half shared_opacity[SHARE_CHUNK_SIZE];
+groupshared half3 shared_feature[SHARE_CHUNK_SIZE];
 
 // Buffer bindings
 [[vk::binding(0)]] StructuredBuffer<float> uvd_array;
@@ -65,12 +65,12 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     int32_t gaussian_num = gaussian_range.y - gaussian_range.x;
     int32_t num_chunk = (gaussian_num + SHARE_CHUNK_SIZE - 1) / SHARE_CHUNK_SIZE;
 
-    float trans = 1.0;
+    half trans = 1.0hf;
     uint32_t last_involved = 0;
     uint32_t current_process_idx = 0;
 
-    float3 Feat = { 0.0, 0.0, 0.0 };
-    float mask = 0.0;
+    half3 Feat = { 0.0hf, 0.0hf, 0.0hf };
+    half mask = 0.0hf;
     int32_t remain_gaussian_num = gaussian_num;
 
     // process in chunks if there are too many Gaussians in a single tile
@@ -85,24 +85,24 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
             int32_t gidx = sort_idx_array[gaussian_range.x + num_loaded];
 
-            shared_uvd[item_idx] = float3(
-                float(uvd_array[3 * gidx]),
-                float(uvd_array[3 * gidx + 1]),
-                float(uvd_array[3 * gidx + 2])
+            shared_uvd[item_idx] = half3(
+                half(uvd_array[3 * gidx]),
+                half(uvd_array[3 * gidx + 1]),
+                half(uvd_array[3 * gidx + 2])
             );
 
-            shared_invcov[item_idx] = float3(
-                float(conic_array[3 * gidx]),
-                float(conic_array[3 * gidx + 1]),
-                float(conic_array[3 * gidx + 2])
+            shared_invcov[item_idx] = half3(
+                half(conic_array[3 * gidx]),
+                half(conic_array[3 * gidx + 1]),
+                half(conic_array[3 * gidx + 2])
             );
 
-            shared_opacity[item_idx] = float(opacity_array[gidx]);
+            shared_opacity[item_idx] = half(opacity_array[gidx]);
 
-            shared_feature[item_idx] = float3(
-                float(feature_array[3 * gidx]),
-                float(feature_array[3 * gidx + 1]),
-                float(feature_array[3 * gidx + 2])
+            shared_feature[item_idx] = half3(
+                half(feature_array[3 * gidx]),
+                half(feature_array[3 * gidx + 1]),
+                half(feature_array[3 * gidx + 2])
             );
         }
         AllMemoryBarrierWithGroupSync();
@@ -113,33 +113,33 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             for (int32_t j = 0; j < num_to_process; j++) {
 
                 current_process_idx++;
-                float2 vec = {
-                    shared_uvd[j].x - float(p.x),
-                    shared_uvd[j].y - float(p.y)
+                half2 vec = {
+                    shared_uvd[j].x - half(p.x),
+                    shared_uvd[j].y - half(p.y)
                 };
 
                 // squared Mahalanobis distance
-                float maha_distance = shared_invcov[j].x * vec.x * vec.x
-                                    + shared_invcov[j].y * vec.x * vec.y * 2.0
+                half maha_distance = shared_invcov[j].x * vec.x * vec.x
+                                    + shared_invcov[j].y * vec.x * vec.y * 2.0hf
                                     + shared_invcov[j].z * vec.y * vec.y;
 
-                float power = -0.5 * maha_distance;
+                half power = -0.5hf * maha_distance;
 
-                if (power > 0.0f)
+                if (power > 0.0hf)
                     continue;
 
                 // alpha pruning
-                float alpha;
-                if (training_step > 2000)
-                    alpha = min(0.99, shared_opacity[j] * (1.0 + power));
+                half alpha;
+                if (training_step > 0)
+                    alpha = min(0.99hf, shared_opacity[j] * exp(power));
                 else
-                    alpha = min(0.99, shared_opacity[j] * exp(power));
+                    alpha = min(0.99hf, shared_opacity[j] * exp(power));
 
                 if (alpha < 1.0 / 255.0f)
                     continue;
 
-                float next_trans = trans * (1.0 - alpha);
-                if (next_trans < 0.0001) {
+                half next_trans = trans * (1.0hf - alpha);
+                if (next_trans < 0.0001hf) {
                     thread_active = false;
                     break;
                 }
@@ -160,7 +160,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         rfeat_array[t2i(1, p.y, p.x, height, width)] = Feat.y ; //+ trans * background_array[t2i(1, p.y, p.x, height, width)];
         rfeat_array[t2i(2, p.y, p.x, height, width)] = Feat.z ; //+ trans * background_array[t2i(2, p.y, p.x, height, width)];
         
-        mask = clamp(mask, float(1e-6), float(1 - 1e-6));
+        mask = clamp(mask, half(1e-6), half(1 - 1e-6));
         alpha_array[t2i(0, p.y, p.x, height, width)] = mask;
 
     }
