@@ -89,10 +89,10 @@ public:
     float low_resolotion_scale = 0.25;
 
     int flow_steps = 200000;
-    int low_resolution_steps = -1;
+    int low_resolution_steps = 500;
     int sh_degree = 1;
     
-    bool isObject = true;  // decide whether to train object only
+    bool isObject = false;  // decide whether to train object only
     
     RandomGenerator random_generator;
     int current_img_idx = 0;

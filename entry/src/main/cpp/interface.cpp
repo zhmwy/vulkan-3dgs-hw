@@ -49,7 +49,7 @@ void InterfaceImplVulkan::TrainVulkan() {
     try {
         std::vector<int> max_steps = {7000, 500, 500};
         
-        double total_time = 120.0;
+        double total_time = 60.0;
         auto start = std::chrono::high_resolution_clock::now();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
@@ -68,6 +68,10 @@ void InterfaceImplVulkan::TrainVulkan() {
             // do not densify in the last 5 seconds
             if (duration.count() > total_time - 5.0){
                 _renderer->densify_start_step = 100000;
+            }
+            
+            if (duration.count() > total_time - 15.0){
+                _renderer->low_resolution_steps = -1;
             }
         }
         

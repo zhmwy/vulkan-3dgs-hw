@@ -162,10 +162,10 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             }
 
             half G;
-            if (training_step > 0)
+            if (training_step >= 0)
                 G = exp(power);
             else
-                G = 1.0hf + power;
+                G = exp(power);
                 
             half current_opacity = shared_opacity[j];
             half alpha = min(0.99hf, current_opacity * G);
