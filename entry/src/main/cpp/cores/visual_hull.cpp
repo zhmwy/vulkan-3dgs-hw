@@ -6,6 +6,9 @@ using Vec3 = Eigen::Vector3f;
 using Vec4 = Eigen::Vector4f;
 using Mat3 = Eigen::Matrix3f;
 using Mat4 = Eigen::Matrix4f;
+using MatX3f = Eigen::Matrix<float, Eigen::Dynamic, 3>;
+using MatX2f = Eigen::Matrix<float, Eigen::Dynamic, 2>;
+using VecXf = Eigen::VectorXf;
 
 // Convert quaternion to rotation matrix
 Mat3 quaternionToRotationMatrix(float qw, float qx, float qy, float qz) {
@@ -14,168 +17,170 @@ Mat3 quaternionToRotationMatrix(float qw, float qx, float qy, float qz) {
     return q.toRotationMatrix();
 }
 
-// Get ray directions for all pixels in camera coordinate
-Eigen::MatrixXf getRayDirections(int H, int W, float fx, float fy, float cx, float cy) {
-    Eigen::MatrixXf directions(H * W, 3);
-    
-    int idx = 0;
-    for (int j = 0; j < H; ++j) {
-        for (int i = 0; i < W; ++i) {
-            float pixel_center = 0.5f;
-            directions(idx, 0) = (i + pixel_center - cx) / fx;
-            directions(idx, 1) = (j + pixel_center - cy) / fy;
-            directions(idx, 2) = 1.0f;
-            idx++;
-        }
-    }
-    
-    return directions;
-}
-
-// Calculate distance from ray to point
-float rayPointDistance(const Vec3& ray_origin, const Vec3& ray_dir, const Vec3& point) {
-    Vec3 diff = point - ray_origin;
-    Vec3 cross_product = diff.cross(ray_dir);
-    return cross_product.norm();
-}
-
-// Trace Gaussians with rays from segmentation mask
-std::vector<bool> traceGaussians(
-    const std::vector<Base::Math::Vec3>& positions,
-    const std::vector<Base::Math::Vec3>& scales,
-    const cv::Mat& segmap,
-    const Mat4& c2w,
+// Vectorized projection of 3D points to 2D image coordinates
+void projectPointsBatch(
+    const MatX3f& points_world,
+    const Mat3& R,
+    const Vec3& T,
     float fx, float fy, float cx, float cy,
-    float threshold_scale = 1.0f
+    MatX2f& projected_points,
+    std::vector<bool>& valid_depth
 ) {
-    int H = segmap.rows;
-    int W = segmap.cols;
+    // Transform to camera coordinates: points_cam = R * points_world^T + T
+    MatX3f points_cam = (R * points_world.transpose()).transpose();
+    points_cam.rowwise() += T.transpose();
     
-    // Get all ray directions
-    Eigen::MatrixXf all_rays_d = getRayDirections(H, W, fx, fy, cx, cy);
-    
-    // Collect rays for pixels in the mask
-    std::vector<Vec3> selected_rays_d_cam;
-    for (int j = 0; j < H; ++j) {
-        for (int i = 0; i < W; ++i) {
-            if (segmap.at<uint8_t>(j, i) > 0) {
-                int idx = j * W + i;
-                selected_rays_d_cam.push_back(Vec3(
-                    all_rays_d(idx, 0),
-                    all_rays_d(idx, 1),
-                    all_rays_d(idx, 2)
-                ));
-            }
-        }
+    // Check for valid depth (z > 0)
+    valid_depth.resize(points_cam.rows());
+    for (int i = 0; i < points_cam.rows(); ++i) {
+        valid_depth[i] = points_cam(i, 2) > 0;
     }
     
-    if (selected_rays_d_cam.empty()) {
-        return std::vector<bool>(positions.size(), false);
-    }
-    
-    // Transform rays to world coordinates
-    Mat3 R = c2w.block<3, 3>(0, 0);
-    Vec3 ray_origin = c2w.block<3, 1>(0, 3);
-    
-    std::vector<Vec3> rays_d_world;
-    for (const auto& ray_cam : selected_rays_d_cam) {
-        Vec3 ray_world = R * ray_cam;
-        ray_world.normalize();
-        rays_d_world.push_back(ray_world);
-    }
-    
-    // Calculate global threshold based on Gaussian scales
-    float sum_max_scales = 0.0f;
-    for (const auto& scale : scales) {
-        float max_scale = std::max({scale.x, scale.y, scale.z});
-        sum_max_scales += max_scale;
-    }
-    float avg_threshold = (sum_max_scales / scales.size()) * threshold_scale;
-    
-    // Check each Gaussian
-    std::vector<bool> masks(positions.size());
-    
-    for (size_t g_idx = 0; g_idx < positions.size(); ++g_idx) {
-        Vec3 gaussian_pos(positions[g_idx].x, positions[g_idx].y, positions[g_idx].z);
-        
-        // Find minimum distance to any ray
-        float min_dist = std::numeric_limits<float>::max();
-        for (const auto& ray_dir : rays_d_world) {
-            LOGI("%{public}d", g_idx);
-            float dist = rayPointDistance(ray_origin, ray_dir, gaussian_pos);
-            min_dist = std::min(min_dist, dist);
-        }
-        
-        // Check if Gaussian is close enough to any ray
-        masks[g_idx] = (min_dist < avg_threshold);
-    }
-    
-    return masks;
+    // Project to image plane (vectorized)
+    projected_points.resize(points_cam.rows(), 2);
+    VecXf z_inv = points_cam.col(2).cwiseInverse();
+    projected_points.col(0) = (points_cam.col(0).array() * z_inv.array()) * fx + cx;
+    projected_points.col(1) = (points_cam.col(1).array() * z_inv.array()) * fy + cy;
 }
 
-// Select cameras based on viewing directions
-std::vector<int> selectCamerasByDirection(
-    const std::vector<DataLoader::InputInitStruct::DataExtr>& extr_tmp,
-    int sequence_length
+// Vectorized check for points within mask
+void checkPointsInMaskBatch(
+    const MatX2f& projected_points,
+    const std::vector<bool>& valid_depth,
+    const cv::Mat& mask,
+    int width, int height,
+    std::vector<bool>& in_mask
 ) {
-    // Calculate forward vectors for each camera
+    in_mask.resize(projected_points.rows(), false);
+    
+    #pragma omp parallel for
+    for (int i = 0; i < projected_points.rows(); ++i) {
+        if (!valid_depth[i]) {
+            in_mask[i] = false;
+            continue;
+        }
+        
+        float x = projected_points(i, 0);
+        float y = projected_points(i, 1);
+        
+        // Check if point is within image bounds
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+            int ix = static_cast<int>(x);
+            int iy = static_cast<int>(y);
+            in_mask[i] = (mask.at<uint8_t>(iy, ix) > 0);
+        } else {
+            in_mask[i] = false;
+        }
+    }
+}
+
+// Select cameras that are maximally spread apart
+std::vector<int> selectWellDistributedCameras(
+    const std::vector<DataLoader::InputInitStruct::DataExtr>& extr_tmp,
+    int sequence_length,
+    int num_cameras_to_select
+) {
+    // Ensure we don't select more cameras than available
+    num_cameras_to_select = std::min(num_cameras_to_select, sequence_length);
+    
+    // Calculate forward vectors and positions for each camera
     std::vector<Vec3> forward_vectors;
+    std::vector<Vec3> camera_positions;
+    
     for (int i = 0; i < sequence_length; ++i) {
         const auto& extr = extr_tmp[i];
         Mat3 R = quaternionToRotationMatrix(
             extr.values[0], extr.values[1], 
             extr.values[2], extr.values[3]
         );
+        Vec3 T(extr.values[4], extr.values[5], extr.values[6]);
         
         // Camera forward is -Z in camera space, transformed to world
         Vec3 forward = R.transpose() * Vec3(0, 0, -1);
         forward.normalize();
         forward_vectors.push_back(forward);
+        
+        // Camera position in world space (inverse of T in world-to-camera)
+        Mat4 Rt = Mat4::Identity();
+        Rt.block<3, 3>(0, 0) = R;
+        Rt.block<3, 1>(0, 3) = T;
+        Mat4 c2w = Rt.inverse();
+        Vec3 cam_pos = c2w.block<3, 1>(0, 3);
+        camera_positions.push_back(cam_pos);
     }
     
-    // Define 4 target directions: front, back, left, right
-    std::vector<Vec3> target_directions = {
-        Vec3(0, 0, 1),   // front (z+)
-        Vec3(0, 0, -1),  // back (z-)
-        Vec3(-1, 0, 0),  // left (x-)
-        Vec3(1, 0, 0)    // right (x+)
-    };
-    
-    // Find best matching camera for each target direction
+    // Use greedy algorithm to select maximally spread cameras
     std::vector<int> selected_indices;
-    for (const auto& target : target_directions) {
-        float max_dot = -2.0f;
-        int best_idx = -1;
+    std::vector<bool> is_selected(sequence_length, false);
+    
+    // Start with the first camera (or could be random)
+    selected_indices.push_back(0);
+    is_selected[0] = true;
+    
+    // Iteratively select cameras that maximize minimum angle to already selected cameras
+    while (selected_indices.size() < static_cast<size_t>(num_cameras_to_select)) {
+        float max_min_angle = -1.0f;
+        int best_candidate = -1;
         
         for (int i = 0; i < sequence_length; ++i) {
-            float dot = forward_vectors[i].dot(target);
-            if (dot > max_dot) {
-                max_dot = dot;
-                best_idx = i;
+            if (is_selected[i]) continue;
+            
+            // Calculate minimum angle to all selected cameras
+            float min_angle = std::numeric_limits<float>::max();
+            for (int selected_idx : selected_indices) {
+                // Use both viewing direction and position difference for diversity
+                Vec3 dir_diff = forward_vectors[i] - forward_vectors[selected_idx];
+                float dir_angle = dir_diff.norm();
+                
+                // Also consider spatial distance (normalized)
+                Vec3 pos_diff = camera_positions[i] - camera_positions[selected_idx];
+                float spatial_dist = pos_diff.norm();
+                
+                // Combined metric (weighted sum of angular and spatial distance)
+                float combined_metric = dir_angle + 0.3f * spatial_dist;
+                min_angle = std::min(min_angle, combined_metric);
+            }
+            
+            // Track the candidate with maximum minimum angle
+            if (min_angle > max_min_angle) {
+                max_min_angle = min_angle;
+                best_candidate = i;
             }
         }
         
-        if (best_idx >= 0) {
-            selected_indices.push_back(best_idx);
+        if (best_candidate >= 0) {
+            selected_indices.push_back(best_candidate);
+            is_selected[best_candidate] = true;
+        } else {
+            break; // No more candidates
         }
     }
     
     return selected_indices;
 }
 
-// Main entrance function for segmentation
+// Main entrance function for segmentation with flexible parameters
 DataLoader::InputInitStruct segmentGaussiansFromMask(
     const DataLoader::InputInitStruct& target,
+    int num_cameras = 4,           // Flexible number of cameras (4-8)
+    int max_outside_count = 2,     // Flexible threshold for outside count
     float threshold_scale = 1.0f,
     bool use_median = false
 ) {
-    std::cout << "Starting visual hull segmentation..." << std::endl;
+    // Validate parameters
+    num_cameras = std::max(4, std::min(8, num_cameras));
+    num_cameras = std::min(num_cameras, target.sequence_length);
+    max_outside_count = std::min(max_outside_count, num_cameras - 1);
+    
+    std::cout << "Starting visual hull segmentation (projection-based)..." << std::endl;
     std::cout << "Number of Gaussians: " << target.positions.size() << std::endl;
     std::cout << "Sequence length: " << target.sequence_length << std::endl;
+    std::cout << "Number of cameras to use: " << num_cameras << std::endl;
+    std::cout << "Maximum outside count threshold: " << max_outside_count << std::endl;
     
-    // Select 4 cameras based on viewing directions
-    std::vector<int> selected_indices = selectCamerasByDirection(
-        target.extr_tmp, target.sequence_length
+    // Select well-distributed cameras
+    std::vector<int> selected_indices = selectWellDistributedCameras(
+        target.extr_tmp, target.sequence_length, num_cameras
     );
     
     std::cout << "Selected camera indices: ";
@@ -184,8 +189,18 @@ DataLoader::InputInitStruct segmentGaussiansFromMask(
     }
     std::cout << std::endl;
     
-    // Initialize mask for all Gaussians (start with all true, then AND with each view)
-    std::vector<bool> global_mask(target.positions.size(), true);
+    // Convert all gaussian positions to Eigen matrix for vectorized operations
+    MatX3f all_positions(target.positions.size(), 3);
+    for (size_t i = 0; i < target.positions.size(); ++i) {
+        all_positions(i, 0) = target.positions[i].x;
+        all_positions(i, 1) = target.positions[i].y;
+        all_positions(i, 2) = target.positions[i].z;
+    }
+    
+    // Track visibility statistics
+    std::vector<int> visible_count(target.positions.size(), 0);
+    std::vector<int> outside_count(target.positions.size(), 0);
+    std::vector<bool> is_active(target.positions.size(), true);
     
     // Process each selected camera
     for (size_t cam_i = 0; cam_i < selected_indices.size(); ++cam_i) {
@@ -194,18 +209,16 @@ DataLoader::InputInitStruct segmentGaussiansFromMask(
         std::cout << "Processing camera " << cam_idx << " (" << (cam_i + 1) 
                   << "/" << selected_indices.size() << ")" << std::endl;
         
-        // Read mask image
+        // Read and prepare mask
         cv::Mat mask_img = cv::imread(target.mask_list[cam_idx], cv::IMREAD_GRAYSCALE);
         if (mask_img.empty()) {
-            LOGE("Failed to read mask: %{public}s", target.mask_list[cam_idx].c_str());
+            std::cerr << "Failed to read mask: " << target.mask_list[cam_idx] << std::endl;
             continue;
         }
         
-        // Resize mask to match camera resolution
         cv::Mat resized_mask;
         cv::resize(mask_img, resized_mask, cv::Size(target.width, target.height));
         
-        // Convert mask to binary
         cv::Mat binary_mask;
         cv::threshold(resized_mask, binary_mask, 0, 255, cv::THRESH_BINARY);
         
@@ -218,39 +231,78 @@ DataLoader::InputInitStruct segmentGaussiansFromMask(
         float cx = intr[2];
         float cy = intr[3];
         
-        // Build camera-to-world matrix
+        // Build world-to-camera transformation
         Mat3 R = quaternionToRotationMatrix(
             extr.values[0], extr.values[1], 
             extr.values[2], extr.values[3]
         );
         Vec3 T(extr.values[4], extr.values[5], extr.values[6]);
         
-        // Build world-to-camera matrix (Rt)
-        Mat4 Rt = Mat4::Identity();
-        Rt.block<3, 3>(0, 0) = R;
-        Rt.block<3, 1>(0, 3) = T;
-        
-        // Invert to get camera-to-world matrix
-        Mat4 c2w = Rt.inverse();
-        
-        // Trace Gaussians for this view
-        std::vector<bool> view_mask = traceGaussians(
-            target.positions,
-            target.scales,
-            binary_mask,
-            c2w,
-            fx, fy, cx, cy,
-            threshold_scale
-        );
-        
-        // AND with global mask (visual hull intersection)
-        for (size_t i = 0; i < global_mask.size(); ++i) {
-            global_mask[i] = global_mask[i] && view_mask[i];
+        // Collect indices of active gaussians for efficient processing
+        std::vector<int> active_indices;
+        for (size_t i = 0; i < target.positions.size(); ++i) {
+            if (is_active[i]) {
+                active_indices.push_back(i);
+            }
         }
         
-        int remaining = std::count(global_mask.begin(), global_mask.end(), true);
-        LOGI("Remaining %{public}d Gaussians after view %{public}d", cam_idx, remaining);
+        if (active_indices.empty()) {
+            std::cout << "No active gaussians remaining, early termination." << std::endl;
+            break;
+        }
+        
+        // Create matrix of active positions
+        MatX3f active_positions(active_indices.size(), 3);
+        for (size_t j = 0; j < active_indices.size(); ++j) {
+            active_positions.row(j) = all_positions.row(active_indices[j]);
+        }
+        
+        // Project all active points to this camera (vectorized)
+        MatX2f projected_points;
+        std::vector<bool> valid_depth;
+        projectPointsBatch(active_positions, R, T, fx, fy, cx, cy, 
+                          projected_points, valid_depth);
+        
+        // Check which points fall within the mask (vectorized)
+        std::vector<bool> in_mask;
+        checkPointsInMaskBatch(projected_points, valid_depth, binary_mask, 
+                              target.width, target.height, in_mask);
+        
+        // Update statistics for each gaussian
+        for (size_t j = 0; j < active_indices.size(); ++j) {
+            int idx = active_indices[j];
+            if (in_mask[j]) {
+                visible_count[idx]++;
+            } else {
+                outside_count[idx]++;
+                // Early termination: if outside more than threshold, mark as inactive
+                if (outside_count[idx] > max_outside_count) {
+                    is_active[idx] = false;
+                }
+            }
+        }
+        
+        int remaining_active = std::count(is_active.begin(), is_active.end(), true);
+        std::cout << "Active gaussians after view " << cam_idx << ": " << remaining_active 
+                  << " (visible in this view: " 
+                  << std::count(in_mask.begin(), in_mask.end(), true) << ")" << std::endl;
     }
+    
+    // Create final mask: gaussians with outside_count <= max_outside_count are foreground
+    std::vector<bool> final_mask(target.positions.size());
+    int foreground_count = 0;
+    for (size_t i = 0; i < target.positions.size(); ++i) {
+        final_mask[i] = (outside_count[i] <= max_outside_count);
+        if (final_mask[i]) {
+            foreground_count++;
+        }
+    }
+    
+    std::cout << "\nSegmentation Statistics:" << std::endl;
+    std::cout << "  Total gaussians: " << target.positions.size() << std::endl;
+    std::cout << "  Foreground gaussians: " << foreground_count << std::endl;
+    std::cout << "  Background gaussians: " << (target.positions.size() - foreground_count) << std::endl;
+    std::cout << "  Used " << selected_indices.size() << " cameras with threshold " << max_outside_count << std::endl;
     
     // Create output with only foreground Gaussians
     DataLoader::InputInitStruct output;
@@ -267,9 +319,9 @@ DataLoader::InputInitStruct segmentGaussiansFromMask(
     output.masks = target.masks;
     output.masks_low_res = target.masks_low_res;
     
-    // Filter Gaussians based on mask
+    // Filter Gaussians based on final mask
     for (size_t i = 0; i < target.positions.size(); ++i) {
-        if (global_mask[i]) {
+        if (final_mask[i]) {
             output.positions.push_back(target.positions[i]);
             output.scales.push_back(target.scales[i]);
             output.rotations.push_back(target.rotations[i]);
@@ -278,18 +330,22 @@ DataLoader::InputInitStruct segmentGaussiansFromMask(
         }
     }
     
-    LOGI("Segmentation complete. Kept %{public}zu out of %{public}zu Gaussians.", 
-            output.positions.size(), target.positions.size());
+    std::cout << "Segmentation complete. Kept " << output.positions.size() 
+              << " out of " << target.positions.size() << " Gaussians." << std::endl;
     
     return output;
 }
 
 } // namespace VisualHullSegmentation
 
-// Main entrance function
+// Main entrance function with flexible parameters
 DataLoader::InputInitStruct performVisualHullSegmentation(
-    const DataLoader::InputInitStruct& target, float threshold_scale, bool use_median) {
+    const DataLoader::InputInitStruct& target, 
+    int num_cameras,
+    int max_outside_count,
+    float threshold_scale, 
+    bool use_median) {
     return VisualHullSegmentation::segmentGaussiansFromMask(
-        target, threshold_scale, use_median
+        target, num_cameras, max_outside_count, threshold_scale, use_median
     );
 }

@@ -20,7 +20,9 @@
 
 DataLoader::InputInitStruct performVisualHullSegmentation(
     const DataLoader::InputInitStruct& target,
-    float threshold_scale = 1.0f,
+    int num_cameras = 4,
+    int max_outside_count = 0,
+    float threshold_scale = 1.0f, 
     bool use_median = false
 );
 
