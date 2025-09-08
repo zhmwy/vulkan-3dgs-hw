@@ -44,6 +44,7 @@ add_library(3dgs SHARED
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
     cores/tinyply.cpp
+    cores/visual_hull.cpp
 #    cores/video2images.cpp
     human/HiAI/HIAIModelManager.cpp human/HiAI/utils.cpp
     human/human.cpp
@@ -54,8 +55,8 @@ add_library(3dgs SHARED
     human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp
     human/SMPL/src/smpl/smpl_male.cpp
     human/segmentation/segment.cpp human/segmentation/utils.cpp
-    human/face/createEnlargedFace.cpp
-#    human/face/manageHeadMasks.cpp human/face/beauty_filters.cpp human/face/createEnlargedFace.cpp
+    human/face/createEnlargedFace.cpp human/face/manageHeadMasks.cpp
+#     human/face/beauty_filters.cpp human/face/createEnlargedFace.cpp
 #    human/face/landmark/landmark2d.cpp human/face/landmark/bfm_data.cpp human/face/landmark/landmark3d.cpp
 #    human/face/landmark/faceDetect.cpp human/face/landmark/utils.cpp human/face/faceThinner.cpp human/face/faceWhiten.cpp
 )

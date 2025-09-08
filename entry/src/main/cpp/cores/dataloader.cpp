@@ -906,6 +906,115 @@ void prependSkyboxPoints(
     data.colors.insert(data.colors.begin(), skyColors.begin(), skyColors.end());
 }
 
+void DataLoader::InputInitStruct::processAndCropForeground(const std::string& scenepath) {
+    // Create foreground directory
+    const std::vector<string> target = this->img_list;
+    std::filesystem::create_directories(scenepath + "/foreground");
+    
+    // Ensure intr_tmp has enough entries for all images if needed
+    if (this->intr_tmp.size() == 1 && target.size() > 1) {
+        std::vector<float> first_intrinsic = this->intr_tmp[0];
+        this->intr_tmp.resize(target.size(), first_intrinsic);
+    }
+    
+    // Process each image
+    for (size_t i = 0; i < target.size(); ++i) {
+        std::string imagePath = target[i];
+        
+        // Extract filename from path
+        std::string filename = std::filesystem::path(imagePath).filename().string();
+        std::string nameWithoutExt = std::filesystem::path(filename).stem().string();
+        
+        // Construct mask path (replace "images" with "segmented" and .jpg with .png)
+        std::string maskPath = imagePath;
+        size_t pos = maskPath.find("/images/");
+        if (pos != std::string::npos) {
+            maskPath.replace(pos, 8, "/segmented/");
+        }
+        // Replace extension from .jpg to .png
+        size_t lastDot = maskPath.find_last_of('.');
+        if (lastDot != std::string::npos) {
+            maskPath = maskPath.substr(0, lastDot) + ".png";
+        }
+        
+        // Read mask
+        cv::Mat mask = cv::imread(maskPath, cv::IMREAD_GRAYSCALE);
+        if (mask.empty()) {
+            LOGE("Failed to read mask: %s", maskPath.c_str());
+            continue;
+        }
+        
+        // Find bounding box of foreground (white pixels)
+        std::vector<cv::Point> whitePixels;
+        cv::findNonZero(mask, whitePixels);
+        
+        if (whitePixels.empty()) {
+            LOGE("No foreground pixels found in mask: %s", maskPath.c_str());
+            continue;
+        }
+        
+        cv::Rect boundingBox = cv::boundingRect(whitePixels);
+        
+        // Find center of bounding box
+        cv::Point center(boundingBox.x + boundingBox.width / 2, 
+                        boundingBox.y + boundingBox.height / 2);
+        
+        LOGI("Image %s: Bounding box center at (%d, %d)", 
+             filename.c_str(), center.x, center.y);
+        
+        // Read original image
+        cv::Mat image = cv::imread(imagePath);
+        if (image.empty()) {
+            LOGE("Failed to read image: %s", imagePath.c_str());
+            continue;
+        }
+        
+        // Crop image from center with 640 width and 480 height
+        cv::Point actualTopLeft;
+        cv::Mat croppedImage = cropImage(image, center, cv::Size(480, 640), actualTopLeft);
+        
+        // Save cropped image to foreground folder (keeping original filename)
+        std::string outputPath = scenepath + "/foreground/" + filename;
+        cv::imwrite(outputPath, croppedImage);
+        
+        LOGI("Saved cropped image to: %{public}s", outputPath.c_str());
+        
+        // Add cropped image path to data
+        this->img_list.push_back(outputPath);
+        
+        // Calculate new intrinsics for the cropped image
+        std::vector<float> intr = this->intr_tmp[i];
+        float scale_factor = image.cols / 480.0; // No scaling, just cropping at original resolution
+        std::vector<float> new_intr = calculateNewIntrinsics(
+            intr[0], intr[1], intr[2], intr[3],
+            actualTopLeft, cv::Size(480, 640), scale_factor
+        );
+        
+        LOGI("New intrinsics - fx:%{public}f fy:%{public}f cx:%{public}f cy:%{public}f", 
+             new_intr[0], new_intr[1], new_intr[2], new_intr[3]);
+        
+        // Add new intrinsics to data
+        this->intr_tmp.push_back(new_intr);
+        
+        // If there are extrinsics, copy them as well
+        if (i < this->extr_tmp.size()) {
+            this->extr_tmp.push_back(this->extr_tmp[i]);
+        }
+        
+        // If there are timestamps, copy them as well
+        if (i < this->time_stamps.size()) {
+            this->time_stamps.push_back(this->time_stamps[i]);
+        }
+    }
+    
+    // Update test extrinsics if needed
+    if (!this->extr_tmp.empty()) {
+        this->extr_tmp_test = this->extr_tmp;
+    }
+    
+    LOGI("Processed %zu images for foreground cropping", target.size());
+}
+
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, bool& isObject,
                             int height, int width)
 {
@@ -999,7 +1108,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         data.img_list.push_back(scenepath + "/images/" + imageName);
         
         std::string maskName = imageName.substr(0, imageName.find_last_of(".")) + ".png";
-        data.mask_list.push_back(scenepath + "/masks/" + maskName);
+        data.mask_list.push_back(scenepath + "/segmented/" + maskName);
         
         data.time_stamps.push_back(float(idx));
         ++idx;
@@ -1015,6 +1124,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     for (auto& time : data.time_stamps) {
         time /= float(data.time_stamps.size());
     }
+    
+    data.sequence_length = data.img_list.size();
     
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
@@ -1047,7 +1158,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     }
     
 //     prependSkyboxPoints(data, 10000, 0.01, 10.0);
-
+    data.processAndCropForeground(scenepath);
     imagesFile.close();
     camerasFile.close();
 }

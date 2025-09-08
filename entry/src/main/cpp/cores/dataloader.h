@@ -45,6 +45,7 @@ public:
         std::vector<vkbase::Texture2DGS> masks;   // masks
         std::vector<vkbase::Texture2DGS> masks_low_res;
         
+        int sequence_length;
         std::vector<std::string> img_list;
         std::vector<std::string> mask_list;
         std::vector<DataExtr> extr_tmp;  
@@ -79,7 +80,7 @@ public:
         
         int findMaxPose(std::set<int>& chosen);
         void getTrainOrder(int first_id = 0);
-        
+        void processAndCropForeground(const std::string& scenepath);
     };
 
     static PlyDataStruct load_input_data(const std::string& filepath);

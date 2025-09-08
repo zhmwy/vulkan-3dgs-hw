@@ -91,6 +91,7 @@ std::vector<float> calculateNewIntrinsics(
     return new_intr;
 }
 
+#if 0
 // Function to parse keypoints.txt file
 std::vector<KeypointData> parseKeypointsFile(const std::string& filepath) {
     std::vector<KeypointData> keypoints;
@@ -222,3 +223,4 @@ void cropAndSaveFace(const cv::Mat& orig_img, const cv::Point& faceCenter,
     // Save the final result
     cv::imwrite(scenePath + "/images/" + basename, result_img);
 }
+#endif

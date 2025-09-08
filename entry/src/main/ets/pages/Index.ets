@@ -14,9 +14,8 @@ const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
 // const caseName: string = "2025-06-04_15_57_44";
-let caseName = "saturn";
+let caseName = "2025-06-04_19_40_24";
 const caseNames: string[] = [
-  // "jingtai",
   "2025-06-04_15_34_45",
   "2025-06-04_15_57_44",
   "2025-06-04_15_59_26",
@@ -81,21 +80,21 @@ struct Index {
     if (this.isTraining) return;
     this.isTraining = true;
     try {
-      nativeRender.initTrainProgress(this.resmgr, (progress: number) => {
-        this.progressValue = progress;
-      });
-      // for (let i = 0; i < caseNames.length; i++){
+      // nativeRender.initTrainProgress(this.resmgr, (progress: number) => {
+      //   this.progressValue = progress;
+      // });
+      // for (let i = 4; i < caseNames.length; i++){
       //   caseName = caseNames[i];
       //   await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件
       //   hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-      //   this.segmentAllImagesInSandbox();
-      //   await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
+      //   await this.segmentAllImagesInSandbox();
+      //   // await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
       //   this.message = "Training Complete!";
       // }
-      caseName = caseNames[24];
+      caseName = caseNames[0];
       await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件kl;lkm
       hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-      this.segmentAllImagesInSandbox();
+      // await this.segmentAllImagesInSandbox();
       await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
       this.message = "Training Complete!";
     } catch (error) {

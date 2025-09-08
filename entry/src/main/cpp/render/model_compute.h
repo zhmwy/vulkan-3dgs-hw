@@ -23,6 +23,8 @@
 // #include <vk_radix_sort.h>
 
 #include "cores/dataloader.h"
+#include "cores/visual_hull.h"
+
 #include "cores/random.h"
 #include "cores/timer.h"
 // #include "vulkanbase\VulkanOhos.h"
