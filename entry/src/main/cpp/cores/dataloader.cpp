@@ -693,8 +693,8 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
 
 
 void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data){
-    std::string extrName = fullDataPath + "/images.txt";
-    std::string intrName = fullDataPath + "/cameras.txt";
+    std::string extrName = fullDataPath + "/images2.txt";
+    std::string intrName = fullDataPath + "/cameras2.txt";
 
     std::ofstream extrFile(extrName);
     std::ofstream intrFile(intrName);
@@ -709,7 +709,7 @@ void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::I
     // 1. cameras.txt
     intrFile << "# CMAERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[fx, fy, cx, cy]\n";
     for (int i = 0; i < data.intr_tmp.size(); i++) {
-        intrFile << "0 PINHOLE " << data.width << " " << data.height << " ";
+        intrFile << i << " PINHOLE " << data.width << " " << data.height << " ";
         intrFile << data.intr_tmp[i][0] << " " << data.intr_tmp[i][1] << " " << data.intr_tmp[i][2] << " " << data.intr_tmp[i][3] << "\n";
     }
     intrFile.close();
@@ -725,7 +725,7 @@ void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::I
         extrFile << data.extr_tmp[i].values[4] << " ";
         extrFile << data.extr_tmp[i].values[5] << " ";
         extrFile << data.extr_tmp[i].values[6] << " ";
-        extrFile << "0 " << filename << "\n\n";
+        extrFile << i << " " << filename << "\n\n";
     }
     extrFile.close();
 }
@@ -974,7 +974,7 @@ void DataLoader::InputInitStruct::processAndCropForeground(const std::string& sc
         cv::Mat croppedImage = cropImage(image, center, cv::Size(480, 640), actualTopLeft);
         
         // Save cropped image to foreground folder (keeping original filename)
-        std::string outputPath = scenepath + "/foreground/" + filename;
+        std::string outputPath = scenepath + "/foreground/obj_" + filename;
         cv::imwrite(outputPath, croppedImage);
         
         LOGI("Saved cropped image to: %{public}s", outputPath.c_str());
@@ -1158,7 +1158,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     }
     
 //     prependSkyboxPoints(data, 10000, 0.01, 10.0);
-    data.processAndCropForeground(scenepath);
+//     data.processAndCropForeground(scenepath);
+//     saveCameras(scenepath, data);
     imagesFile.close();
     camerasFile.close();
 }

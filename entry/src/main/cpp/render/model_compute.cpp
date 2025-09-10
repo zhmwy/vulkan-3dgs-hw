@@ -4505,7 +4505,10 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian);
     
+    auto begin = clk::now();
     DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
+    LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+    
     std::filesystem::create_directories(dataPath + "/visual_hull");
     DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
 //     FaceTune(inputGaussian, dataPath);
