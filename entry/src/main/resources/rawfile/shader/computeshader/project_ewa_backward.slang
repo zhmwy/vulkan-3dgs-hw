@@ -333,13 +333,13 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
                         (-extr_params[3] * extr_params[2] / norm_e3) * dL_dqye_act +
                         (1 / norm_e - extr_params[3] * extr_params[3] / norm_e3) * dL_dqze_act;
 
-        dL_dextr_params.InterlockedAddF32(0 * sizeof(float), dL_dqwe, oldvalue);
-        dL_dextr_params.InterlockedAddF32(1 * sizeof(float), dL_dqxe, oldvalue);
-        dL_dextr_params.InterlockedAddF32(2 * sizeof(float), dL_dqye, oldvalue);
-        dL_dextr_params.InterlockedAddF32(3 * sizeof(float), dL_dqze, oldvalue);
-        dL_dextr_params.InterlockedAddF32(4 * sizeof(float), dL_dextr_reg[3], oldvalue);
-        dL_dextr_params.InterlockedAddF32(5 * sizeof(float), dL_dextr_reg[7], oldvalue);
-        dL_dextr_params.InterlockedAddF32(6 * sizeof(float), dL_dextr_reg[11], oldvalue);
+        // dL_dextr_params.InterlockedAddF32(0 * sizeof(float), dL_dqwe, oldvalue);
+        // dL_dextr_params.InterlockedAddF32(1 * sizeof(float), dL_dqxe, oldvalue);
+        // dL_dextr_params.InterlockedAddF32(2 * sizeof(float), dL_dqye, oldvalue);
+        // dL_dextr_params.InterlockedAddF32(3 * sizeof(float), dL_dqze, oldvalue);
+        // dL_dextr_params.InterlockedAddF32(4 * sizeof(float), dL_dextr_reg[3], oldvalue);
+        // dL_dextr_params.InterlockedAddF32(5 * sizeof(float), dL_dextr_reg[7], oldvalue);
+        // dL_dextr_params.InterlockedAddF32(6 * sizeof(float), dL_dextr_reg[11], oldvalue);
 
     }
 

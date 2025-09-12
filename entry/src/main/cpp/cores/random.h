@@ -16,6 +16,7 @@ private:
     std::mt19937 gen;               // Mersenne Twister RNG
     std::uniform_int_distribution<> dist;
     std::vector<int> arr;
+    std::vector<std::vector<int>> trainOrders;
     int _range = -1;
     int _current_idx = 0;
     
@@ -38,15 +39,25 @@ public:
         arr = trainOrder;
         _range = -1;
     }
+    void initialize(std::vector<std::vector<int>> _trainOrders) {
+        this->trainOrders = _trainOrders;
+        _range = trainOrders.size();
+        gen.seed(rd()); 
+        dist = std::uniform_int_distribution<>(0, _range - 1);
+    }
     
     
     int generate() {
-        if(_current_idx == _range){
-            this->initQueue();
-        }
         int k = arr[_current_idx % arr.size()];
         _current_idx++;
         return k;
+        
+//         if(_current_idx % _range == 0){
+//             arr = trainOrders[dist(gen)];
+//         }
+//         int k = arr[_current_idx % _range];
+//         _current_idx++;
+//         return k;
     }
 
     

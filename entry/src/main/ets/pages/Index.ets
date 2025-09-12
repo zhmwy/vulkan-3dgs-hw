@@ -91,10 +91,10 @@ struct Index {
       //   // await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
       //   this.message = "Training Complete!";
       // }
-      // caseName = caseNames[0];
+      caseName = caseNames[0];
       await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件kl;lkm
       hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-      await this.segmentAllImagesInSandbox();
+      this.segmentAllImagesInSandbox();
       await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
       this.message = "Training Complete!";
     } catch (error) {
@@ -132,10 +132,10 @@ struct Index {
           .height(100)
           .margin(20)
 
-        Image(this.pixelMap)
-          .width(240)
-          .height(320)
-          .onClick(()=>this.switchImage())
+        // Image(this.pixelMap)
+        //   .width(240)
+        //   .height(320)
+        //   .onClick(()=>this.switchImage())
       }
       .width('100%')
       .height('100%')

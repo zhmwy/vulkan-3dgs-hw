@@ -70,6 +70,7 @@ public:
         int width, height;
         
         std::vector<int> trainOrder;
+        std::vector<std::vector<int>> trainOrders;
         
         //void normalizeData();
         //void computePositionStats();
@@ -80,6 +81,7 @@ public:
         
         int findMaxPose(std::set<int>& chosen);
         void getTrainOrder(int first_id = 0);
+        void getTrainOrders();
         void processAndCropForeground(const std::string& scenepath);
     };
 

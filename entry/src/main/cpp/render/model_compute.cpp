@@ -38,6 +38,10 @@ void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
 
     inputGaussian.getTrainOrder();
     random_generator.initialize(inputGaussian.trainOrder);
+    
+//     inputGaussian.getTrainOrders();
+//     random_generator.initialize(inputGaussian.trainOrders);
+
 //     random_generator.initialize(inputGaussian.img_list.size());
 }
 
@@ -751,6 +755,12 @@ void VulkanComputeGS::optimizeStepCmd()
 
     if (training_step <= flow_steps) {
         bindPipeline2CommandBuffer(pipe_optimize, FORWARD_PIPE, X, 1, 1, true);
+        
+        if(training_step >= 200000) {
+//             std::vector<uint32_t> constant = {(unsigned int)splat_count, (unsigned int)training_step, (unsigned int)current_img_idx, 0};
+//             bindPipeline2CommandBufferPushConstants(pipe_optimize_extr, FORWARD_PIPE, 1, 1, 1, std::vector<uint32_t> &constant);
+        }
+        
     }
     else {
         bindPipeline2CommandBuffer(pipe_post_flow_optimize, FORWARD_PIPE, X, 1, 1, true);
@@ -1045,6 +1055,7 @@ void VulkanComputeGS::DestoryBuffers()
     vkDestroyBufferGS(device, splat_buffers.camera_extrs_avg, nullptr);
     vkDestroyBufferGS(device, splat_buffers.camera_extrs_exp_avg, nullptr);
     
+    
     vkDestroyBufferGS(device, splat_buffers.input_image_array, nullptr);
     vkDestroyBufferGS(device, splat_buffers.input_image_alpha_array, nullptr);
 
@@ -1228,6 +1239,15 @@ void VulkanComputeGS::prepare3dgsBuffers()
         allocator, 4 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    splat_buffers.intr_avg = vkgs::Buffer(
+        allocator, 4 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    splat_buffers.intr_exp_avg = vkgs::Buffer(
+        allocator, 4 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    
     splat_buffers.extr_params = vkgs::Buffer(
         allocator, 7 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1261,7 +1281,10 @@ void VulkanComputeGS::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
-    
+    splat_buffers.camera_training_steps = vkgs::Buffer(
+        allocator, sizeof(int) * inputGaussian.extr_tmp.size(),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
     
     splat_buffers.visible = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * sizeof(uint32_t),
@@ -2581,19 +2604,23 @@ void VulkanComputeGS::setOptimizeFlowPipeline()
 
 void VulkanComputeGS::setExtrOptimizationPipeline()
 {
-    const uint32_t bindingCount = 4;
+    const uint32_t bindingCount = 9;
     createPipelineLayout(
         pipe_optimize_extr,
         bindingCount,  // Number of descriptor set bindings
         true,
-        sizeof(uint32_t) * 8 // Push constant size (xyz_size; width; height;)
+        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
     );
 
     std::vector<vkgs::Buffer*> splatBuffers = {
         &splat_buffers.dL_dextr_params,
         &splat_buffers.camera_extrs,
         &splat_buffers.camera_extrs_avg,
-        &splat_buffers.camera_extrs_exp_avg
+        &splat_buffers.camera_extrs_exp_avg,
+        &splat_buffers.camera_training_steps,
+        &splat_buffers.intr_params,
+        &splat_buffers.intr_avg,
+        &splat_buffers.intr_exp_avg
     };
 
     updateDescriptorSet(pipe_optimize_extr.descriptorSet, splatBuffers);
@@ -4505,12 +4532,12 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian);
     
-    auto begin = clk::now();
-    DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
-    LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-    
-    std::filesystem::create_directories(dataPath + "/visual_hull");
-    DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
+//     auto begin = clk::now();
+//     DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
+//     LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+//    
+//     std::filesystem::create_directories(dataPath + "/visual_hull");
+//     DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
 //     FaceTune(inputGaussian, dataPath);
 //     auto begin = clk::now();
 //     BeautifyGaussians(inputGaussian, dataPath);

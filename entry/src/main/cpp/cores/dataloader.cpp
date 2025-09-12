@@ -372,7 +372,8 @@ int DataLoader::InputInitStruct::findMaxPose(std::set<int>& chosen) {
     return maxID;
 }
 
-void DataLoader::InputInitStruct::getTrainOrder(int first_id) {
+void DataLoader::InputInitStruct::getTrainOrder(int first_id) 
+{
     int N = this->img_list.size();
     if (N <= 0)
         return;
@@ -385,7 +386,22 @@ void DataLoader::InputInitStruct::getTrainOrder(int first_id) {
     chosen.insert(first_id);
     
     for(int i = 1; i < N; i++) {
-        trainOrder.push_back(findMaxPose(chosen));
+        auto id = findMaxPose(chosen);
+        trainOrder.push_back(id);
+        chosen.insert(id);
+    }
+}
+
+void DataLoader::InputInitStruct::getTrainOrders()
+{
+    int N = this->img_list.size();
+    if (N <= 0)
+        return;
+    
+    for (int i = 0; i < N; i++) {
+        trainOrder.clear();
+        getTrainOrder(i);
+        trainOrders.push_back(trainOrder);
     }
 }
 
@@ -1153,11 +1169,11 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
             }
         }
     }
-    else{
+    else {
         resumed = true;
     }
     
-//     prependSkyboxPoints(data, 10000, 0.01, 10.0);
+    prependSkyboxPoints(data, 10000, 0.01, 10.0);
 //     data.processAndCropForeground(scenepath);
 //     saveCameras(scenepath, data);
     imagesFile.close();

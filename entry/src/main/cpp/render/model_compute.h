@@ -122,6 +122,10 @@ public:
         vkgs::Buffer scale_array;   // [P, 3]
         vkgs::Buffer rotate_array;
         vkgs::Buffer intr_params;   // [4]
+        vkgs::Buffer intr_avg;
+        vkgs::Buffer intr_exp_avg;
+        
+        
         vkgs::Buffer intr_params_render;
         vkgs::Buffer extr_params;           // [1, 7]
         vkgs::Buffer extr_params_render;    // [1, 7]
@@ -202,6 +206,7 @@ public:
         
         vkgs::Buffer camera_extrs_avg;
         vkgs::Buffer camera_extrs_exp_avg;
+        vkgs::Buffer camera_training_steps;
         
         // for groundtruth
         vkgs::Buffer input_image_array;
