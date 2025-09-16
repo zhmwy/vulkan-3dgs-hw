@@ -124,6 +124,7 @@ public:
         vkgs::Buffer intr_params;   // [4]
         vkgs::Buffer intr_avg;
         vkgs::Buffer intr_exp_avg;
+        vkgs::Buffer normal_array;
         
         
         vkgs::Buffer intr_params_render;

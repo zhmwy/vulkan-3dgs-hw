@@ -137,6 +137,14 @@ void VulkanComputeGS::encodeCpu2Gpu()
         );
     }
     
+    if(inputGaussian.normals.size() > 0) {
+        inputGaussian.normals.resize(MAX_SPLAT_COUNT);
+        splat_buffers.normal_array.FromCpu(
+            compute.commandBuffer,
+            inputGaussian.normals.data()
+        );
+    }
+    
     std::vector<int> curPointsNum(1);
     curPointsNum[0] = splat_count;
     splat_buffers.curPointsNum.FromCpu(
@@ -1161,6 +1169,11 @@ void VulkanComputeGS::prepare3dgsBuffers()
         allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
+    splat_buffers.normal_array = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * 3 * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
+    
     
     splat_buffers.time_stamp = vkgs::Buffer(
         allocator, sizeof(float),
@@ -1941,7 +1954,9 @@ void VulkanComputeGS::setKNNPipeline()
 
     std::vector<vkgs::Buffer*> splatBuffers = {
         &splat_buffers.xyz_array,       //0
-        & splat_buffers.scale_array,     //1
+        &splat_buffers.scale_array,     //1
+        &splat_buffers.normal_array,
+        &splat_buffers.rotate_array
     };
 
     updateDescriptorSet(pipe_knn.descriptorSet, splatBuffers);

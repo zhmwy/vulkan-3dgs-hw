@@ -1,7 +1,48 @@
 #include "utils.slang"
 
+float4 rotmatrix_to_unit_quaternion(float3x3 R)
+{
+    float4 quaternion;
+    float trace = R[0][0] + R[1][1] + R[2][2];
+
+    if (trace > 0) {
+        float S = sqrt(trace + 1.0) * 2.0;
+        quaternion[0] = 0.25 * S; // w
+        quaternion[1] = (R[2][1] - R[1][2]) / S; // x
+        quaternion[2] = (R[0][2] - R[2][0]) / S; // y
+        quaternion[3] = (R[1][0] - R[0][1]) / S; // z
+    }
+    else if ((R[0][0] > R[1][1]) && (R[0][0] > R[2][2])) {
+        float S = sqrt(1.0 + R[0][0] - R[1][1] - R[2][2]) * 2.0;
+        quaternion[0] = (R[2][1] - R[1][2]) / S; // w
+        quaternion[1] = 0.25 * S; // x
+        quaternion[2] = (R[0][1] + R[1][0]) / S; // y
+        quaternion[3] = (R[0][2] + R[2][0]) / S; // z
+    } 
+    else if (R[1][1] > R[2][2]) {
+        float S = sqrt(1.0 + R[1][1] - R[0][0] - R[2][2]) * 2.0;
+        quaternion[0] = (R[0][2] - R[2][0]) / S; // w
+        quaternion[1] = (R[0][1] + R[1][0]) / S; // x
+        quaternion[2] = 0.25 * S; // y
+        quaternion[3] = (R[1][2] + R[2][1]) / S; // z
+    } 
+    else {
+        float S = sqrt(1.0 + R[2][2] - R[0][0] - R[1][1]) * 2.0;
+        quaternion[0] = (R[1][0] - R[0][1]) / S; // w
+        quaternion[1] = (R[0][2] + R[2][0]) / S; // x
+        quaternion[2] = (R[1][2] + R[2][1]) / S; // y
+        quaternion[3] = 0.25 * S; // z
+    }
+
+    return quaternion;
+}
+
+
 [[vk::binding(0)]] StructuredBuffer<float> point_positions;  // 每个点的3D位置，线性展开的float数组
 [[vk::binding(1)]] RWStructuredBuffer<float> avg_distances;    // 每个点的最近三个点平均距离
+[[vk::binding(2)]] StructuredBuffer<float> normals;  // 每个点的3D位置，线性展开的float数组
+[[vk::binding(3)]] RWStructuredBuffer<float> rotation_array;    // 每个点的最近三个点平均距离
+
 
 [[vk::push_constant]]
 cbuffer PushConstants
@@ -79,4 +120,51 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     avg_distances[idx * 3] = logAvgDistance;
     avg_distances[idx * 3 + 1] = logAvgDistance;
     avg_distances[idx * 3 + 2] = logAvgDistance;
+    return;
+    if (idx < skybox_num)
+        return;
+
+    float3 normal = float3(
+        normals[3 * idx],
+        normals[3 * idx + 1],
+        normals[3 * idx + 2]
+    );
+
+    float d = sqrt(normal.x * normal.x + normal.y * normal.y);
+
+    float3x3 R;
+    if (normal.z == 1) {
+        R = float3x3(
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        );
+    }
+
+    else if (normal.z == -1) {
+        R = float3x3(
+            1, 0, 0,
+            0, -1, 0,
+            0, 0, -1
+        );
+    }
+
+    else {
+        R = float3x3(
+            -normal.y / d, -normal.x * normal.z / d, normal.x,
+             normal.x / d, -normal.y * normal.z / d, normal.y,
+            0,              d,                       normal.z
+        );
+    }
+
+    // avg_distances[idx * 3 + 0] *= 1.1;
+    // avg_distances[idx * 3 + 1] *= 1.1;
+    // avg_distances[idx * 3 + 2] /= 2;
+
+    // float4 q = rotmatrix_to_unit_quaternion(R);
+    // rotation_array[idx *4 + 0] = q[0];
+    // rotation_array[idx *4 + 1] = q[1];
+    // rotation_array[idx *4 + 2] = q[2];
+    // rotation_array[idx *4 + 3] = q[3];
+    
 }

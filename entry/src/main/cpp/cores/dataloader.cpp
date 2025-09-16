@@ -333,15 +333,18 @@ void DataLoader::InputInitStruct::denormalizePoints() {
 
 
 double quatDist(DataLoader::InputInitStruct::DataExtr& A, DataLoader::InputInitStruct::DataExtr& B){
-    return A.values[0] * B.values[0] + A.values[1] * B.values[1] + A.values[2] * B.values[2] + A.values[3] * B.values[3];
+    auto dot = A.values[0] * B.values[0] + A.values[1] * B.values[1] + A.values[2] * B.values[2] + A.values[3] * B.values[3];
+    dot = std::max(-1.0f, std::min(1.0f, dot));
+    double angle = std::acos(std::abs(dot));
+    return angle;
 }
 
 int DataLoader::InputInitStruct::findMaxPose(std::set<int>& chosen) {
     if (chosen.size() == img_list.size())
         return -1;
         
-    double maxAngle = 100;
-    int maxID = 100;
+    double maxAngle = -100000;
+    int maxID = 100000;
     
     
     for (int i = 0; i < img_list.size(); i++) {
@@ -354,16 +357,16 @@ int DataLoader::InputInitStruct::findMaxPose(std::set<int>& chosen) {
             break;
         }
             
-        double minAngle = -100;
+        double minAngle = 100000;
         
         for (int j = 0; j < trainOrder.size(); j++){
-            double cosDist = quatDist(extr_tmp[i], extr_tmp[trainOrder[j]]);
-            if(cosDist > minAngle) {
-                minAngle = cosDist;
+            double angle = quatDist(extr_tmp[i], extr_tmp[trainOrder[j]]);
+            if(angle < minAngle) {
+                minAngle = angle;
             }
         }
         
-        if (minAngle < maxAngle) {
+        if (minAngle > maxAngle) {
             maxAngle = minAngle;
             maxID = i;
         }
@@ -893,12 +896,15 @@ void prependSkyboxPoints(
     std::vector<Base::Math::Vec4>       skyRotations;
     std::vector<float>           skyOpacities;
     std::vector<DataLoader::InputInitStruct::Data> skyColors;
+    std::vector<Base::Math::Vec3>       skyNormals;
 
     skyPositions.reserve(sky_num_gs);
     skyScales.reserve(sky_num_gs);
     skyRotations.reserve(sky_num_gs);
     skyOpacities.reserve(sky_num_gs);
     skyColors.reserve(sky_num_gs);
+    skyNormals.reserve(sky_num_gs);
+    
 
     for (int i = 0; i < sky_num_gs; ++i) {
         Base::Math::Vec3 pos = dirs[i] * halfSize + center;
@@ -907,6 +913,7 @@ void prependSkyboxPoints(
         skyScales.push_back(Base::Math::Vec3(-4.5f, -4.5f, -4.5f));
         skyRotations.push_back(Base::Math::Vec4(1.0f, 0.0f, 0.0f, 0.0f));
         skyOpacities.push_back(-2.197224617004395f);
+        skyNormals.push_back(Base::Math::Vec3(1.0f, 1.0f, 1.0f));
         
         DataLoader::InputInitStruct::Data cd{};
         cd.values[0] = whiteScaled;
@@ -920,6 +927,9 @@ void prependSkyboxPoints(
     data.rotations.insert(data.rotations.begin(), skyRotations.begin(), skyRotations.end());
     data.opacities.insert(data.opacities.begin(), skyOpacities.begin(), skyOpacities.end());
     data.colors.insert(data.colors.begin(), skyColors.begin(), skyColors.end());
+    if(data.normals.size() > 0) {
+        data.normals.insert(data.normals.begin(), skyNormals.begin(), skyNormals.end());
+    }
 }
 
 void DataLoader::InputInitStruct::processAndCropForeground(const std::string& scenepath) {
@@ -1041,7 +1051,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
 
     std::string imagesFilePath = slampath + "/images.txt";
     std::string cameraFilePath = slampath + "/cameras.txt";             // TODO: slampath?
-
+    std::string normalFilePath = slampath + "/normals.txt";
+    
     // 2. Load intrinsics from cameras.txt
     std::string line;
     std::ifstream camerasFile(cameraFilePath);
@@ -1171,6 +1182,22 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     }
     else {
         resumed = true;
+    }
+    
+    
+    std::ifstream normalsFile(normalFilePath);
+    if (normalsFile.is_open()) {
+        std::string line;
+        while (std::getline(normalsFile, line)){
+            if (line.empty()) continue;
+            std::istringstream iss(line);
+            float nx, ny, nz;
+            if (!(iss >> nx >> ny >> nz)) {
+                continue; // Skip invalid lines.
+            }
+            Base::Math::Vec3 normals(nx, ny, nz);
+            data.normals.push_back(normals);
+        }
     }
     
     prependSkyboxPoints(data, 10000, 0.01, 10.0);
