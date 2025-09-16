@@ -68,7 +68,7 @@ public:
         //void normalizeData();
         //void computePositionStats();
         void getNerfppNorm();
-        
+        void processAndCropForeground(const std::string& scenepath);
         void denormalizeExtr();
         void denormalizePoints();
     };

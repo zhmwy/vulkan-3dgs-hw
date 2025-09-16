@@ -13,7 +13,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-const caseName: string = "jingtai";
+const caseName: string = "2025-06-04_15_59_26";
 
 
 @Entry
@@ -50,7 +50,7 @@ struct Index {
       });
       await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件
       hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-      this.segmentAllImagesInSandbox();
+      // await this.segmentAllImagesInSandbox();
       await nativeRender.train3DGS(this.resmgr, inputPath);
       this.message = "Training Complete!";
     } catch (error) {
