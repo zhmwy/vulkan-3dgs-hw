@@ -11,6 +11,7 @@
 #include "file/file_operator.h"
 
 #include "base/math/vector.h"
+#include <random>
 
 
 using namespace tinyply;
@@ -80,9 +81,12 @@ public:
         void denormalizeExtr();
         void denormalizePoints();
         
+        void shuffleImage();
+        
         int findMaxPose(std::set<int>& chosen);
         void getTrainOrder(int first_id = 0);
         void getTrainOrders();
+        
         void processAndCropForeground(const std::string& scenepath);
     };
 

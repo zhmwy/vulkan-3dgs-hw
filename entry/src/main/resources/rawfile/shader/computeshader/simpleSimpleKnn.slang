@@ -121,6 +121,29 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     avg_distances[idx * 3 + 1] = logAvgDistance;
     avg_distances[idx * 3 + 2] = logAvgDistance;
     return;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     if (idx < skybox_num)
         return;
 

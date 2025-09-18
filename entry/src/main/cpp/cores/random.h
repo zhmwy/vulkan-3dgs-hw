@@ -48,16 +48,16 @@ public:
     
     
     int generate() {
-        int k = arr[_current_idx % arr.size()];
-        _current_idx++;
-        return k;
-        
-//         if(_current_idx % _range == 0){
-//             arr = trainOrders[dist(gen)];
-//         }
-//         int k = arr[_current_idx % _range];
+//         int k = arr[_current_idx % arr.size()];
 //         _current_idx++;
 //         return k;
+        
+        if(_current_idx % _range == 0){
+            arr = trainOrders[dist(gen)];
+        }
+        int k = arr[_current_idx % _range];
+        _current_idx++;
+        return k;
     }
 
     

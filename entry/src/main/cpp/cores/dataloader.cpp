@@ -339,6 +339,40 @@ double quatDist(DataLoader::InputInitStruct::DataExtr& A, DataLoader::InputInitS
     return angle;
 }
 
+template<typename T> 
+void swapElem(std::vector<T>& elems, std::vector<int> arr) {
+    
+    assert(elems.size() == arr.size());
+    
+    std::vector<T> elems_swap;
+    for (int i = 0; i < elems.size(); i++){
+        elems_swap.push_back(elems[arr[i]]);
+    }
+    elems_swap.swap(elems);
+}
+
+
+void DataLoader::InputInitStruct::shuffleImage() {
+    int N = this->img_list.size();
+    
+    std::vector<int> arr(N, 0);
+    for(int i = 0; i < N; i++)
+        arr[i] = i;
+    
+    std::mt19937 gen;
+    std::random_device rd;
+    gen.seed(rd());
+    std::shuffle(arr.begin(), arr.end(), gen);
+    
+    swapElem(img_list, arr);
+    swapElem(extr_tmp, arr);
+    swapElem(extr_tmp_test, arr);
+    
+    if (intr_tmp.size() > 1)
+        swapElem(intr_tmp, arr);
+        
+}
+
 int DataLoader::InputInitStruct::findMaxPose(std::set<int>& chosen) {
     if (chosen.size() == img_list.size())
         return -1;
@@ -1201,7 +1235,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     }
     
     prependSkyboxPoints(data, 10000, 0.01, 10.0);
-//     data.processAndCropForeground(scenepath);
+    data.processAndCropForeground(scenepath);
 //     saveCameras(scenepath, data);
     imagesFile.close();
     camerasFile.close();

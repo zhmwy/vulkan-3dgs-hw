@@ -224,7 +224,7 @@ DataLoader::InputInitStruct segmentGaussiansFromMask(
         
         // Get camera parameters
         const auto& extr = target.extr_tmp[cam_idx];
-        const auto& intr = target.intr_tmp[cam_idx];
+        const auto& intr = target.intr_tmp[0];
         
         float fx = intr[0];
         float fy = intr[1];
