@@ -51,11 +51,7 @@ public:
 //         int k = arr[_current_idx % arr.size()];
 //         _current_idx++;
 //         return k;
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         if(_current_idx % _range == 0){
             arr = trainOrders[dist(gen)];
         }

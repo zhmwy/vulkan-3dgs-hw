@@ -95,6 +95,7 @@ public:
     int sh_degree = 1;
     
     bool isObject = false;  // decide whether to train object only
+    bool segmentationFinished = false; // Do not change this unless you are confident that segmentation has been done
     
     RandomGenerator random_generator;
     int current_img_idx = 0;

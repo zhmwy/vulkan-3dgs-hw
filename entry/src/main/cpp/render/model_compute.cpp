@@ -35,18 +35,12 @@ void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
     }
 
     splat_count = inputGaussian.positions.size();
-<<<<<<< Updated upstream
 
 //     inputGaussian.getTrainOrder();
 //     random_generator.initialize(inputGaussian.trainOrder);
     
     inputGaussian.shuffleImage();
-=======
-//
-//     inputGaussian.getTrainOrder();
-//     random_generator.initialize(inputGaussian.trainOrder);
-    
->>>>>>> Stashed changes
+
     inputGaussian.getTrainOrders();
     random_generator.initialize(inputGaussian.trainOrders);
 
@@ -466,7 +460,7 @@ void VulkanComputeGS::imageToBufferCmd()
             &copyRegionI
         );
         
-        if (isObject) {
+        if (isObject && segmentationFinished) {
             vkCmdCopyImageToBufferGS(
                 compute.commandBuffer,
                 inputGaussian.masks[current_img_idx].vkImage,
@@ -489,7 +483,7 @@ void VulkanComputeGS::imageToBufferCmd()
             &copyRegionI
         );
         
-        if (isObject) {
+        if (isObject && segmentationFinished) {
             vkCmdCopyImageToBufferGS(
                 compute.commandBuffer,
                 inputGaussian.masks_low_res[current_img_idx].vkImage,
@@ -567,7 +561,7 @@ void VulkanComputeGS::zeroGradCmd()
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
     
-    if(isObject) {
+    if(isObject && segmentationFinished) {
         vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.alpha_array, 0, VK_WHOLE_SIZE, 0);
         vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dalpha_array, 0, VK_WHOLE_SIZE, 0);
     }
@@ -616,7 +610,7 @@ void VulkanComputeGS::forwardCmd()
 
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
-    if (isObject)
+    if (isObject && segmentationFinished)
         bindPipeline2CommandBuffer(pipe_blending_object, FORWARD_PIPE, X, Y, 1);
     else
         bindPipeline2CommandBuffer(pipe_blending_int, FORWARD_PIPE, X, Y, 1);
@@ -684,7 +678,7 @@ void VulkanComputeGS::forwardCmdTime()
     queryCmdTimeStart("13. forward_blend");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
-    if(isObject)
+    if(isObject && segmentationFinished)
         bindPipeline2CommandBuffer(pipe_blending_object, FORWARD_PIPE, X, Y, 1);
     else
         bindPipeline2CommandBuffer(pipe_blending_int, FORWARD_PIPE, X, Y, 1);
@@ -718,7 +712,7 @@ void VulkanComputeGS::backwardCmd()
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
     bindPipeline2CommandBuffer(pipe_ssim, BACKWARD_PIPE, X, Y, 1, true);
     
-    if(isObject)
+    if(isObject && segmentationFinished)
         bindPipeline2CommandBuffer(pipe_loss_mask, FORWARD_PIPE, X, Y, 1, false);
     
     queryCmdTimeEnd("15. L1_loss");
@@ -732,7 +726,7 @@ void VulkanComputeGS::backwardCmd()
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
 
 //     bindPipeline2CommandBuffer(pipe_blending, BACKWARD_PIPE, X, Y, 1);
-    if (isObject)
+    if (isObject && segmentationFinished)
         bindPipeline2CommandBuffer(pipe_blending_object, BACKWARD_PIPE, X, Y, 1);
     else
         bindPipeline2CommandBuffer(pipe_blending_int, BACKWARD_PIPE, X, Y, 1);
@@ -3813,7 +3807,7 @@ void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scal
         cv::Mat dsp_img;
         cv::resize(img, dsp_img, cv::Size(dsp_width, dsp_height));
         
-        if (isObject){
+        if (isObject && segmentationFinished){
             std::string& maskname = inputGaussian.mask_list[i];
             cv::Mat mask = cv::imread(maskname);
             cv::Mat dsp_mask;
@@ -4515,7 +4509,7 @@ void VulkanComputeGS::performSegmentationUpdate(const std::string& dataPath) {
     }
     
     // Enable object mode now that we have masks
-    isObject = true;
+    segmentationFinished = true;
     
     // Step 2: Reload assets with segmentation masks applied
     // Calculate scale from existing low_res images
@@ -4684,8 +4678,7 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian);
     
-<<<<<<< Updated upstream
-    if (isObject){
+    if (isObject && segmentationFinished){
         auto begin = clk::now();
         DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
         LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
@@ -4693,16 +4686,7 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
         std::filesystem::create_directories(dataPath + "/visual_hull");
         DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
     }
-
-=======
-    auto begin = clk::now();
-    DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
-    LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-
-    std::filesystem::create_directories(dataPath + "/visual_hull");
-    DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
     
->>>>>>> Stashed changes
 //     FaceTune(inputGaussian, dataPath);
 //     auto begin = clk::now();
 //     BeautifyGaussians(inputGaussian, dataPath);

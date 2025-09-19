@@ -72,15 +72,14 @@ void InterfaceImplVulkan::TrainVulkan() {
         std::chrono::duration<double> duration = end - start;
         int step = 0;
         
-        bool segmentationApplied = false;  // Track if we've already applied segmentation
         while(duration.count() < total_time) {
             if (!_isTraining) break;
             
             // Check for segmentation completion and apply if ready (only once)
-            if (!segmentationApplied && isSegmentationComplete()) {
+            if (!_renderer->segmentationFinished && isSegmentationComplete() && _renderer->isObject) {
                 LOGI("Segmentation masks detected! Applying foreground segmentation...");
                 _renderer->performSegmentationUpdate(_dataPath);
-                segmentationApplied = true;
+//                 _renderer->segmentationFinished = true;
                 LOGI("Foreground segmentation applied, continuing with foreground-only training.");
             }
             
