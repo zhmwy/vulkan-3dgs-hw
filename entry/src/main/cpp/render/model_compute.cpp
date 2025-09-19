@@ -35,11 +35,18 @@ void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
     }
 
     splat_count = inputGaussian.positions.size();
+<<<<<<< Updated upstream
 
 //     inputGaussian.getTrainOrder();
 //     random_generator.initialize(inputGaussian.trainOrder);
     
     inputGaussian.shuffleImage();
+=======
+//
+//     inputGaussian.getTrainOrder();
+//     random_generator.initialize(inputGaussian.trainOrder);
+    
+>>>>>>> Stashed changes
     inputGaussian.getTrainOrders();
     random_generator.initialize(inputGaussian.trainOrders);
 
@@ -1357,7 +1364,7 @@ void VulkanComputeGS::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
-    if (this->isObject) {
+    if (true) {
         splat_buffers.alpha_array = vkgs::Buffer(
             allocator, image_width * image_height * sizeof(float),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -3770,15 +3777,33 @@ void VulkanComputeGS::setBufferFillPipeline()
     std::cout << "[setBufferFillPipeline] Buffer Fill Pipeline set" << std::endl;
 }
 
-void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scale) {
+// Modified loadAssets function to handle reloading with segmentation masks
+void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scale, bool reload_with_masks) {
     std::cout << "Loading assets..." << std::endl;
     
     image_width = origin_width;
     image_height = origin_height;
     
+    // If we're reloading with masks, swap out the old textures
+    if (reload_with_masks && !inputGaussian.images.empty()) {
+        // Create temporary vectors to hold old textures (will be freed when function exits)
+        std::vector<vkbase::Texture2DGS> temp_images;
+        std::vector<vkbase::Texture2DGS> temp_images_low_res;
+        std::vector<vkbase::Texture2DGS> temp_masks;
+        std::vector<vkbase::Texture2DGS> temp_masks_low_res;
+        
+        // Swap to move old textures to temp vectors
+        temp_images.swap(inputGaussian.images);
+        temp_images_low_res.swap(inputGaussian.images_low_res);
+        if (!inputGaussian.masks.empty()) {
+            temp_masks.swap(inputGaussian.masks);
+            temp_masks_low_res.swap(inputGaussian.masks_low_res);
+        }
+        // Now inputGaussian vectors are empty and ready for new images
+    }
+    
     for(int i = 0; i < inputGaussian.img_list.size(); i++){
         std::string& filename = inputGaussian.img_list[i];
-        
         
         cv::Mat img = cv::imread(filename);
         cv::resize(img, img, cv::Size(origin_width, origin_height));
@@ -3787,7 +3812,6 @@ void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scal
         int dsp_height = static_cast<int>(origin_height * scale);
         cv::Mat dsp_img;
         cv::resize(img, dsp_img, cv::Size(dsp_width, dsp_height));
-        
         
         if (isObject){
             std::string& maskname = inputGaussian.mask_list[i];
@@ -3800,7 +3824,6 @@ void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scal
             
             cv::bitwise_and(img, mask, img);
             cv::bitwise_and(dsp_img, dsp_mask, dsp_img);
-            
             
             cv::cvtColor(mask, mask, cv::COLOR_BGR2GRAY);
             cv::cvtColor(dsp_mask, dsp_mask, cv::COLOR_BGR2GRAY);
@@ -3855,7 +3878,6 @@ void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scal
         inputGaussian.images.push_back(texture_original);
         inputGaussian.images_low_res.push_back(texture_resized);
     }
-    
 }
 
 void VulkanComputeGS::bindPipeline2CommandBuffer(
@@ -4240,7 +4262,7 @@ bool VulkanComputeGS::prepare()
     setLossPipeline();
     setSSIMPipeline();
     
-    if (isObject){
+    if (true){
         setLossMaskPipeline();
         setAlphaBlendingObjectPipeline();
     }
@@ -4476,6 +4498,120 @@ void VulkanComputeGS::executeTransCommand()
     
 }
 
+// B. Member function of VulkanComputeGS to perform the segmentation workflow
+void VulkanComputeGS::performSegmentationUpdate(const std::string& dataPath) {
+    LOGI("Starting segmentation update workflow...");
+    
+    // Step 1: Update mask_list to point to the segmentation masks
+    inputGaussian.mask_list.clear();
+    for (const auto& imgPath : inputGaussian.img_list) {
+        // Extract base filename from image path (assuming images are .jpg)
+        std::filesystem::path p(imgPath);
+        std::string baseName = p.stem().string();  // filename without extension
+        
+        // Construct mask path (masks are .png in segmented folder)
+        std::string maskPath = dataPath + "/segmented/" + baseName + ".png";
+        inputGaussian.mask_list.push_back(maskPath);
+    }
+    
+    // Enable object mode now that we have masks
+    isObject = true;
+    
+    // Step 2: Reload assets with segmentation masks applied
+    // Calculate scale from existing low_res images
+    float scale = static_cast<float>(inputGaussian.images_low_res[0].width) / static_cast<float>(image_width);
+    loadAssets(image_width, image_height, scale, true);
+    
+    // Step 3: Get current 3DGS from GPU to CPU for segmentation
+    buildComputeCommandBuffer([this]() { 
+        createGpu2CpuCopy(splat_buffers.xyz_array);
+        createGpu2CpuCopy(splat_buffers.xyz_base_array);
+        createGpu2CpuCopy(splat_buffers.scale_array);
+        createGpu2CpuCopy(splat_buffers.rotate_array);
+        createGpu2CpuCopy(splat_buffers.rot_base_array);
+        createGpu2CpuCopy(splat_buffers.sh_coeff);
+        createGpu2CpuCopy(splat_buffers.opacity);
+    });
+    executeTransCommand();
+    
+    // Copy data from GPU buffers to inputGaussian
+    std::vector<float> positionData;
+    std::vector<float> rotationData;
+    if(training_step > flow_steps){
+        copyGpuBufferToVector(splat_buffers.xyz_base_array, positionData, splat_count, 3);
+        copyGpuBufferToVector(splat_buffers.rot_base_array, rotationData, splat_count, 4);
+    }
+    else{
+        copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
+        copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
+    }
+    
+    inputGaussian.positions.clear();
+    inputGaussian.positions.reserve(splat_count);
+    for (int i = 0; i < splat_count; i++) {
+        inputGaussian.positions.emplace_back(
+            positionData[i * 3], 
+            positionData[i * 3 + 1], 
+            positionData[i * 3 + 2]
+        );
+    }
+    
+    std::vector<float> scaleData;
+    copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
+    inputGaussian.scales.clear();
+    inputGaussian.scales.reserve(splat_count);
+    for (int i = 0; i < splat_count; i++) {
+        inputGaussian.scales.emplace_back(
+            scaleData[i * 3], 
+            scaleData[i * 3 + 1], 
+            scaleData[i * 3 + 2]
+        );
+    }
+    
+    inputGaussian.rotations.clear();
+    inputGaussian.rotations.reserve(splat_count);
+    for (int i = 0; i < splat_count; i++) {
+        inputGaussian.rotations.emplace_back(
+            rotationData[i * 4], 
+            rotationData[i * 4 + 1], 
+            rotationData[i * 4 + 2], 
+            rotationData[i * 4 + 3]
+        );
+    }
+    
+    std::vector<float> featureData;
+    copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
+    inputGaussian.colors.clear();
+    inputGaussian.colors.reserve(splat_count);
+    for (int i = 0; i < splat_count; i++) {
+        DataLoader::InputInitStruct::Data colorData;
+        for (int j = 0; j < 48; j++) {
+            colorData.values[j] = featureData[i * 48 + j];
+        }
+        inputGaussian.colors.push_back(colorData);
+    }
+    
+    copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
+    executeComputeCommand();
+    
+    // Step 4: Perform visual hull segmentation on the 3D gaussians
+    auto begin = std::chrono::high_resolution_clock::now();
+    inputGaussian = performVisualHullSegmentation(inputGaussian);
+    LOGW("Visual Hull segmentation took %{public}f seconds", 
+         std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - begin).count());
+    
+    // Update splat count after segmentation (gaussians may have been removed)
+    splat_count = inputGaussian.positions.size();
+    
+    // Step 5: Put segmented gaussians back to GPU
+    encodeCpu2Gpu();
+    ComputeMemoryBarrierBlock();
+    executeComputeCommand();
+    
+    LOGI("Segmentation update completed! New splat count: %{public}d", splat_count);
+}
+
+
 void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     
     buildComputeCommandBuffer([this]() { 
@@ -4548,6 +4684,7 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian);
     
+<<<<<<< Updated upstream
     if (isObject){
         auto begin = clk::now();
         DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
@@ -4557,6 +4694,15 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
         DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
     }
 
+=======
+    auto begin = clk::now();
+    DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
+    LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+
+    std::filesystem::create_directories(dataPath + "/visual_hull");
+    DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
+    
+>>>>>>> Stashed changes
 //     FaceTune(inputGaussian, dataPath);
 //     auto begin = clk::now();
 //     BeautifyGaussians(inputGaussian, dataPath);

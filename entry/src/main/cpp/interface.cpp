@@ -23,6 +23,23 @@ InterfaceImplVulkan::~InterfaceImplVulkan() {
     }
 }
 
+// A. Efficient function to check if segmentation is complete
+bool InterfaceImplVulkan::isSegmentationComplete() {
+    std::string segmentedPath = _dataPath + "/segmented";
+    
+    // Check if directory exists
+    if (!std::filesystem::exists(segmentedPath)) {
+        return false;
+    }
+    
+    // Efficiently count files in the directory
+    auto dirIter = std::filesystem::directory_iterator(segmentedPath);
+    int fileCount = std::distance(std::filesystem::directory_iterator(segmentedPath), 
+                                  std::filesystem::directory_iterator{});
+    
+    return fileCount >= _renderer->inputGaussian.sequence_length;
+}
+
 void InterfaceImplVulkan::InitVulkan(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train) {
     _dataPath = datapath;
     _outputPath = outputpath;
@@ -55,16 +72,26 @@ void InterfaceImplVulkan::TrainVulkan() {
         std::chrono::duration<double> duration = end - start;
         int step = 0;
         
+        bool segmentationApplied = false;  // Track if we've already applied segmentation
         while(duration.count() < total_time) {
             if (!_isTraining) break;
+            
+            // Check for segmentation completion and apply if ready (only once)
+            if (!segmentationApplied && isSegmentationComplete()) {
+                LOGI("Segmentation masks detected! Applying foreground segmentation...");
+                _renderer->performSegmentationUpdate(_dataPath);
+                segmentationApplied = true;
+                LOGI("Foreground segmentation applied, continuing with foreground-only training.");
+            }
+            
             _renderer->render();
             updateProgress(static_cast<float>(duration.count() * 100) / total_time);
             GetProcessVulkan();
             step++;
-
+        
             end = std::chrono::high_resolution_clock::now();
             duration = end - start;
-
+        
             // do not densify in the last 5 seconds
             if (duration.count() > total_time - 5.0){
                 _renderer->densify_start_step = 100000;

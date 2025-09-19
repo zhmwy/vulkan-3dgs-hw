@@ -64,7 +64,7 @@ class VulkanComputeGS : public VulkanComputeBase
 {
 public:
     void loadTestData(std::string& dataFolder, int flag=-1);
-    
+    void performSegmentationUpdate(const std::string& dataPath);
     void encodeCpu2Gpu();
     void createGpu2CpuCopys();
     VulkanComputeGS();
@@ -450,7 +450,7 @@ public:
     // Methods
     void prepreAllocator();
 
-    void loadAssets(int origin_width, int origin_height, float scale);
+    void loadAssets(int origin_width, int origin_height, float scale, bool reload_with_masks=false);
     
     virtual void encodePipeline2CommandBuffer();
     void buildComputeCommandBuffer(std::function<void()> func);

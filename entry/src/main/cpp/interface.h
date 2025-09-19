@@ -29,7 +29,7 @@ private:
     bool _isTraining;
     napi_threadsafe_function _g_progress_cb_train;
     void updateProgress(float value);
-    
+    bool isSegmentationComplete();
 
 public:
     InterfaceImplVulkan();

@@ -6,7 +6,7 @@
 #include <string>
 #include <regex>
 #include <dirent.h>
-
+#include "visual_hull.h"
 #include "human/human.h"
 
 int extractNumberKtx(const std::string& str) {
@@ -1235,7 +1235,14 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     }
     
     prependSkyboxPoints(data, 10000, 0.01, 10.0);
+<<<<<<< Updated upstream
     data.processAndCropForeground(scenepath);
+=======
+    if(isObject){
+        data = performVisualHullSegmentation(data);
+    }
+//     data.processAndCropForeground(scenepath);
+>>>>>>> Stashed changes
 //     saveCameras(scenepath, data);
     imagesFile.close();
     camerasFile.close();
