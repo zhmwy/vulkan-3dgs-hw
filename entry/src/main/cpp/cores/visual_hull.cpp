@@ -168,7 +168,7 @@ DataLoader::InputInitStruct segmentGaussiansFromMask(
     bool use_median = false
 ) {
     // Validate parameters
-    num_cameras = std::max(4, std::min(8, num_cameras));
+//     num_cameras = std::max(4, std::min(8, num_cameras));
     num_cameras = std::min(num_cameras, target.sequence_length);
     max_outside_count = std::min(max_outside_count, num_cameras - 1);
     

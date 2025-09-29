@@ -9,6 +9,7 @@
 #include "visual_hull.h"
 #include "human/human.h"
 
+
 int extractNumberKtx(const std::string& str) {
     std::regex re("r_(\\d+)\\.ktx");
     std::smatch match;
@@ -1075,7 +1076,7 @@ void DataLoader::InputInitStruct::processAndCropForeground(const std::string& sc
     LOGI("Processed %zu images for foreground cropping", target.size());
 }
 
-void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, bool& isObject,
+void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int trainingMode,
                             int height, int width)
 {
     std::string basePath = data.basepath;
@@ -1195,10 +1196,10 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
-        bool is_human = HumanPreprocess(scenepath, data, isObject);
+        bool is_human = HumanPreprocess(scenepath, data, trainingMode==HUMAN);
 
         std::string pointsFilePath = slampath + "/points3D.txt";
-        load3DPoints(pointsFilePath, data, (is_human && isObject));
+        load3DPoints(pointsFilePath, data, (is_human && trainingMode==HUMAN));
         
         
         if (is_human) {
@@ -1239,7 +1240,9 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
 //     if(isObject){
 //         data = performVisualHullSegmentation(data);
 //     }
-//     data.processAndCropForeground(scenepath);
+//     if(trainingMode == OBJECT){
+//         data.processAndCropForeground(scenepath);
+//     }
 
 //     saveCameras(scenepath, data);
     imagesFile.close();

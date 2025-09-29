@@ -19,7 +19,7 @@ export const getSyncPixelMap: (resMgr: resourceManager.ResourceManager, src: str
 export const getSandBoxPixelMap: (sandboxPath: string, src: string) => image.PixelMap;
 
 export const getContext: (a: number) => any;
-export const train3DGS: (resmgr: resourceManager.ResourceManager, folderPath: string) => Promise<number>;
+export const train3DGS: (resmgr: resourceManager.ResourceManager, folderPath: string, mode: number, isObject: boolean) => Promise<number>;
 // export const initTrainProgress: (cb: (progress: number) => void) => void;
 export const initTrainProgress: (resmgr: resourceManager.ResourceManager, cb: (progress: number) => void) => void;
 

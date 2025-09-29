@@ -9,7 +9,7 @@
 class InterfaceVulkan{
 public:
     InterfaceVulkan(){};
-    virtual void InitVulkan(std::string datapath, std::string modelpath, napi_threadsafe_function g_progress_cb_train)=0; //datapath是输入路径，modelpath是输出路径，优化后的txt覆盖原路径即可
+    virtual void InitVulkan(std::string datapath, std::string modelpath, int trainingMode, bool isObject, napi_threadsafe_function g_progress_cb_train)=0; //datapath是输入路径，modelpath是输出路径，优化后的txt覆盖原路径即可
     virtual void TrainVulkan()=0;
     virtual float GetProcessVulkan()=0;
     virtual ~InterfaceVulkan()=default;
@@ -34,7 +34,7 @@ private:
 public:
     InterfaceImplVulkan();
     ~InterfaceImplVulkan();
-    void InitVulkan(std::string datapath, std::string outputpath, napi_threadsafe_function g_progress_cb_train);
+    void InitVulkan(std::string datapath, std::string outputpath, int trainingMode, bool isObject, napi_threadsafe_function g_progress_cb_train);
     void TrainVulkan();
     float GetProcessVulkan();
 };

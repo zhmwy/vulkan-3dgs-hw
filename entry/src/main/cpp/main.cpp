@@ -217,6 +217,8 @@ struct AsyncContext {
     InterfaceImplVulkan* impl;
     std::string datapath;
     std::string outputpath;
+    int trainingMode;
+    bool isObject;
 };
 
 void ExecuteTraining(napi_env env, void* data) {
@@ -234,7 +236,8 @@ void ExecuteTraining(napi_env env, void* data) {
 //         LOGE("binding CPU fails\n");
 //     }
     
-    context->impl->InitVulkan(context->datapath, context->outputpath, g_progress_cb_train);
+    context->impl->InitVulkan(context->datapath, context->outputpath, 
+                                        context->trainingMode, context->isObject, g_progress_cb_train);
 //     context->impl->InitVulkan(context->datapath, context->outputpath, nullptr);
     context->impl->TrainVulkan();
 }
@@ -253,8 +256,8 @@ void CompleteTraining(napi_env env, napi_status status, void* data) {
 }
 
 napi_value Train3DGS(napi_env env, napi_callback_info info) {
-    size_t argc = 2;
-    napi_value argv[2];
+    size_t argc = 4;
+    napi_value argv[4];
     napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
 
     // Initialize resource manager
@@ -265,6 +268,14 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
     size_t pathLength;
     napi_get_value_string_utf8(env, argv[1], dataPath, sizeof(dataPath), &pathLength);
     std::string dataFolder(dataPath, pathLength);
+    
+    // Get training mode
+    int32_t trainingMode;
+    napi_get_value_int32(env, argv[2], &trainingMode);
+
+    // Whether to segment foreground
+    bool isObject;
+    napi_get_value_bool(env, argv[3], &isObject);
 
     // Create interface instance
     InterfaceImplVulkan* impl = static_cast<InterfaceImplVulkan*>(createInstanceVulkan());
@@ -276,6 +287,8 @@ napi_value Train3DGS(napi_env env, napi_callback_info info) {
     context->impl = impl;
     context->datapath = basepath + "/" + dataFolder;
     context->outputpath = basepath + "/" + dataFolder;
+    context->trainingMode = trainingMode;
+    context->isObject = isObject;
 
     // Setup promise
     napi_value promise;

@@ -13,7 +13,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-let caseName = "2025-06-04_19_29_27";
+let caseName = "2025-06-04_15_34_45";
 const caseNames: string[] = [
   "2025-06-04_15_34_45",
   "2025-06-04_15_57_44",
@@ -48,6 +48,16 @@ const chosenCase: string[] = [
   "2025-06-04_20_26_45",
   "2025-06-05_20_27_20"
 ]
+
+class GS_Mode {
+  static readonly SCENE = 0 // 暂无特定优化
+  static readonly OBJECT = 1 // 局部放大、EFA-GS
+  static readonly HUMAN = 2 // SMPL估计、人脸重点、美颜
+  static readonly MULTI_HUMAN = 3 // 人脸重点
+}
+const trainingMode: number = GS_Mode.OBJECT;
+
+const isObject: boolean = false;
 
 @Entry
 @Component
@@ -90,11 +100,13 @@ struct Index {
       //   // await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
       //   this.message = "Training Complete!";
       // }
-      // caseName = caseNames[0];
+      caseName = caseNames[4];
       await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件kl;lkm
-      hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`);
-      this.segmentAllImagesInSandbox();
-      await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
+      hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`)
+      if(trainingMode == GS_Mode.OBJECT){
+        this.segmentAllImagesInSandbox();
+      }
+      await nativeRender.train3DGS(this.resmgr, caseName, GS_Mode.OBJECT, isObject);  // for循环
       this.message = "Training Complete!";
     } catch (error) {
       // Handle error

@@ -13,6 +13,10 @@
 #include "base/math/vector.h"
 #include <random>
 
+#define SCENE 0
+#define OBJECT 1
+#define HUMAN 2
+#define MULTI_HUMAN 3
 
 using namespace tinyply;
 
@@ -101,7 +105,7 @@ public:
     static void loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
     
     static void loadInputTo(const std::string _scenepath, DataLoader::InputInitStruct& data);
-    static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, bool& isObject, 
+    static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int trainingMode, 
                             int height = 640, int width = 480);
     static void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, std::vector<cv::Point>& faceCenters);
     

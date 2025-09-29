@@ -54,6 +54,11 @@
 #define HEIGHT 640
 #define WIDTH  480
 
+#define SCENE 0
+#define OBJECT 1
+#define HUMAN 2
+#define MULTI_HUMAN 3
+
 #define VULKAN_HW
 // #define VULKAN_PC
 
@@ -94,7 +99,8 @@ public:
     int low_resolution_steps = 500;
     int sh_degree = 1;
     
-    bool isObject = false;  // decide whether to train object only
+    int trainingMode;  // 0 for scene, 1 for object, 2 for single human, 3 for multi-persons
+    bool isObject;  // decide whether to train object only
     bool segmentationFinished = false; // Do not change this unless you are confident that segmentation has been done
     
     RandomGenerator random_generator;
