@@ -365,6 +365,7 @@ void DataLoader::InputInitStruct::shuffleImage() {
     gen.seed(rd());
     std::shuffle(arr.begin(), arr.end(), gen);
     
+//     swapElem(mask_list, arr);
     swapElem(img_list, arr);
     swapElem(extr_tmp, arr);
     swapElem(extr_tmp_test, arr);
@@ -1079,8 +1080,8 @@ void DataLoader::InputInitStruct::processAndCropForeground(const std::string& sc
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int trainingMode,
                             int height, int width)
 {
-    std::string basePath = data.basepath;
     std::string scenepath = _scenepath;
+    data.basepath = _scenepath;
     std::string slampath = scenepath;
     std::string mediapath = scenepath + "/media";
 
@@ -1170,7 +1171,13 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         data.img_list.push_back(scenepath + "/images/" + imageName);
         
         std::string maskName = imageName.substr(0, imageName.find_last_of(".")) + ".png";
-        data.mask_list.push_back(scenepath + "/segmented/" + maskName);
+        std::string maskPath = scenepath + "/segmented/" + maskName;
+        
+        // Check if mask file exists before adding to list
+        if (std::filesystem::exists(maskPath)) {
+            data.mask_list.push_back(maskPath);
+//             data.mask_index.push_back(idx);  // Record the original image index
+        }
         
         data.time_stamps.push_back(float(idx));
         ++idx;

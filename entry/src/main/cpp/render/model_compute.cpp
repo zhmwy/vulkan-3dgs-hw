@@ -4678,9 +4678,9 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian);
     
-    if (trainingMode == OBJECT && segmentationFinished){
+    if (trainingMode == OBJECT){
         auto begin = clk::now();
-        DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian, inputGaussian.sequence_length, inputGaussian.sequence_length / 2);
+        DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
 //         DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
 
         LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());

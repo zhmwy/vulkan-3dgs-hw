@@ -18,12 +18,18 @@
 #include <Eigen/Geometry>
 #include "dataloader.h"
 
+// DataLoader::InputInitStruct performVisualHullSegmentation(
+//     const DataLoader::InputInitStruct& target,
+//     int num_cameras = 4,
+//     int max_outside_count = 0,
+//     float threshold_scale = 1.0f, 
+//     bool use_median = false
+// );
+
 DataLoader::InputInitStruct performVisualHullSegmentation(
-    const DataLoader::InputInitStruct& target,
-    int num_cameras = 4,
-    int max_outside_count = 0,
+    const DataLoader::InputInitStruct& target, 
+    float max_outside_percentage = 0.125,
     float threshold_scale = 1.0f, 
-    bool use_median = false
-);
+    bool use_median = 1.0f);
 
 #endif //VULKAN_3DGS_HW_VISUAL_HULL_H

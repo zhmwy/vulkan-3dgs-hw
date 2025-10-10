@@ -70,7 +70,7 @@ void InterfaceImplVulkan::TrainVulkan() {
     try {
         std::vector<int> max_steps = {7000, 500, 500};
         
-        double total_time = 300.0;
+        double total_time = 60.0;
         auto start = std::chrono::high_resolution_clock::now();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

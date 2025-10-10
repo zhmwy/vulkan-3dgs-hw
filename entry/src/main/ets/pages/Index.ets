@@ -13,7 +13,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-let caseName = "2025-06-04_15_34_45";
+let caseName = "2025-06-04_19_29_27";
 const caseNames: string[] = [
   "2025-06-04_15_34_45",
   "2025-06-04_15_57_44",
@@ -76,6 +76,7 @@ struct Index {
   @State isTraining: boolean = false;
   @State pixelMap : PixelMap | undefined = undefined;
   @State currentImage: number = 0;
+  @State segmentViews: number = 8;
 
   aboutToAppear() {
     // 调用自定义的getSyncPixelMap接口，获取pixelMap
@@ -100,11 +101,11 @@ struct Index {
       //   // await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
       //   this.message = "Training Complete!";
       // }
-      caseName = caseNames[4];
-      await this.readFiles(filesDir + "/" + caseName + "/images");        // 调用 readFiles 读取文件kl;lkm
+      // caseName = caseNames[4];
+      await this.readFiles(filesDir + "/" + caseName + "/images", this.segmentViews);        // 调用 readFiles 读取文件kl;lkm
       hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`)
       if(trainingMode == GS_Mode.OBJECT){
-        this.segmentAllImagesInSandbox();
+        await this.segmentAllImagesInSandbox();
       }
       await nativeRender.train3DGS(this.resmgr, caseName, GS_Mode.OBJECT, isObject);  // for循环
       this.message = "Training Complete!";
@@ -153,7 +154,7 @@ struct Index {
     }
   }
 
-  private async readFiles(path: string) {
+  private async readFiles(path: string, numToSelect?: number) {
     try {
       // 调用 listFile 获取目录下所有文件
       let options: ListFileOptions = {
@@ -163,22 +164,56 @@ struct Index {
 
       // 获取文件列表
       let files = await fs.listFile(path, options);
-      // // 将所有文件名存入 pathList
-      this.pathList = files.filter(file =>
+
+      // 过滤出所有图片文件
+      let allImages = files.filter(file =>
       (file.endsWith('.jpg') || file.endsWith('.png'))
-      // (file.endsWith('.jpg'))
       );
+
+      // 如果指定了选择数量，则均匀选择N张图片
+      if (numToSelect && numToSelect > 0 && numToSelect < allImages.length) {
+        this.pathList = this.selectImagesEvenly(allImages, numToSelect);
+        hilog.info(0x0000, TAG, `从 ${allImages.length} 张图片中均匀选择了 ${this.pathList.length} 张`);
+      } else {
+        // 否则使用所有图片
+        this.pathList = allImages;
+        hilog.info(0x0000, TAG, `使用所有 ${this.pathList.length} 张图片`);
+      }
 
     } catch (err) {
       hilog.error(0x0000, TAG, `Error reading files: ${err.message}`);
     }
   }
+
+  // 新增：均匀选择N张图片的方法
+  private selectImagesEvenly(images: string[], count: number): string[] {
+    if (count >= images.length) {
+      return images;
+    }
+
+    let selected: string[] = [];
+    let totalImages = images.length;
+    let step = (totalImages - 1) / (count - 1); // 计算步长
+
+    for (let i = 0; i < count; i++) {
+      let index = Math.round(i * step);
+      // 确保索引不超出范围
+      index = Math.min(index, totalImages - 1);
+      selected.push(images[index]);
+    }
+
+    return selected;
+  }
+
   private async segmentAllImagesInSandbox() {
     fs.mkdir(getContext().filesDir + `/${caseName}/segmented/`);
 
-    for (let path of this.pathList) {
+    hilog.info(0x0000, TAG, `开始分割 ${this.pathList.length} 张图片`);
+
+    for (let i = 0; i < this.pathList.length; i++) {
+      let path = this.pathList[i];
       let fullPath = getContext().filesDir + `/${caseName}/images/` + path;
-      // hilog.info(0x0000, TAG, `Segmenting ${fullPath}`);
+      hilog.info(0x0000, TAG, `正在分割第 ${i + 1}/${this.pathList.length} 张: ${path}`);
 
       let fileSource = await fileIo.open(fullPath, fileIo.OpenMode.READ_ONLY)
 
@@ -195,16 +230,15 @@ struct Index {
       };
 
       let data = await subjectSegmentation.doSegmentation(visionInfo, config);
-      // hilog.info(0x0000, TAG, `图像 ${path} 分割完成，分割数量: ${data.subjectCount}`);
 
       if (data.fullSubject && data.fullSubject.foregroundImage) {
         // Convert foreground image to binary
         let binaryPixelMap = await this.convertToBinaryImage(data.fullSubject.foregroundImage);
 
         let fileName = path.split('/').pop();
-        fileName = fileName?.replace('.jpg', '.png');
+        fileName = fileName?.replace('.jpg', '.png').replace('.png', '.png'); // 确保都是.png
         let savePath = getContext().filesDir + `/${caseName}/segmented/` + fileName;
-        // hilog.info(0x0000, TAG, `目标路径: ${savePath}`);
+
         let file = fs.openSync(savePath, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE);
 
         // Save as PNG to preserve the binary nature without compression artifacts
@@ -213,11 +247,16 @@ struct Index {
           quality: 100
         });
         fs.closeSync(file);
-        // hilog.info(0x0000, TAG, `保存分割图: ${savePath}`);
+        hilog.info(0x0000, TAG, `已保存分割图 ${i + 1}/${this.pathList.length}: ${savePath}`);
       } else {
         hilog.warn(0x0000, TAG, `图像 ${path} 分割无前景图`);
       }
+
+      // 释放资源
+      fileIo.close(fileSource);
     }
+
+    hilog.info(0x0000, TAG, `所有图片分割完成，共处理 ${this.pathList.length} 张`);
   }
 
   private async convertToBinaryImage(sourcePixelMap: image.PixelMap): Promise<image.PixelMap> {

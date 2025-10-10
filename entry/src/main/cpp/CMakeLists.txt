@@ -44,7 +44,7 @@ add_library(3dgs SHARED
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
     cores/tinyply.cpp
-    cores/visual_hull.cpp
+    cores/visual_hull_simp.cpp
 #    cores/video2images.cpp
     human/HiAI/HIAIModelManager.cpp human/HiAI/utils.cpp
     human/human.cpp

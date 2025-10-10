@@ -71,6 +71,7 @@ public:
         std::string basepath = "/data/storage/el1/base/files";
         
         std::vector<float> time_stamps; // Time for Gaussian-Flow
+        std::vector<int> mask_index; // Record which images are segmented
 
         
         int width, height;
