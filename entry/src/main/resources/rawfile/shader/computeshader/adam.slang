@@ -26,7 +26,7 @@
 
 [[vk::binding(20)]] StructuredBuffer<int32_t> curPointsNum;
 [[vk::binding(21)]] RWStructuredBuffer<uint32_t> visible;
-
+[[vk::binding(22)]] StructuredBuffer<uint32_t> frozen;
 // [[vk::binding(22)]] RWStructuredBuffer<float> dL_dextr_params;
 // [[vk::binding(23)]] RWStructuredBuffer<float> camera_extrs;
 // [[vk::binding(24)]] RWStructuredBuffer<float> camera_extrs_avg;
@@ -225,7 +225,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     uint idx = dispatchThreadID.x;
     if (idx >= xyz_size) return;
 
-    if (visible[idx] == 0) return; // skip invisible points
+    if (visible[idx] == 0 || frozen[idx] == 1) return; // skip invisible points
 
     // update xyz_array
     if (idx >= skybox_num) {

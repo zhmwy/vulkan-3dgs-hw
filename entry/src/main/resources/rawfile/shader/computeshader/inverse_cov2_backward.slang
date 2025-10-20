@@ -5,6 +5,7 @@
 [[vk::binding(3)]] StructuredBuffer<float> dL_dconic_array;
 [[vk::binding(4)]] RWStructuredBuffer<float> dL_dcov2d_array;
 [[vk::binding(5)]] StructuredBuffer<int32_t> curPointsNum;
+[[vk::binding(6)]] StructuredBuffer<uint32_t> frozen;
 
 [[vk::push_constant]]
 cbuffer PushConstants
@@ -20,7 +21,7 @@ cbuffer PushConstants
 void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 {
     uint32_t idx = dispatchThreadID.x;
-    if (idx >= curPointsNum[0] || visible_array[idx] == 0)
+    if (idx >= curPointsNum[0] || visible_array[idx] == 0 || frozen[idx] == 1)
         return;
 
     float3 cov = float3(

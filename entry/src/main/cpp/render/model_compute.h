@@ -133,7 +133,7 @@ public:
         vkgs::Buffer intr_exp_avg;
         vkgs::Buffer normal_array;
         
-        
+        vkgs::Buffer frozen;
         vkgs::Buffer intr_params_render;
         vkgs::Buffer extr_params;           // [1, 7]
         vkgs::Buffer extr_params_render;    // [1, 7]

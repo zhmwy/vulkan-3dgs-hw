@@ -13,7 +13,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-let caseName = "2025-06-04_19_29_27";
+let caseName = "2025-06-04_15_34_45";
 const caseNames: string[] = [
   "2025-06-04_15_34_45",
   "2025-06-04_15_57_44",
@@ -101,7 +101,7 @@ struct Index {
       //   // await nativeRender.train3DGS(this.resmgr, caseName);  // for循环
       //   this.message = "Training Complete!";
       // }
-      // caseName = caseNames[4];
+      caseName = caseNames[0];
       await this.readFiles(filesDir + "/" + caseName + "/images", this.segmentViews);        // 调用 readFiles 读取文件kl;lkm
       hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`)
       if(trainingMode == GS_Mode.OBJECT){

@@ -49,7 +49,7 @@ float3x3 unit_quaternion_to_rotmatrix(float4 rotate) {
 
 [[vk::binding(24)]] RWStructuredBuffer<float> extr; // 12 parameters
 [[vk::binding(25)]] RWStructuredBuffer<float> extr_act;
-
+[[vk::binding(26)]] StructuredBuffer<uint32_t> frozen;
 
 [[vk::push_constant]]
 cbuffer PushConstants
@@ -71,7 +71,7 @@ uint t2i(uint a, uint b) // tuple to index
 void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 {
     uint32_t idx = dispatchThreadID.x;
-    if (idx.x >= curPointsNum[0] || visible_array[idx] == 0)
+    if (idx.x >= curPointsNum[0] || visible_array[idx] == 0 || frozen[idx] == 1)
         return;
 
     // 0. activate opacity, scale and rotate

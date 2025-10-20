@@ -68,6 +68,7 @@ void set_sh_grad_value(
 [[vk::binding(10)]] RWStructuredBuffer<float> extr;
 [[vk::binding(11)]] RWStructuredBuffer<float> camera_center;
 [[vk::binding(12)]] RWStructuredBuffer<float> extr_act;
+[[vk::binding(13)]] StructuredBuffer<uint32_t> frozen;
 
 [[vk::push_constant]]
 cbuffer PushConstants
@@ -84,7 +85,7 @@ cbuffer PushConstants
 void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 {
     uint32_t idx = dispatchThreadID.x;
-    if (idx >= curPointsNum[0] || visible_array[idx] == 0)
+    if (idx >= curPointsNum[0] || visible_array[idx] == 0 || frozen[idx] == 1)
         return;
 
     float3 dir_un = {

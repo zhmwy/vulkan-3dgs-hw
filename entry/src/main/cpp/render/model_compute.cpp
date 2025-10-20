@@ -158,93 +158,94 @@ void VulkanComputeGS::encodeCpu2Gpu()
 void VulkanComputeGS::createGpu2CpuCopys()
 {
     createGpu2CpuCopy(splat_buffers.xyz_array);
-    createGpu2CpuCopy(splat_buffers.scale_array);
-    createGpu2CpuCopy(splat_buffers.rotate_array);
-    createGpu2CpuCopy(splat_buffers.feature);
-    createGpu2CpuCopy(splat_buffers.opacity);
-    createGpu2CpuCopy(splat_buffers.extr_params);
-    createGpu2CpuCopy(splat_buffers.intr_params);
-
-    createGpu2CpuCopy(splat_buffers.visible);
-    createGpu2CpuCopy(splat_buffers.radius);
-    createGpu2CpuCopy(splat_buffers.tiles);
-    createGpu2CpuCopy(splat_buffers.tiles_rect);
-    createGpu2CpuCopy(splat_buffers.uvd);
-    createGpu2CpuCopy(splat_buffers.cov2d);
-    createGpu2CpuCopy(splat_buffers.cov3d);
-
-    createGpu2CpuCopy(splat_buffers.tile_range);
-    createGpu2CpuCopy(sort_buffers.sorted_idx_array);
-
-    createGpu2CpuCopy(splat_buffers.conic);
-    createGpu2CpuCopy(splat_buffers.rfeat);
-    createGpu2CpuCopy(splat_buffers.rfeat_alpha);
-    createGpu2CpuCopy(splat_buffers.opacity_act_array);
-    createGpu2CpuCopy(splat_buffers.dL_drfeat);
-    createGpu2CpuCopy(splat_buffers.input_image_array); 
-
-    createGpu2CpuCopy(splat_buffers.dL_duvd);             // Copy dL_duvd
-    createGpu2CpuCopy(splat_buffers.dL_dconic);           // Copy dL_dconic
-    createGpu2CpuCopy(splat_buffers.dL_dopacity_act_array); // Copy dL_dopacity_act_array
-    createGpu2CpuCopy(splat_buffers.dL_dfeature);         // Copy dL_dfeature
-    createGpu2CpuCopy(splat_buffers.dL_dndc);             // Copy dL_dndc
-    createGpu2CpuCopy(splat_buffers.dL_dbackground);      // Copy dL_dbackground
-    createGpu2CpuCopy(splat_buffers.sh_coeff);
-//     createGpu2CpuCopy(splat_buffers.curPointsNum);
-    
-    createGpu2CpuCopy(splat_buffers.extr_params_render);
-    createGpu2CpuCopy(splat_buffers.intr_params);
-    createGpu2CpuCopy(splat_buffers.uvd);
-    
-    
-    createGpu2CpuCopy(splat_buffers.input_image_array); 
-    createGpu2CpuCopy(splat_buffers.input_image_alpha_array);
-    
-    createGpu2CpuCopy(splat_buffers.dL_duvd);             // Copy dL_duvd
-    createGpu2CpuCopy(splat_buffers.dL_dxyz);
-    createGpu2CpuCopy(splat_buffers.dL_dopacity);
-    createGpu2CpuCopy(splat_buffers.dL_dscale);
-    createGpu2CpuCopy(splat_buffers.dL_dshs_array);
-    createGpu2CpuCopy(splat_buffers.dL_drotate);
-    
-    createGpu2CpuCopy(splat_buffers.dL_dalpha_array);
-    createGpu2CpuCopy(splat_buffers.alpha_array);
-    
-    createGpu2CpuCopy(splat_buffers.dL_duvd_int);
-    createGpu2CpuCopy(splat_buffers.dL_dconic_int);
-    createGpu2CpuCopy(splat_buffers.dL_dfeature_int);
-    createGpu2CpuCopy(splat_buffers.dL_dopacity_act_array_int);
-    
-    createGpu2CpuCopy(splat_buffers.extr_params);
-    createGpu2CpuCopy(splat_buffers.extr_mat);
-    createGpu2CpuCopy(splat_buffers.extr_act);
-    createGpu2CpuCopy(splat_buffers.camera_center);
-    createGpu2CpuCopy(splat_buffers.camera_extrs);
-    
-    createGpu2CpuCopy(splat_buffers.dL_dextr_params);
-    createGpu2CpuCopy(splat_buffers.intr_params_render);
-    
-    createGpu2CpuCopy(splat_buffers.time_stamp);
-    createGpu2CpuCopy(splat_buffers.is_body_point);
-    createGpu2CpuCopy(splat_buffers.dL_dxyz_flow);
-    createGpu2CpuCopy(splat_buffers.dL_drot_flow);
-    createGpu2CpuCopy(splat_buffers.xyz_flow_params);
-    createGpu2CpuCopy(splat_buffers.rot_flow_params);
-    createGpu2CpuCopy(splat_buffers.xyz_flow);
-    createGpu2CpuCopy(splat_buffers.rot_flow);
-    createGpu2CpuCopy(splat_buffers.dL_dmap);
-    createGpu2CpuCopy(splat_buffers.dm_dmu1);
-    createGpu2CpuCopy(splat_buffers.dm_dsigma1_sq);
-    createGpu2CpuCopy(splat_buffers.dm_dsigma12);
-    createGpu2CpuCopy(splat_buffers.ssim_map);
-    
-    createGpu2CpuCopy(splat_buffers.xyz_gradient_accum);
-    createGpu2CpuCopy(splat_buffers.denom);
-    createGpu2CpuCopy(sort_buffers.densify_idx);
+    createGpu2CpuCopy(splat_buffers.frozen);
+//    
+//     createGpu2CpuCopy(splat_buffers.scale_array);
+//     createGpu2CpuCopy(splat_buffers.rotate_array);
+//     createGpu2CpuCopy(splat_buffers.feature);
+//     createGpu2CpuCopy(splat_buffers.opacity);
+//     createGpu2CpuCopy(splat_buffers.extr_params);
+//     createGpu2CpuCopy(splat_buffers.intr_params);
+//     createGpu2CpuCopy(splat_buffers.visible);
+//     createGpu2CpuCopy(splat_buffers.radius);
+//     createGpu2CpuCopy(splat_buffers.tiles);
+//     createGpu2CpuCopy(splat_buffers.tiles_rect);
+//     createGpu2CpuCopy(splat_buffers.uvd);
+//     createGpu2CpuCopy(splat_buffers.cov2d);
+//     createGpu2CpuCopy(splat_buffers.cov3d);
+//
+//     createGpu2CpuCopy(splat_buffers.tile_range);
+//     createGpu2CpuCopy(sort_buffers.sorted_idx_array);
+//
+//     createGpu2CpuCopy(splat_buffers.conic);
+//     createGpu2CpuCopy(splat_buffers.rfeat);
+//     createGpu2CpuCopy(splat_buffers.rfeat_alpha);
+//     createGpu2CpuCopy(splat_buffers.opacity_act_array);
+//     createGpu2CpuCopy(splat_buffers.dL_drfeat);
+//     createGpu2CpuCopy(splat_buffers.input_image_array); 
+//
+//     createGpu2CpuCopy(splat_buffers.dL_duvd);             // Copy dL_duvd
+//     createGpu2CpuCopy(splat_buffers.dL_dconic);           // Copy dL_dconic
+//     createGpu2CpuCopy(splat_buffers.dL_dopacity_act_array); // Copy dL_dopacity_act_array
+//     createGpu2CpuCopy(splat_buffers.dL_dfeature);         // Copy dL_dfeature
+//     createGpu2CpuCopy(splat_buffers.dL_dndc);             // Copy dL_dndc
+//     createGpu2CpuCopy(splat_buffers.dL_dbackground);      // Copy dL_dbackground
+//     createGpu2CpuCopy(splat_buffers.sh_coeff);
+// //     createGpu2CpuCopy(splat_buffers.curPointsNum);
+//    
+//     createGpu2CpuCopy(splat_buffers.extr_params_render);
+//     createGpu2CpuCopy(splat_buffers.intr_params);
+//     createGpu2CpuCopy(splat_buffers.uvd);
+//    
+//    
+//     createGpu2CpuCopy(splat_buffers.input_image_array); 
+//     createGpu2CpuCopy(splat_buffers.input_image_alpha_array);
+//    
+//     createGpu2CpuCopy(splat_buffers.dL_duvd);             // Copy dL_duvd
+//     createGpu2CpuCopy(splat_buffers.dL_dxyz);
+//     createGpu2CpuCopy(splat_buffers.dL_dopacity);
+//     createGpu2CpuCopy(splat_buffers.dL_dscale);
+//     createGpu2CpuCopy(splat_buffers.dL_dshs_array);
+//     createGpu2CpuCopy(splat_buffers.dL_drotate);
+//    
+//     createGpu2CpuCopy(splat_buffers.dL_dalpha_array);
+//     createGpu2CpuCopy(splat_buffers.alpha_array);
+//    
+//     createGpu2CpuCopy(splat_buffers.dL_duvd_int);
+//     createGpu2CpuCopy(splat_buffers.dL_dconic_int);
+//     createGpu2CpuCopy(splat_buffers.dL_dfeature_int);
+//     createGpu2CpuCopy(splat_buffers.dL_dopacity_act_array_int);
+//    
+//     createGpu2CpuCopy(splat_buffers.extr_params);
+//     createGpu2CpuCopy(splat_buffers.extr_mat);
+//     createGpu2CpuCopy(splat_buffers.extr_act);
+//     createGpu2CpuCopy(splat_buffers.camera_center);
+//     createGpu2CpuCopy(splat_buffers.camera_extrs);
+//    
+//     createGpu2CpuCopy(splat_buffers.dL_dextr_params);
+//     createGpu2CpuCopy(splat_buffers.intr_params_render);
+//    
+//     createGpu2CpuCopy(splat_buffers.time_stamp);
+//     createGpu2CpuCopy(splat_buffers.is_body_point);
+//     createGpu2CpuCopy(splat_buffers.dL_dxyz_flow);
+//     createGpu2CpuCopy(splat_buffers.dL_drot_flow);
+//     createGpu2CpuCopy(splat_buffers.xyz_flow_params);
+//     createGpu2CpuCopy(splat_buffers.rot_flow_params);
+//     createGpu2CpuCopy(splat_buffers.xyz_flow);
+//     createGpu2CpuCopy(splat_buffers.rot_flow);
+//     createGpu2CpuCopy(splat_buffers.dL_dmap);
+//     createGpu2CpuCopy(splat_buffers.dm_dmu1);
+//     createGpu2CpuCopy(splat_buffers.dm_dsigma1_sq);
+//     createGpu2CpuCopy(splat_buffers.dm_dsigma12);
+//     createGpu2CpuCopy(splat_buffers.ssim_map);
+//    
+//     createGpu2CpuCopy(splat_buffers.xyz_gradient_accum);
+//     createGpu2CpuCopy(splat_buffers.denom);
+//     createGpu2CpuCopy(sort_buffers.densify_idx);
     createGpu2CpuCopy(splat_buffers.xyz_gradient_mean);
-    createGpu2CpuCopy(splat_buffers.xyz_gradient_mean_int);
-    createGpu2CpuCopy(sort_buffers.sortVBufferEven);
-    createGpu2CpuCopy(sort_buffers.sortKBufferEven);
+//     createGpu2CpuCopy(splat_buffers.xyz_gradient_mean_int);
+//     createGpu2CpuCopy(sort_buffers.sortVBufferEven);
+//     createGpu2CpuCopy(sort_buffers.sortKBufferEven);
 }
 
 int cumsum_cpu(const vkgs::Buffer& buffer)
@@ -324,14 +325,15 @@ void VulkanComputeGS::printGpuBuffers()
 //     printGpuBuffer<float>("extr_act", splat_buffers.extr_act, 1, 6);
 
     printGpuBuffer<float>("xyz_array", splat_buffers.xyz_array, 4, 3);
-    printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
+//     printGpuBuffer<float>("uvd", splat_buffers.uvd, 4, 3);
+//    
+//     printGpuBuffer<float>("alpha_array", splat_buffers.alpha_array, 1, 3);
+//     printGpuBuffer<float>("rfeat", splat_buffers.rfeat, 1, 3);
+//     printGpuBuffer<float>("dL_duvd", splat_buffers.dL_duvd, 4, 3);
+//     printGpuBuffer<float>("dL_dalpha_array", splat_buffers.dL_dalpha_array, 1, 3);
+    printGpuBuffer<float>("xyz_grad_mean", splat_buffers.xyz_gradient_mean, 1, 3);
     
-    printGpuBuffer<float>("alpha_array", splat_buffers.alpha_array, 1, 3);
-    printGpuBuffer<float>("rfeat", splat_buffers.rfeat, 1, 3);
-    printGpuBuffer<float>("dL_duvd", splat_buffers.dL_duvd, 4, 3);
-    printGpuBuffer<float>("dL_dalpha_array", splat_buffers.dL_dalpha_array, 1, 3);
-    
-
+    printGpuBuffer<float>("frozen", splat_buffers.frozen, 1, 30);
 }
 
 void VulkanComputeGS::radixSortCmd(uint32_t numInstances)
@@ -798,6 +800,7 @@ void VulkanComputeGS::densifyCmd()
     bindPipeline2CommandBuffer(pipe_clone, FORWARD_PIPE, X, 1, 1, true);
     bindPipeline2CommandBuffer(pipe_split, FORWARD_PIPE, X, 1, 1, true);
     
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.frozen, 0, VK_WHOLE_SIZE, 1);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_gradient_accum, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.denom, 0, VK_WHOLE_SIZE, 0);
 //     vkCmdFillBufferGS(compute.commandBuffer, sort_buffers.sortKBufferEven, 0, VK_WHOLE_SIZE, 0);
@@ -1300,7 +1303,10 @@ void VulkanComputeGS::prepare3dgsBuffers()
         allocator, sizeof(int) * inputGaussian.extr_tmp.size(),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
-    
+    splat_buffers.frozen = vkgs::Buffer(
+        allocator, MAX_SPLAT_COUNT * sizeof(uint32_t),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    );
     splat_buffers.visible = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1751,7 +1757,7 @@ void VulkanComputeGS::setProjectionRenderPipeline()
 
 void VulkanComputeGS::setProjectionPipeline()
 {
-    const uint32_t bindingCount = 26;
+    const uint32_t bindingCount = 27;
     createPipelineLayout(
         pipe_project,
         bindingCount,  // Number of descriptor set bindings
@@ -1786,7 +1792,8 @@ void VulkanComputeGS::setProjectionPipeline()
         &splat_buffers.dL_dopacity,     //22
         &splat_buffers.curPointsNum, //23
         &splat_buffers.extr_mat,
-        &splat_buffers.extr_act
+        &splat_buffers.extr_act,
+        &splat_buffers.frozen
     };
 
     updateDescriptorSet(pipe_project.descriptorSet, splatBuffers);
@@ -1988,7 +1995,7 @@ void VulkanComputeGS::setKNNPipeline()
 
 void VulkanComputeGS::setInverseIndexPipeline()
 {
-    const uint32_t bindingCount = 6;
+    const uint32_t bindingCount = 7;
     createPipelineLayout(
         pipe_inverse,
         bindingCount,  // Number of descriptor set bindings
@@ -2002,7 +2009,8 @@ void VulkanComputeGS::setInverseIndexPipeline()
         &splat_buffers.conic,       //2
         &splat_buffers.dL_dconic,       //3
         &splat_buffers.dL_dcov2d,       //4
-        & splat_buffers.curPointsNum //5
+        & splat_buffers.curPointsNum,  //5
+        & splat_buffers.frozen //6
     };
 
     updateDescriptorSet(pipe_inverse.descriptorSet, splatBuffers);
@@ -2322,7 +2330,7 @@ void VulkanComputeGS::setIntToFloatGradientPipeline()
 
 void VulkanComputeGS::setComputeSHPipeline()
 {
-    const uint32_t bindingCount = 13;
+    const uint32_t bindingCount = 14;
     createPipelineLayout(
         pipe_sh,
         bindingCount,  // Number of descriptor set bindings
@@ -2341,9 +2349,10 @@ void VulkanComputeGS::setComputeSHPipeline()
         &splat_buffers.dL_dxyz,     //7
         &splat_buffers.dL_dextr_params,   //8
         &splat_buffers.curPointsNum, //9
-        &splat_buffers.extr_mat,
-        &splat_buffers.camera_center,
-        &splat_buffers.extr_act
+        &splat_buffers.extr_mat, // 10
+        &splat_buffers.camera_center, // 11
+        &splat_buffers.extr_act, // 12
+        &splat_buffers.frozen // 13
     };
     
     updateDescriptorSet(pipe_sh.descriptorSet, splatBuffers);
@@ -2444,7 +2453,7 @@ void VulkanComputeGS::setComputeSHRenderPipeline()
 
 void VulkanComputeGS::setOptimizationPipeline()
 {
-    const uint32_t bindingCount = 22;
+    const uint32_t bindingCount = 23;
     createPipelineLayout(
         pipe_optimize,
         bindingCount,  // Number of descriptor set bindings
@@ -2475,7 +2484,8 @@ void VulkanComputeGS::setOptimizationPipeline()
         &splat_buffers.opacity_array_avg,         // 19
         &splat_buffers.curPointsNum, // 20
         //& splat_buffers.visible,
-        & splat_buffers.radius
+        & splat_buffers.radius, // 21
+        & splat_buffers.frozen // 22
     };
 
     updateDescriptorSet(pipe_optimize.descriptorSet, splatBuffers);
@@ -2945,7 +2955,7 @@ void VulkanComputeGS::setDensificationStatsPipeline()
 
 void VulkanComputeGS::setMeanGradPipeline()
 {
-    const uint32_t bindingCount = 6;
+    const uint32_t bindingCount = 7;
     createPipelineLayout(
         pipe_mean_grad,
         bindingCount,  // Number of descriptor set bindings
@@ -2958,6 +2968,8 @@ void VulkanComputeGS::setMeanGradPipeline()
         & splat_buffers.denom,                  //1
         & splat_buffers.curPointsNum,                         //2
         & splat_buffers.xyz_gradient_mean,     //3
+        & splat_buffers.frozen,     //4
+        
 //         & sort_buffers.densify_idx, //4
 //         & splat_buffers.xyz_gradient_mean_int
         & sort_buffers.sortVBufferEven,
@@ -3741,8 +3753,7 @@ void VulkanComputeGS::setBufferFillPipeline()
 
     std::vector<vkgs::Buffer*> splatBuffers = {
         &splat_buffers.visible,                  //0
-        &splat_buffers.curPointsNum                //1
-//         &splat_buffers.opacity
+        &splat_buffers.curPointsNum,                //1
     };
 
     updateDescriptorSet(pipe_buffer_fill.descriptorSet, splatBuffers);

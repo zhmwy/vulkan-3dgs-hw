@@ -2,6 +2,7 @@
 
 [[vk::binding(0)]] RWStructuredBuffer<uint32_t> InputBuffer;
 [[vk::binding(1)]] StructuredBuffer<int32_t> curPointsNum;
+
 // [[vk::binding(2)]] StructuredBuffer<float> opacity_array;
 
 [[vk::push_constant]]
