@@ -1,0 +1,96 @@
+/**
+* VkRadixSort written by Mirco Werner: https://github.com/MircoWerner/VkRadixSort
+* Based on implementation of Intel's Embree: https://github.com/embree/embree/blob/v4.0.0-ploc/kernels/rthwif/builder/gpu/sort.h
+*/
+
+/**
+* This shader is modified from the original to support 64-bit k-v pairs.
+* The license of the original code is as follows:
+
+    MIT License
+
+    Copyright (c) 2023 Mirco Werner
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+*/
+
+#version 460
+#extension GL_GOOGLE_include_directive: enable
+#extension GL_KHR_shader_subgroup_basic: enable
+#extension GL_KHR_shader_subgroup_arithmetic: enable
+#extension GL_KHR_shader_subgroup_ballot: enable
+
+#define WORKGROUP_SIZE 512// assert WORKGROUP_SIZE >= RADIX_SORT_BINS
+#define RADIX_SORT_BINS 256U
+#define SUBGROUP_SIZE 64// 32 NVIDIA; 64 AMD
+
+layout (local_size_x = RADIX_SORT_BINS) in;
+
+layout (push_constant, std430) uniform PushConstants {
+    uint g_num_elements;
+    uint g_shift;
+    uint g_num_workgroups;
+    uint g_num_blocks_per_workgroup;
+};
+
+layout (std430, binding = 0) buffer histograms {
+    uint g_histograms[];// |g_histograms| = RADIX_SORT_BINS * #WORKGROUPS = RADIX_SORT_BINS * g_num_workgroups
+};
+
+layout (std430, binding = 1) buffer goffsets{
+    uint global_offsets[];
+};
+
+shared uint[RADIX_SORT_BINS / SUBGROUP_SIZE] sums;// subgroup reductions  256 / 64 = 4
+
+void main() {
+    uint gID = gl_GlobalInvocationID.x;
+    uint lID = gl_LocalInvocationID.x;
+    uint wID = gl_WorkGroupID.x;
+    uint sID = gl_SubgroupID;
+    uint lsID = gl_SubgroupInvocationID;
+
+    uint local_histogram = 0;
+    uint prefix_sum = 0;
+    uint histogram_count = 0;
+
+    if (lID < RADIX_SORT_BINS) {
+        uint count = 0;
+        for (uint j = 0; j < g_num_workgroups; j++) {
+            const uint t = g_histograms[RADIX_SORT_BINS * j + lID];
+            local_histogram = (j == wID) ? count : local_histogram;
+            count += t;
+        }
+        histogram_count = count;
+        const uint sum = subgroupAdd(histogram_count);
+        prefix_sum = subgroupExclusiveAdd(histogram_count);
+        if (subgroupElect()) {
+            // one thread inside the warp/subgroup enters this section
+            sums[sID] = sum;
+        }
+    }
+    barrier();
+
+    if (lID < RADIX_SORT_BINS) {
+        const uint sums_prefix_sum = subgroupBroadcast(subgroupExclusiveAdd(sums[lsID]), sID);
+        const uint global_histogram = sums_prefix_sum + prefix_sum;
+        global_offsets[wID*RADIX_SORT_BINS + lID] = global_histogram + local_histogram;
+    }
+}

@@ -262,6 +262,7 @@ public:
     } splat_buffers;
 
     bool hasKNN = false;
+    bool hasUnfrozen = false;
     
     // Input image
     vkbase::Texture2DGS textureColorMap;
@@ -321,6 +322,8 @@ public:
     
     Compute3DGS pipe_densification_stats;
     Compute3DGS pipe_mean_grad;
+    Compute3DGS pipe_freeze;
+    Compute3DGS pipe_unfreeze;
     Compute3DGS pipe_clone;
     Compute3DGS pipe_split;
     Compute3DGS pipe_clone_3dgs;
@@ -431,6 +434,8 @@ public:
     void setExtrProcessPipeline();
     void setExtrProcessRenderPipeline();
     void setMaskBodyPipeline();
+    void setFreezePipeline();
+    void setUnfreezePipeline();
 
     // 3dgs command buffer
     void forwardCmd();
@@ -453,7 +458,8 @@ public:
     void copyExtrCmd();
     void initBaseCmd();
     void copyBaseCmd();
-
+    void unfreezeCmd();
+    
     // Methods
     void prepreAllocator();
 
@@ -478,6 +484,8 @@ public:
     void queryCmdTimeEnd(std::string enventName);
     
     void printGpuBuffers();
+    int countFrozenGaussians();
+    void printFrozenStatistics();
     void saveGaussians(std::string dataPath, bool save_head = false);
     void saveCameras(std::string dataPath);
     

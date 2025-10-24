@@ -71,6 +71,9 @@ void InterfaceImplVulkan::TrainVulkan() {
         std::vector<int> max_steps = {7000, 500, 500};
         
         double total_time = 300.0;
+        double unfreeze_threshold = total_time - 60.0;  // Unfreeze at 270 seconds
+        bool hasTriggeredUnfreeze = false;
+        
         auto start = std::chrono::high_resolution_clock::now();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
@@ -104,6 +107,11 @@ void InterfaceImplVulkan::TrainVulkan() {
             
             if (duration.count() > total_time - 15.0){
                 _renderer->low_resolution_steps = -1;
+            }
+            if (!hasTriggeredUnfreeze && duration.count() >= unfreeze_threshold) {
+                LOGW("Entering final training phase - unfreezing all gaussians!");
+                _renderer->unfreezeCmd();
+                hasTriggeredUnfreeze = true;
             }
         }
         

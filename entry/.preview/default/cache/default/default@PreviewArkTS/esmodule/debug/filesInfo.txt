@@ -1,0 +1,2 @@
+E:/Projects/HW_SMPL/Vulkan/vulkan-3dgs-hw/entry/.preview/default/cache/default/default@PreviewArkTS/esmodule/debug/entry/src/main/ets/entryability/EntryAbility.ts;com.huawei.xenginevulkandemo/entry/ets/entryability/EntryAbility;esm;entry|entry|1.0.0|src/main/ets/entryability/EntryAbility.ts;entry;false
+E:/Projects/HW_SMPL/Vulkan/vulkan-3dgs-hw/entry/.preview/default/cache/default/default@PreviewArkTS/esmodule/debug/entry/src/main/ets/pages/Index.ts;com.huawei.xenginevulkandemo/entry/ets/pages/Index;esm;entry|entry|1.0.0|src/main/ets/pages/Index.ts;entry;false

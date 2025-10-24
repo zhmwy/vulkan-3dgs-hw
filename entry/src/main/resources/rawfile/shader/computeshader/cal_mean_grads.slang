@@ -20,9 +20,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         grads[idx] = 0;
     else
         grads[idx] = xyz_gradient_accum[idx] / denom[idx];
-    
-    // if (grads[idx] < 0.000001)
-    //     frozen[idx] = 1;
 
     // grads[idx] = 1 - grads[idx];
     unsorted_idx_array[idx] = idx;

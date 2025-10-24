@@ -1,0 +1,2 @@
+E:\Projects\HW_SMPL\Vulkan\vulkan-3dgs-hw\entry\src\main\ets\entryability\EntryAbility.ts
+E:\Projects\HW_SMPL\Vulkan\vulkan-3dgs-hw\entry\src\main\ets\pages\Index.ets

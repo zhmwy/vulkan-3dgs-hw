@@ -261,6 +261,46 @@ int cumsum_cpu(const vkgs::Buffer& buffer)
     return sum;
 }
 
+int VulkanComputeGS::countFrozenGaussians()
+{
+    const vkgs::CpuBuffer &cpu_buffer = splat_buffers.frozen.cpu_buffer;
+    if (cpu_buffer.isInit == false) return -1;
+    
+    int size = std::min(static_cast<int>(cpu_buffer.size() / sizeof(uint32_t)), splat_count);
+    const uint32_t* frozen_data = reinterpret_cast<const uint32_t*>(cpu_buffer.data());
+    
+    int frozen_count = 0;
+    for(int i = 0; i < size; i++) {
+        if (frozen_data[i] == 1) {
+            frozen_count++;
+        }
+    }
+    
+    return frozen_count;
+}
+
+void VulkanComputeGS::printFrozenStatistics()
+{
+    // Copy frozen buffer from GPU to CPU
+//     buildComputeCommandBuffer([this]() {
+//         createGpu2CpuCopy(splat_buffers.frozen);
+//     });
+//     executeTransCommand();
+    
+    // Count frozen gaussians
+    int frozen_count = countFrozenGaussians();
+    
+    if (frozen_count >= 0) {
+        float frozen_percentage = (splat_count > 0) ? 
+            (frozen_count * 100.0f / splat_count) : 0.0f;
+        
+        LOGW("Frozen Statistics: %{public}d / %{public}d gaussians frozen (%{public}.2f%%)", 
+             frozen_count, splat_count, frozen_percentage);
+    } else {
+        LOGW("Failed to retrieve frozen statistics - CPU buffer not initialized");
+    }
+}
+
 void printKeyAndSortedIdx(vkgs::Buffer& sortKBufferEven, vkgs::Buffer& sorted_idx_array, vkgs::Buffer& unsortKBufferEven,int length)
 {
     const vkgs::CpuBuffer &key_cpu_buffer = sortKBufferEven.cpu_buffer;
@@ -333,7 +373,7 @@ void VulkanComputeGS::printGpuBuffers()
 //     printGpuBuffer<float>("dL_dalpha_array", splat_buffers.dL_dalpha_array, 1, 3);
     printGpuBuffer<float>("xyz_grad_mean", splat_buffers.xyz_gradient_mean, 1, 3);
     
-    printGpuBuffer<float>("frozen", splat_buffers.frozen, 1, 30);
+    printGpuBuffer<uint32_t>("frozen", splat_buffers.frozen, 1, 30);
 }
 
 void VulkanComputeGS::radixSortCmd(uint32_t numInstances)
@@ -920,6 +960,10 @@ void VulkanComputeGS::encodePipeline2CommandBuffer()
         training_step < densify_end_step)
     {
         densifyCmd();
+        if(!hasUnfrozen){
+            bindPipeline2CommandBuffer(pipe_freeze, FORWARD_PIPE, X, 1, 1);
+//             printFrozenStatistics();
+        }
     }
     
     if (training_step % 1000 == 0 && training_step > 30000)
@@ -3002,6 +3046,99 @@ void VulkanComputeGS::setMeanGradPipeline()
     std::cout << "[setMeanGradPipeline] Compute tile pipeline set" << std::endl;
 }
 
+void VulkanComputeGS::setFreezePipeline()
+{
+    const uint32_t bindingCount = 3;
+    createPipelineLayout(
+        pipe_freeze,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4 // Push constant size
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.frozen,        // 0
+        &splat_buffers.curPointsNum,   // 1
+        &splat_buffers.xyz_gradient_mean,        // 2
+    };
+
+    updateDescriptorSet(pipe_freeze.descriptorSet, splatBuffers);
+
+    pipe_freeze.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/freeze_gaussians.comp.spv");
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);
+    pipelineInfo.layout = pipe_freeze.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_freeze.pipelines[0]
+        )
+    );
+
+    std::cout << "[setUnfreezePipeline] Freeze pipeline set" << std::endl;
+}
+
+void VulkanComputeGS::setUnfreezePipeline()
+{
+    const uint32_t bindingCount = 2;
+    createPipelineLayout(
+        pipe_unfreeze,
+        bindingCount,  // Number of descriptor set bindings
+        true,
+        sizeof(uint32_t) * 4 // Push constant size
+    );
+
+    std::vector<vkgs::Buffer*> splatBuffers = {
+        &splat_buffers.frozen,        // 0
+        &splat_buffers.curPointsNum   // 1
+    };
+
+    updateDescriptorSet(pipe_unfreeze.descriptorSet, splatBuffers);
+
+    pipe_unfreeze.pipelines.resize(1);
+
+    // Load SPIR-V shader code
+    std::string shaderCode = getPath("shader/computeshader/unfreeze_gaussians.comp.spv");
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);
+    pipelineInfo.layout = pipe_unfreeze.pipelineLayout;
+
+    VK_CHECK_RESULT(
+        vkCreateComputePipelinesGS(
+            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_unfreeze.pipelines[0]
+        )
+    );
+
+    std::cout << "[setUnfreezePipeline] Unfreeze pipeline set" << std::endl;
+}
+
+void VulkanComputeGS::unfreezeCmd()
+{
+    if (hasUnfrozen) {
+        LOGI("Gaussians already unfrozen, skipping.");
+        return;
+    }
+
+    LOGI("Unfreezing all gaussian spheres for final fine-tuning phase...");
+    
+    buildComputeCommandBuffer([this]() {
+        uint32_t X = (splat_count + 256 - 1) / 256;
+        bindPipeline2CommandBuffer(pipe_unfreeze, 0, X, 1, 1);
+    });
+    
+    executeComputeCommand();
+    
+    hasUnfrozen = true;
+    LOGI("Successfully unfrozen %{public}d gaussian spheres!", splat_count);
+}
+
 void VulkanComputeGS::setClonePipeline()
 {
     const uint32_t bindingCount = 8;
@@ -4293,6 +4430,8 @@ bool VulkanComputeGS::prepare()
     setKNNPipeline();
     setPrunePipeline();
     setMaskBodyPipeline();
+    setFreezePipeline();
+    setUnfreezePipeline();
 //     buildComputeCommandBuffer();
     LOGI("Prepare: Finished.");
     prepared = true;
