@@ -444,6 +444,85 @@ void DataLoader::InputInitStruct::getTrainOrders()
     }
 }
 
+void projectPoints(
+    const Eigen::Matrix<float, Eigen::Dynamic, 3>& points_world,
+    const Eigen::Matrix3f& R,
+    const Eigen::Vector3f& T,
+    float fx, float fy, float cx, float cy,
+    Eigen::Matrix<float, Eigen::Dynamic, 3>& projected_points
+)
+{
+    Eigen::Matrix<float, Eigen::Dynamic, 3> points_cam = (R * points_world.transpose()).transpose();
+    points_cam.rowwise() += T.transpose();
+    
+    // Project to image plane (vectorized)
+    projected_points.resize(points_cam.rows(), 3);
+    Eigen::VectorXf z_inv = points_cam.col(2).cwiseInverse();
+    projected_points.col(0) = (points_cam.col(0).array() * z_inv.array()) * fx + cx;
+    projected_points.col(1) = (points_cam.col(1).array() * z_inv.array()) * fy + cy;
+    projected_points.col(2) = points_cam.col(2);
+}
+
+void DataLoader::InputInitStruct::compute_3D_interval()
+{
+    intervals = std::vector<float>(positions.size(), 100000);
+    
+    Eigen::Matrix<float, Eigen::Dynamic, 3> all_positions(positions.size(), 3);
+    for (size_t i = 0; i < positions.size(); ++i) {
+        all_positions(i, 0) = positions[i].x;
+        all_positions(i, 1) = positions[i].y;
+        all_positions(i, 2) = positions[i].z;
+    }
+    float fx = intr_tmp[0][0];
+    float fy = intr_tmp[0][1];
+    float cx = intr_tmp[0][2];
+    float cy = intr_tmp[0][3];
+    
+    float max_dist = -1;
+    float min_dist = 10000;
+    
+    for (auto& extr : extr_tmp) {
+        Eigen::Quaternionf q(extr.values[0], extr.values[1], extr.values[2], extr.values[3]);
+        q.normalize();
+        auto R = q.toRotationMatrix();
+        Eigen::Vector3f T(extr.values[4], extr.values[5], extr.values[6]);
+        
+        Eigen::Matrix<float, Eigen::Dynamic, 3> projected_points;
+        projectPoints(all_positions, R, T, fx, fy, cx, cy, projected_points);
+        
+        for(int i = 0; i < positions.size(); i++) {
+            
+            float u = projected_points(i, 0);
+            float v = projected_points(i, 1);
+            float d = projected_points(i, 2);
+            
+            if (u < 0 || u >= width || v < 0 || v >= height || d < 0.2)
+                continue;
+            
+            intervals[i] = std::min(intervals[i], d);
+            max_dist = std::max(max_dist, d);
+            min_dist = std::min(min_dist, d);
+        }
+    }
+    
+    for (int i = 0; i < intervals.size(); i++) {
+        if (intervals[i] > 1000){
+            intervals[i] = max_dist / fx;
+        }
+        else{
+            intervals[i] /= fx;
+        }
+    }
+    max_dist = log(max_dist / fx);
+    min_dist = log(min_dist / fx);
+    
+    // normalize
+    for(int i = 0; i < intervals.size(); i++) {
+        intervals[i] = (intervals[i] - min_dist) / (max_dist - min_dist);
+    }
+}
+
+
 void DataLoader::InputInitStruct::getNerfppNorm() {
     this->radius = -1.0;
     Base::Math::Vec3 cam_centers = Base::Math::Vec3(0, 0, 0);

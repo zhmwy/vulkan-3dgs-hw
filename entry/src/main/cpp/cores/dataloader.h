@@ -37,6 +37,7 @@ public:
         std::vector<Base::Math::Vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
         std::vector<float> opacities;          // Opacity
         std::vector<Base::Math::Vec3> normals;
+        std::vector<float> intervals;
         
         struct Data {
             float values[48];  // 48维浮点数组
@@ -91,6 +92,7 @@ public:
         int findMaxPose(std::set<int>& chosen);
         void getTrainOrder(int first_id = 0);
         void getTrainOrders();
+        void compute_3D_interval();
         
         void processAndCropForeground(const std::string& scenepath);
     };

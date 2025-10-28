@@ -249,7 +249,9 @@ public:
         vkgs::Buffer curPointsNum;
         vkgs::Buffer xyz_gradient_mean;
         vkgs::Buffer xyz_gradient_mean_int;
-
+        vkgs::Buffer prev_selected_mask;
+        vkgs::Buffer prev_lff_xyz_grad;
+        vkgs::Buffer interval_coef;
 
         vkgs::Buffer dL_duvd_int;
         vkgs::Buffer dL_dconic_int;
@@ -325,6 +327,7 @@ public:
     Compute3DGS pipe_split;
     Compute3DGS pipe_clone_3dgs;
     Compute3DGS pipe_split_3dgs;
+    Compute3DGS pipe_densify_EFA;
     
     Compute3DGS pipe_reset_opacity;
     Compute3DGS pipe_extr_process;
@@ -373,7 +376,13 @@ public:
         uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
         std::vector<uint32_t>& pushConstants
     );
-
+    void bindPipeline2CommandBufferPushConstantsFloat(
+        const VulkanComputeGS::Compute3DGS& pipe, 
+        const int PIPELINE_INDEX,
+        uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ,
+        std::vector<float>& pushConstants
+    );
+    
     void ComputeMemoryBarrierBlock();
     void ComputeShaderMemoryBarrierBlock();
     void ComputeTransBarrierBlock();
@@ -402,6 +411,7 @@ public:
     void setSplitPipeline();
     void setClone3DGSPipeline();
     void setSplit3DGSPipeline();
+    void setDensifyEFAPipeline();
     
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();

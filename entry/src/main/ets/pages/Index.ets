@@ -13,7 +13,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-let caseName = "2025-06-04_19_29_27";
+let caseName = "2025-06-04_15_34_45";
 const caseNames: string[] = [
   "2025-06-04_15_34_45",
   "2025-06-04_15_57_44",
