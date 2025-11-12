@@ -802,15 +802,18 @@ void VulkanComputeGS::densifyCmd()
     ComputeShaderMemoryBarrierBlock();
     
 
-//     bindPipeline2CommandBuffer(pipe_prune, FORWARD_PIPE, X, 1, 1, true);
-    bindPipeline2CommandBuffer(pipe_clone, FORWARD_PIPE, X, 1, 1, true);
-    bindPipeline2CommandBuffer(pipe_split, FORWARD_PIPE, X, 1, 1, true);
-    
-//     float training_percent_powered = 1 - (training_step + 100 - densify_start_step) / (densify_end_step - densify_start_step);
-//     float splitting_lb = training_percent_powered;
-//     std::vector<float> constants = {static_cast<float>(splat_count), training_percent_powered, splitting_lb, inputGaussian.radius, static_cast<float>(training_step), 0.0, 0.0, 0.0};
-//     bindPipeline2CommandBufferPushConstantsFloat(pipe_densify_EFA, FORWARD_PIPE, X, 1, 1, constants);
-
+    if (!isEFA) {
+        //     bindPipeline2CommandBuffer(pipe_prune, FORWARD_PIPE, X, 1, 1, true);
+        bindPipeline2CommandBuffer(pipe_clone, FORWARD_PIPE, X, 1, 1, true);
+        bindPipeline2CommandBuffer(pipe_split, FORWARD_PIPE, X, 1, 1, true);
+    }
+        
+    else {
+        float training_percent_powered = 1 - (training_step + 100 - densify_start_step) / (densify_end_step - densify_start_step);
+        float splitting_lb = training_percent_powered;
+        std::vector<float> constants = {static_cast<float>(splat_count), training_percent_powered, splitting_lb, inputGaussian.radius, static_cast<float>(training_step), 0.0, 0.0, 0.0};
+        bindPipeline2CommandBufferPushConstantsFloat(pipe_densify_EFA, FORWARD_PIPE, X, 1, 1, constants);
+    }
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_gradient_accum, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.denom, 0, VK_WHOLE_SIZE, 0);
