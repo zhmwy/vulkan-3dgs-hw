@@ -78,7 +78,7 @@ void InterfaceImplVulkan::TrainVulkan() {
         
         while(duration.count() < total_time) {
             if (!_isTraining) break;
-            
+
 #if 1
             // Currently performance is not good.
             // Check for segmentation completion and apply if ready (only once)
@@ -93,15 +93,15 @@ void InterfaceImplVulkan::TrainVulkan() {
             updateProgress(static_cast<float>(duration.count() * 100) / total_time);
             GetProcessVulkan();
             step++;
-        
+
             end = std::chrono::high_resolution_clock::now();
             duration = end - start;
-        
+
             // do not densify in the last 5 seconds
             if (duration.count() > total_time - 5.0){
                 _renderer->densify_start_step = 100000;
             }
-            
+
             if (duration.count() > total_time - 15.0){
                 _renderer->low_resolution_steps = -1;
             }
@@ -110,11 +110,21 @@ void InterfaceImplVulkan::TrainVulkan() {
 //         // Main training loop
 //         for (step = 0; step < max_steps[0]; ++step) {
 //             if (!_isTraining) break;
+//                
+//             if (!_renderer->segmentationFinished && isSegmentationComplete() && _renderer->trainingMode != SCENE) {
+//                 LOGI("Segmentation masks finished!");
+// //                 _renderer->performSegmentationUpdate(_dataPath);
+//                 _renderer->segmentationFinished = true;
+// //                 LOGI("Foreground segmentation applied, continuing with foreground-only training.");
+//             }
+//                
 //             _renderer->render();
 //             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
 //             GetProcessVulkan();
 //         }
-//        
+//         end = std::chrono::high_resolution_clock::now();
+//         duration = end - start;
+
 //         _renderer->saveCameras(_dataPath);
         _renderer->saveGaussians(_dataPath);
         
@@ -128,7 +138,7 @@ void InterfaceImplVulkan::TrainVulkan() {
                 _renderer->renderRGB2Cpu(i, _dataPath, WIDTH, HEIGHT);
             }
             
-            LOGE("PSNR: %{public}f ; steps: %{public}d", _renderer->total_psnr / _renderer->inputGaussian.img_list.size(), step);
+            LOGE("PSNR: %{public}f ; steps: %{public}d; times: %{public}f", _renderer->total_psnr / _renderer->inputGaussian.img_list.size(), step, float(duration.count()));
 //             LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
             
             updateProgress(100.0f);

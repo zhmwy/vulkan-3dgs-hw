@@ -13,7 +13,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
 const context = getContext(this);
 const filesDir = context.filesDir;
 const TAG: string = "ImageSegmentationSample";
-let caseName = "2025-06-04_15_34_45";
+
 const caseNames: string[] = [
   "2025-06-04_15_34_45",
   "2025-06-04_15_57_44",
@@ -48,6 +48,8 @@ const chosenCase: string[] = [
   "2025-06-04_20_26_45",
   "2025-06-05_20_27_20"
 ]
+
+let caseName = caseNames[1];
 
 class GS_Mode {
   static readonly SCENE = 0 // 暂无特定优化

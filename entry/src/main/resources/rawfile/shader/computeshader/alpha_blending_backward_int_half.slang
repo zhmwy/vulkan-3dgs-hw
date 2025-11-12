@@ -69,6 +69,25 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         tile_idx_y * BLOCK_Y + local_y
     };
 
+    if (training_step >= 100000) {
+        if (training_step % 4 == 0) {
+            if (tile_idx_x % 2 != 0)
+                return;
+        }
+        else if (training_step % 4 == 1) {
+            if (tile_idx_x % 2 != 1)
+                return;
+        }
+        else if (training_step % 4 == 2) {
+            if (tile_idx_y % 2 != 0)
+                return;
+        }
+        else if (training_step % 4 == 3) {
+            if (tile_idx_y % 2 != 1)
+                return;
+        }
+    }
+
     bool withinBounds = p.x < W && p.y < H;
 
     int2 gaussian_range = {

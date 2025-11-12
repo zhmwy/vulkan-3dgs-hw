@@ -18,6 +18,10 @@ static const float densify_grad_threshold = 0.00015;
 static const int skybox_num = 10000;
 static const float lamda_mask = 0.1;
 
+static const float tolerance = 1.0e-5;
+static const float scaling_multiplier_min = 1.0;
+static const float scaling_multiplier_max = 2.0;
+static const float split_multiplier = 2.0;
 
 uint t2i(uint i, uint j, uint width) {
     return i * width + j;
