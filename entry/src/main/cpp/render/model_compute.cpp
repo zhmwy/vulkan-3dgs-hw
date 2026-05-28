@@ -101,8 +101,8 @@ void VulkanComputeGS::encodeCpu2Gpu()
     
     inputGaussian.intervals.resize(MAX_SPLAT_COUNT);
     
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rot_flow_params, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.xyz_flow_params, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rot_flow_params, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.is_body_point, 0, VK_WHOLE_SIZE, 0);
     TransComputeBarrierBlock();
     
@@ -232,14 +232,14 @@ void VulkanComputeGS::createGpu2CpuCopys()
     createGpu2CpuCopy(splat_buffers.dL_dextr_params);
     createGpu2CpuCopy(splat_buffers.intr_params_render);
     
-    createGpu2CpuCopy(splat_buffers.time_stamp);
-    createGpu2CpuCopy(splat_buffers.is_body_point);
-    createGpu2CpuCopy(splat_buffers.dL_dxyz_flow);
-    createGpu2CpuCopy(splat_buffers.dL_drot_flow);
-    createGpu2CpuCopy(splat_buffers.xyz_flow_params);
-    createGpu2CpuCopy(splat_buffers.rot_flow_params);
-    createGpu2CpuCopy(splat_buffers.xyz_flow);
-    createGpu2CpuCopy(splat_buffers.rot_flow);
+//     createGpu2CpuCopy(splat_buffers.time_stamp);
+//     createGpu2CpuCopy(splat_buffers.is_body_point);
+//     createGpu2CpuCopy(splat_buffers.dL_dxyz_flow);
+//     createGpu2CpuCopy(splat_buffers.dL_drot_flow);
+//     createGpu2CpuCopy(splat_buffers.xyz_flow_params);
+//     createGpu2CpuCopy(splat_buffers.rot_flow_params);
+//     createGpu2CpuCopy(splat_buffers.xyz_flow);
+//     createGpu2CpuCopy(splat_buffers.rot_flow);
     createGpu2CpuCopy(splat_buffers.dL_dmap);
     createGpu2CpuCopy(splat_buffers.dm_dmu1);
     createGpu2CpuCopy(splat_buffers.dm_dsigma1_sq);
@@ -564,8 +564,8 @@ void VulkanComputeGS::zeroGradCmd()
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dopacity_act_array_int, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_duvd_int, 0, VK_WHOLE_SIZE, 0);
     
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dxyz_flow, 0, VK_WHOLE_SIZE, 0);
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_drot_flow, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_dxyz_flow, 0, VK_WHOLE_SIZE, 0);
+//     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.dL_drot_flow, 0, VK_WHOLE_SIZE, 0);
     
     vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.rfeat, 0, VK_WHOLE_SIZE, 0);
     
@@ -852,10 +852,12 @@ void VulkanComputeGS::updRenderCmd(int index)
             inputGaussian.intr_tmp[0].data()
         );
     }
-    splat_buffers.time_stamp.FromCpu(
-        compute.commandBuffer,
-        &inputGaussian.time_stamps[index]
-    );
+    if (isflow) {
+        splat_buffers.time_stamp.FromCpu(
+            compute.commandBuffer,
+            &inputGaussian.time_stamps[index]
+        );
+    }
     ComputeMemoryBarrierBlock();
 }
 
@@ -1197,59 +1199,61 @@ void VulkanComputeGS::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
+    if (isflow) {
+        splat_buffers.time_stamp = vkgs::Buffer(
+            allocator, sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.xyz_base_array = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.rot_base_array = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 4 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.xyz_flow = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.rot_flow = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.xyz_flow_params = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.rot_flow_params = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.dL_dxyz_flow = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.dL_drot_flow = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.xyz_flow_avg = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.rot_flow_avg = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.xyz_flow_exp_avg = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+        splat_buffers.rot_flow_exp_avg = vkgs::Buffer(
+            allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        );
+    }
     
-    splat_buffers.time_stamp = vkgs::Buffer(
-        allocator, sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.xyz_base_array = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.rot_base_array = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 4 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.xyz_flow = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.rot_flow = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.xyz_flow_params = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.rot_flow_params = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.dL_dxyz_flow = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.dL_drot_flow = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.xyz_flow_avg = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.rot_flow_avg = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.xyz_flow_exp_avg = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 3 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.rot_flow_exp_avg = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 2 * 4 * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
     splat_buffers.body_bbox = vkgs::Buffer(
         allocator, 6 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -4224,18 +4228,7 @@ void VulkanComputeGS::printGpuBuffer(const std::string& varName, const vkgs::Buf
         return;
     }
     
-//     if(varName == "is_body_point")
-//     {
-//         int count = 0;
-//         for(int i = 0; i < pointNum;i++){
-//             if(num[i] == 1){
-//                 ++count;
-//             }
-//         }
-//         LOGI("Body point Count is: %{public}d / %{public}d", count, pointNum);
-//         return;
-//     }
-    
+
     #ifdef VULKAN_HW
     for (int i = 0; i < pointNum; i++) {
         LOGW("%{public}d: ", i + offset);
@@ -4355,7 +4348,7 @@ bool VulkanComputeGS::prepare()
     
     setProjectionPipeline();
     setProjectionRenderPipeline();
-    setFlowPipeline();
+//     setFlowPipeline();
     setSortPipeline();
     setComputeKeyPipeline();
     setComputeTilePipeline();
@@ -4366,8 +4359,8 @@ bool VulkanComputeGS::prepare()
     setAlphaBlendingIntPipeline();
     
     setOptimizationPipeline();
-    setOptimizeFlowPipeline();
-    setPostFlowOptimPipeline();
+//     setOptimizeFlowPipeline();
+//     setPostFlowOptimPipeline();
 
     setExtrOptimizationPipeline();
     
@@ -4642,10 +4635,10 @@ void VulkanComputeGS::performSegmentationUpdate(const std::string& dataPath) {
     // Step 3: Get current 3DGS from GPU to CPU for segmentation
     buildComputeCommandBuffer([this]() { 
         createGpu2CpuCopy(splat_buffers.xyz_array);
-        createGpu2CpuCopy(splat_buffers.xyz_base_array);
+//         createGpu2CpuCopy(splat_buffers.xyz_base_array);
         createGpu2CpuCopy(splat_buffers.scale_array);
         createGpu2CpuCopy(splat_buffers.rotate_array);
-        createGpu2CpuCopy(splat_buffers.rot_base_array);
+//         createGpu2CpuCopy(splat_buffers.rot_base_array);
         createGpu2CpuCopy(splat_buffers.sh_coeff);
         createGpu2CpuCopy(splat_buffers.opacity);
     });
@@ -4733,10 +4726,10 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     
     buildComputeCommandBuffer([this]() { 
         createGpu2CpuCopy(splat_buffers.xyz_array);
-        createGpu2CpuCopy(splat_buffers.xyz_base_array);
+//         createGpu2CpuCopy(splat_buffers.xyz_base_array);
         createGpu2CpuCopy(splat_buffers.scale_array);
         createGpu2CpuCopy(splat_buffers.rotate_array);
-        createGpu2CpuCopy(splat_buffers.rot_base_array);
+//         createGpu2CpuCopy(splat_buffers.rot_base_array);
         createGpu2CpuCopy(splat_buffers.sh_coeff);
         createGpu2CpuCopy(splat_buffers.opacity);
     });

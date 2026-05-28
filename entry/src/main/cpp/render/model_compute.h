@@ -103,6 +103,7 @@ public:
     bool isObject;  // decide whether to train object only
     bool segmentationFinished = false; // Do not change this unless you are confident that segmentation has been done
     bool isEFA = false;
+    bool isflow = false;
     
     RandomGenerator random_generator;
     int current_img_idx = 0;
@@ -191,13 +192,6 @@ public:
         vkgs::Buffer dL_dintr_params;
         vkgs::Buffer dL_dextr_params;
         
-        // vkgs::Buffer dL_drfeat_array;
-        // vkgs::Buffer dL_dconic_array;
-        // vkgs::Buffer dL_dopacity_array;
-        // vkgs::Buffer dL_dfeature_array;
-        // vkgs::Buffer dL_dndc_array;
-        // vkgs::Buffer dL_dbackground_array;
-
         // for Adam
         vkgs::Buffer xyz_array_avg;
         vkgs::Buffer scale_array_avg;
