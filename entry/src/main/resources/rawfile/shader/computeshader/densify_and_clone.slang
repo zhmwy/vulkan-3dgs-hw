@@ -30,7 +30,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     if (idx >= xyz_size)
         return;
 
-    if (idx >= max(xyz_size * 0.05, 18000.0))
+    if (idx >= max(xyz_size * 0.05, 25000.0))
         return;
 
     uint32_t toDensifyIdx_reg = toDensifyIdx_array[idx];

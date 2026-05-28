@@ -757,7 +757,7 @@ DataLoader::InputInitStruct  DataLoader::loadHeadGaussians(std::string dataPath,
 }
 
 void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLoader::InputInitStruct& data) {
-        std::string filename = fullDataPath + "/model.ply";
+        std::string filename = fullDataPath + "/point_cloud.ply";
         std::ofstream outFile(filename, std::ios::binary);
         if (!outFile.is_open()) {
             LOGE("Error: Unable to open file %{public}s", filename.c_str());

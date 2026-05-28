@@ -54,6 +54,7 @@ public:
 
         if(_current_idx % _range == 0){
             arr = trainOrders[dist(gen)];
+            arr = trainOrders[0];
         }
         int k = arr[_current_idx % _range];
         _current_idx++;

@@ -218,7 +218,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float mid = 0.5f * (cov.x + cov.z);
     float lambda1 = mid + sqrt(max(0.1f, mid * mid - det));
     float lambda2 = mid - sqrt(max(0.1f, mid * mid - det));
-    float my_radius = ceil(2.f * sqrt(max(lambda1, lambda2)));
+    float my_radius = ceil(2.0f * sqrt(max(lambda1, lambda2)));
     int2 grid = int2((width + BLOCK_X - 1) / BLOCK_X, (height + BLOCK_Y - 1) / BLOCK_Y);
     // int2 grid = int2(width, height);
     int4 range = get_rect(uvd_reg, int(my_radius), grid);

@@ -49,11 +49,19 @@ const chosenCase: string[] = [
   "2025-06-05_20_27_20"
 ]
 
+const sceneCases: string[] = [
+  "01", "02", "03", "04", "05",
+  "06", "07", "08", "09", "10",
+  "11", "12", "13", "14", "15",
+  "16", "17", "18", "19", "20",
+]
+
+
 let caseName = caseNames[1];
 
 class GS_Mode {
   static readonly SCENE = 0 // 暂无特定优化
-  static readonly OBJECT = 1 // 局部放大、EFA-GS
+  static readonly OBJECT = 1 //
   static readonly HUMAN = 2 // SMPL估计、人脸重点、美颜
   static readonly MULTI_HUMAN = 3 // 人脸重点
 }
@@ -78,7 +86,7 @@ struct Index {
   @State isTraining: boolean = false;
   @State pixelMap : PixelMap | undefined = undefined;
   @State currentImage: number = 0;
-  @State segmentViews: number = 8;
+  @State segmentViews: number = 0;
 
   aboutToAppear() {
     // 调用自定义的getSyncPixelMap接口，获取pixelMap
@@ -106,9 +114,11 @@ struct Index {
       // caseName = caseNames[4];
       await this.readFiles(filesDir + "/" + caseName + "/images", this.segmentViews);        // 调用 readFiles 读取文件kl;lkm
       hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`)
+
       if(trainingMode == GS_Mode.OBJECT){
-        await this.segmentAllImagesInSandbox();
+        this.segmentAllImagesInSandbox();
       }
+
       await nativeRender.train3DGS(this.resmgr, caseName, GS_Mode.OBJECT, isObject);  // for循环
       this.message = "Training Complete!";
     } catch (error) {

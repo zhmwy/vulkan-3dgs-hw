@@ -39,11 +39,11 @@ void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
 //     inputGaussian.getTrainOrder();
 //     random_generator.initialize(inputGaussian.trainOrder);
     
-    inputGaussian.shuffleImage();
+//     inputGaussian.shuffleImage();
     inputGaussian.getTrainOrders();
     inputGaussian.compute_3D_interval();
     random_generator.initialize(inputGaussian.trainOrders);
-
+    
 //     random_generator.initialize(inputGaussian.img_list.size());
 }
 
@@ -732,8 +732,7 @@ void VulkanComputeGS::backwardCmd()
     queryCmdTimeStart("16. Backward_blending");
     X = ((int)(current_scale * image_width) + 16 - 1) / 16; // Ceiling division
     Y = ((int)(current_scale * image_height) + 16 - 1) / 16; // Ceiling division
-
-//     bindPipeline2CommandBuffer(pipe_blending, BACKWARD_PIPE, X, Y, 1);
+    
     if (isObject && segmentationFinished)
         bindPipeline2CommandBuffer(pipe_blending_object, BACKWARD_PIPE, X, Y, 1);
     else
@@ -4432,6 +4431,10 @@ float VulkanComputeGS::calculatePSNR(float* mse, int width, int height, float& p
         psnr[1] = 10.0 * std::log10(1.0 / meanSquaredError[1]);
         psnr[2] = 10.0 * std::log10(1.0 / meanSquaredError[2]);
         
+//         psnr[0] = 20.0 * std::log10(1.0 / std::sqrt(meanSquaredError[0]));
+//         psnr[1] = 20.0 * std::log10(1.0 / std::sqrt(meanSquaredError[1]));
+//         psnr[2] = 20.0 * std::log10(1.0 / std::sqrt(meanSquaredError[2]));
+        
 //         LOGI("PSNR per image: %{public}f: ", (psnr[0] + psnr[1] + psnr[2]) / 3.0);
         psnr_each = ((psnr[0] + psnr[1] + psnr[2]) / 3.0);
     }
@@ -4541,7 +4544,6 @@ void VulkanComputeGS::printLog(bool train)
 
         total_sort_point_count += sort_point_count;
         max_avg_splat_tile_num = std::max(max_avg_splat_tile_num, 1.0 * sort_point_count / splat_count);
-//         calculatePSNR(psnr_sum, (int)(current_scale * image_width), (int)(current_scale * image_height));
         if ((training_step + 1) % 100 == 0 && training_step != max_training_step)
         {
 
@@ -4799,16 +4801,16 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     LOGI("Successfully copied GPU buffers to inputGaussian!");
     DataLoader::saveToPLY_tinyply(dataPath, inputGaussian);
     
-    if (trainingMode == OBJECT){
-        auto begin = clk::now();
-        DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
+//     if (trainingMode == OBJECT){
+//         auto begin = clk::now();
 //         DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
-
-        LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
-    
-        std::filesystem::create_directories(dataPath + "/visual_hull");
-        DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
-    }
+// //         DataLoader::InputInitStruct segmentedGaussian = performVisualHullSegmentation(inputGaussian);
+//
+//         LOGW("Visual Hull takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+//    
+//         std::filesystem::create_directories(dataPath + "/visual_hull");
+//         DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
+//     }
     
 //     FaceTune(inputGaussian, dataPath);
 //     auto begin = clk::now();
@@ -4951,7 +4953,13 @@ void VulkanComputeGS::renderRGB2Cpu(int i, std::string &dataFolder, int width, i
     int mask_pixel = 0;
 
     std::string imgname = inputGaussian.img_list[i].substr(1 + inputGaussian.img_list[i].find_last_of("/\\"));
+    size_t pos = imgname.find_last_of('.');
+    if (pos != std::string::npos) {
+        imgname = imgname.substr(0, pos) + ".png";
+    }    
+
     std::string mask_path = dataFolder + "/segmented/" + imgname;
+
     cv::Mat mask = cv::imread(mask_path, 0);
     bool hasmask = true;
     if (mask.rows == 0 || mask.cols == 0) {
