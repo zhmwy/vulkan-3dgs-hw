@@ -112,10 +112,14 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float3 dL_dvdirs = float3(0, 0, 0);
 
     // SH0
-    float3 coeff0 = float3(sh_coeff_array[t2i(idx, 0, 0, 3, DD)], sh_coeff_array[t2i(idx, 1, 0, 3, DD)], sh_coeff_array[t2i(idx, 2, 0, 3, DD)]);
+    float3 coeff0 = float3(sh_coeff_array[idx * 3 + 0], sh_coeff_array[idx * 3 + 1], sh_coeff_array[idx * 3 + 2]);
     float3 dL_dshs_tmp = dL_dval_tmp * SH_C0;
-    set_sh_grad_value(dL_dshs_array, idx, 0, dL_dshs_tmp);
-
+    dL_dshs_array[idx * 3 + 0] = dL_dshs_tmp.x;
+    dL_dshs_array[idx * 3 + 1] = dL_dshs_tmp.y;
+    dL_dshs_array[idx * 3 + 2] = dL_dshs_tmp.z;
+    return;
+    
+    /*
     if (D > 1) {
         // SH1
         float3 coeff1 = float3(sh_coeff_array[t2i(idx, 0, 1, 3, DD)], sh_coeff_array[t2i(idx, 1, 1, 3, DD)], sh_coeff_array[t2i(idx, 2, 1, 3, DD)]);
@@ -240,9 +244,11 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             }
         }
     }
+    */
 
     // if D <= 1, the final feature is not related to the direction.
-    if (D <= 1) return;
+
+    // if (D <= 1) return;
     // dL_dvdirs_un = dL_dvdir * dvdirs_dvdirs_un
 
     float norm2 = norm * norm;

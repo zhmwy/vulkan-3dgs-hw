@@ -172,11 +172,14 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     xyz_array[t2i(toInsertIdx, 1, 3)] = t2[1] + old_xyz.y;
     xyz_array[t2i(toInsertIdx, 2, 3)] = t2[2] + old_xyz.z;
 
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < DD; j++) {
-            shs_array[t2i(toInsertIdx, i, j, 3, DD)] = shs_array[t2i(toDensifyIdx_reg, i, j, 3, DD)];
-        }
-    }
+    // for (int i = 0; i < 3; i++) {
+    //     for (int j = 0; j < DD; j++) {
+    //         shs_array[t2i(toInsertIdx, i, j, 3, DD)] = shs_array[t2i(toDensifyIdx_reg, i, j, 3, DD)];
+    //     }
+    // }
+    shs_array[3 * toInsertIdx + 0] = shs_array[3 * toDensifyIdx_reg + 0];
+    shs_array[3 * toInsertIdx + 1] = shs_array[3 * toDensifyIdx_reg + 1];
+    shs_array[3 * toInsertIdx + 2] = shs_array[3 * toDensifyIdx_reg + 2];
 
     opacity_array[toInsertIdx] = opacity_array[toDensifyIdx_reg];
 

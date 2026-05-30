@@ -8,7 +8,7 @@ static const float percent_dense = 0.01;
 // static const float scene_extent = 1.0;
 // static const float scene_extent = 5.202147674560547;
 // static const float scene_extent = 5.202147674560547 / 5;
-static const uint DD = 16; // the upper bound of D
+static const uint DD = 1; // the upper bound of D
 static const float min_opacity = 0.005;
 static const int max_screen_size = -1;
 
@@ -44,11 +44,14 @@ void replaceGS(
     xyz[t2i(dst_idx, 1, 3)] = xyz[t2i(src_idx, 1, 3)];
     xyz[t2i(dst_idx, 2, 3)] = xyz[t2i(src_idx, 2, 3)];
 
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < D; j++) {
-            shs[t2i(dst_idx, i, j, 3, DD)] = shs[t2i(src_idx, i, j, 3, DD)];
-        }
-    }
+    // for (int i = 0; i < 3; i++) {
+    //     for (int j = 0; j < D; j++) {
+    //         shs[t2i(dst_idx, i, j, 3, DD)] = shs[t2i(src_idx, i, j, 3, DD)];
+    //     }
+    // }
+    shs[dst_idx * 3 + 0] = shs[src_idx * 3 + 0];
+    shs[dst_idx * 3 + 1] = shs[src_idx * 3 + 1];
+    shs[dst_idx * 3 + 2] = shs[src_idx * 3 + 2];
 
     opacity[dst_idx] = opacity[src_idx];
 
@@ -161,11 +164,14 @@ void resetGS(
     xyz[t2i(idx, 1, 3)] = 0;
     xyz[t2i(idx, 2, 3)] = 0;
 
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < D; j++) {
-            shs[t2i(idx, i, j, 3, DD)] = 0;
-        }
-    }
+    // for (int i = 0; i < 3; i++) {
+    //     for (int j = 0; j < D; j++) {
+    //         shs[t2i(idx, i, j, 3, DD)] = 0;
+    //     }
+    // }
+    shs[idx * 3 + 0] = 0;
+    shs[idx * 3 + 1] = 0;
+    shs[idx * 3 + 2] = 0;
 
     opacity[idx] = 0;
 

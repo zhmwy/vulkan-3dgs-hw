@@ -177,38 +177,34 @@ void update_adam_for_features(
 )
 {
     for (uint i = 0; i < 3; i++) {
-        for (uint j = 0; j < vec_length; j++) {
-            uint offset = idx * DD * 3 + i * DD + j;
-            float lr = 0.0;
-            if (j == 0)
-                lr = learning_rate_features;
-            else
-                lr = learning_rate_features_rest;
 
-            // Read the gradient, first-order moment, and second-order moment for the current dimension
-            float grad = grad_array[offset];
-            float m = m_array[offset];
-            float v = v_array[offset];
+        uint offset = idx * 3 + i;
+        float lr = learning_rate_features;
 
-            // Update first-order moment (moving average of gradients)
-            m = beta1 * m + (1.0 - beta1) * grad;
+        // Read the gradient, first-order moment, and second-order moment for the current dimension
+        float grad = grad_array[offset];
+        float m = m_array[offset];
+        float v = v_array[offset];
 
-            // Update second-order moment (moving average of squared gradients)
-            v = beta2 * v + (1.0 - beta2) * grad * grad;
+        // Update first-order moment (moving average of gradients)
+        m = beta1 * m + (1.0 - beta1) * grad;
 
-            // Write back the updated first-order and second-order moments
-            m_array[offset] = m;
-            v_array[offset] = v;
+        // Update second-order moment (moving average of squared gradients)
+        v = beta2 * v + (1.0 - beta2) * grad * grad;
 
-            float bais_correction1 = 1 - pow(beta1, training_step);
-            float bais_correction2 = 1 - pow(beta2, training_step);
+        // Write back the updated first-order and second-order moments
+        m_array[offset] = m;
+        v_array[offset] = v;
 
-            // Compute the step size using Adam formula
-            float step = -lr / bais_correction1 * m / (sqrt(v / bais_correction2) + eps);
+        float bais_correction1 = 1 - pow(beta1, training_step);
+        float bais_correction2 = 1 - pow(beta2, training_step);
 
-            // Update the parameter
-            param_array[offset] += step;
-        }
+        // Compute the step size using Adam formula
+        float step = -lr / bais_correction1 * m / (sqrt(v / bais_correction2) + eps);
+
+        // Update the parameter
+        param_array[offset] += step;
+        
     }
 }
 
@@ -266,7 +262,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     update_adam_for_features(
         idx,
         (int)D,
-        // 48, 
         dL_dfeature_array,
         feature_array,
         feature_array_exp_avg,

@@ -40,7 +40,7 @@ public:
         std::vector<float> intervals;
         
         struct Data {
-            float values[48];  // 48维浮点数组
+            float values[3];  // 48维浮点数组
         };
         struct DataExtr{
             float values[7];  

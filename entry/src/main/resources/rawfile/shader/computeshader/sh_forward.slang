@@ -71,9 +71,10 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     dir = dir / sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
 
     // SH0
-    float3 coeff0 = float3(sh_coeff_array[t2i(idx, 0, 0, 3, DD)], sh_coeff_array[t2i(idx, 1, 0, 3, DD)], sh_coeff_array[t2i(idx, 2, 0, 3, DD)]);
+    float3 coeff0 = float3(sh_coeff_array[idx * 3 + 0], sh_coeff_array[idx * 3 + 1], sh_coeff_array[idx * 3 + 2]);
     float3 rgb = SH_C0 * coeff0;
 
+    /*
     if (D > 1) {
         // SH1
         float3 coeff1 = float3(sh_coeff_array[t2i(idx, 0, 1, 3, DD)], sh_coeff_array[t2i(idx, 1, 1, 3, DD)], sh_coeff_array[t2i(idx, 2, 1, 3, DD)]);
@@ -120,6 +121,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             }
         }
     }
+    */
 
     value_array[3 * idx + 0] = max(rgb.x + 0.5, 0.0);
     value_array[3 * idx + 1] = max(rgb.y + 0.5, 0.0);

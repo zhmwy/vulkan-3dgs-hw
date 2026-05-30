@@ -1191,7 +1191,7 @@ void VulkanComputeGS::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     splat_buffers.sh_coeff = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
+        allocator, MAX_SPLAT_COUNT * 3 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     splat_buffers.normal_array = vkgs::Buffer(
@@ -1267,7 +1267,7 @@ void VulkanComputeGS::prepare3dgsBuffers()
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     splat_buffers.dL_dshs_array = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
+        allocator, MAX_SPLAT_COUNT * 3 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
     
@@ -1480,7 +1480,7 @@ void VulkanComputeGS::prepare3dgsBuffers()
     );
 
     splat_buffers.feature_array_avg = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 48 * sizeof(float), 
+        allocator, MAX_SPLAT_COUNT * 3 * sizeof(float), 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
@@ -1507,7 +1507,7 @@ void VulkanComputeGS::prepare3dgsBuffers()
     
 
     splat_buffers.feature_array_exp_avg = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 48 * sizeof(float), 
+        allocator, MAX_SPLAT_COUNT * 3 * sizeof(float), 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
@@ -4393,7 +4393,7 @@ bool VulkanComputeGS::prepare()
     setExtrProcessRenderPipeline();
     
     setKNNPipeline();
-    setPrunePipeline();
+//     setPrunePipeline();
     setMaskBodyPipeline();
 //     buildComputeCommandBuffer();
     LOGI("Prepare: Finished.");
@@ -4468,61 +4468,6 @@ void VulkanComputeGS::printLog(bool train)
             //std::cout << splat_count << std::endl;
         }
     }
-    
-    if (training_step >= 50000) {
-        buildComputeCommandBuffer([this](){
-            createGpu2CpuCopys();
-        });
-        executeComputeCommand();
-        
-        if (training_step >= 50000){
-            std::vector<float> positionData;
-            copyGpuBufferToVector(splat_buffers.xyz_array, positionData, splat_count, 3);
-            inputGaussian.positions.clear();
-            for (int i = 0; i < splat_count; i++) {
-            inputGaussian.positions.emplace_back(
-                    positionData[i * 3], 
-                    positionData[i * 3 + 1], 
-                    positionData[i * 3 + 2]
-                );
-            }
-            std::vector<float> scaleData;
-            copyGpuBufferToVector(splat_buffers.scale_array, scaleData, splat_count, 3);
-            inputGaussian.scales.clear();
-            for (int i = 0; i < splat_count; i++) {
-                inputGaussian.scales.emplace_back(
-                    scaleData[i * 3], 
-                    scaleData[i * 3 + 1], 
-                    scaleData[i * 3 + 2]
-                );
-            }
-            
-            std::vector<float> rotationData;
-            copyGpuBufferToVector(splat_buffers.rotate_array, rotationData, splat_count, 4);
-            inputGaussian.rotations.clear();
-            for (int i = 0; i < splat_count; i++) {
-                inputGaussian.rotations.emplace_back(
-                    rotationData[i * 4], 
-                    rotationData[i * 4 + 1], 
-                    rotationData[i * 4 + 2], 
-                    rotationData[i * 4 + 3]
-                );
-            }
-            
-            std::vector<float> featureData;
-            copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
-            inputGaussian.colors.clear();
-            for (int i = 0; i < splat_count; i++) {
-                DataLoader::InputInitStruct::Data colorData;
-                for (int j = 0; j < 48; j++) {
-                    colorData.values[j] = featureData[i * 48 + j];
-                }
-                inputGaussian.colors.push_back(colorData);
-            }
-            copyGpuBufferToVector(splat_buffers.opacity, inputGaussian.opacities, splat_count, 1);
-        }
-    }
-
     
     if (training_step >= 1)
     {
@@ -4690,13 +4635,13 @@ void VulkanComputeGS::performSegmentationUpdate(const std::string& dataPath) {
     }
     
     std::vector<float> featureData;
-    copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
+    copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 3);
     inputGaussian.colors.clear();
     inputGaussian.colors.reserve(splat_count);
     for (int i = 0; i < splat_count; i++) {
         DataLoader::InputInitStruct::Data colorData;
-        for (int j = 0; j < 48; j++) {
-            colorData.values[j] = featureData[i * 48 + j];
+        for (int j = 0; j < 3; j++) {
+            colorData.values[j] = featureData[i * 3 + j];
         }
         inputGaussian.colors.push_back(colorData);
     }
@@ -4778,12 +4723,12 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
     }
     
     std::vector<float> featureData;
-    copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 48);
+    copyGpuBufferToVector(splat_buffers.sh_coeff, featureData, splat_count, 3);
     inputGaussian.colors.clear();
     for (int i = 0; i < splat_count; i++) {
         DataLoader::InputInitStruct::Data colorData;
-        for (int j = 0; j < 48; j++) {
-            colorData.values[j] = featureData[i * 48 + j];
+        for (int j = 0; j < 3; j++) {
+            colorData.values[j] = featureData[i * 3 + j];
         }
         inputGaussian.colors.push_back(colorData);
     }

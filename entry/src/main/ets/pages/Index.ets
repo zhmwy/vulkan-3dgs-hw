@@ -57,7 +57,7 @@ const sceneCases: string[] = [
 ]
 
 
-let caseName = caseNames[1];
+let caseName = caseNames[0];
 
 class GS_Mode {
   static readonly SCENE = 0 // 暂无特定优化

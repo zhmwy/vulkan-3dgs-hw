@@ -785,19 +785,19 @@ void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLo
             
             float opacity = (i < data.opacities.size()) ? data.opacities[i] : 1.0f;
             Base::Math::Vec3 color(1.0f, 1.0f, 1.0f);
-            std::vector<float> f_rest_values;
+            std::vector<float> f_rest_values(45, 0.0f);
 
             if (i < data.colors.size()) {
                 color = Base::Math::Vec3(
-                    data.colors[i].values[0 * 16],
-                    data.colors[i].values[1 * 16],
-                    data.colors[i].values[2 * 16]
+                    data.colors[i].values[0],
+                    data.colors[i].values[1],
+                    data.colors[i].values[2]
                 );
-                for (int j = 1; j < 16; ++j) {
-                    f_rest_values.push_back(data.colors[i].values[0 * 16 + j]);
-                    f_rest_values.push_back(data.colors[i].values[1 * 16 + j]);
-                    f_rest_values.push_back(data.colors[i].values[2 * 16 + j]);
-                }
+//                 for (int j = 1; j < 16; ++j) {
+//                     f_rest_values.push_back(data.colors[i].values[0 * 16 + j]);
+//                     f_rest_values.push_back(data.colors[i].values[1 * 16 + j]);
+//                     f_rest_values.push_back(data.colors[i].values[2 * 16 + j]);
+//                 }
             }
 
             positions.insert(positions.end(), {pos.x, pos.y, pos.z});
@@ -913,8 +913,8 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
 
         // Save r in index 0, g in index 16, and b in index 32.
         colorData.values[0]  = static_cast<float>((r/255.0-0.5)/C0);
-        colorData.values[16] = static_cast<float>((g/255.0-0.5)/C0);
-        colorData.values[32] = static_cast<float>((b/255.0-0.5)/C0);
+        colorData.values[1] = static_cast<float>((g/255.0-0.5)/C0);
+        colorData.values[2] = static_cast<float>((b/255.0-0.5)/C0);
         data.colors.push_back(colorData);
     }
     LOGI("Unique points loaded: %{public}zu", data.positions.size());
@@ -1278,7 +1278,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     data.extr_tmp_test = data.extr_tmp;
     assert(data.intr_tmp.size() == 1 || data.intr_tmp.size() == data.extr_tmp.size());
     
-    std::string resume_gaussian_path = scenepath + "/point_cloud.ply";
+    std::string resume_gaussian_path = scenepath + "/point_cloud2.ply";
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
