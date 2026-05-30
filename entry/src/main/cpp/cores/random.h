@@ -48,8 +48,9 @@ public:
     
     
     int generate() {
-//         int k = arr[_current_idx % arr.size()];
+// //         int k = arr[_current_idx % arr.size()];
 //         _current_idx++;
+//         int k = dist(gen);
 //         return k;
 
         if(_current_idx % _range == 0){

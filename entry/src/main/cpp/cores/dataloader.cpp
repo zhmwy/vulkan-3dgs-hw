@@ -1156,7 +1156,7 @@ void DataLoader::InputInitStruct::processAndCropForeground(const std::string& sc
     LOGI("Processed %zu images for foreground cropping", target.size());
 }
 
-void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int trainingMode,
+void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int trainingMode, bool isObject,
                             int height, int width)
 {
     std::string scenepath = _scenepath;

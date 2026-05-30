@@ -47,13 +47,14 @@ void InterfaceImplVulkan::InitVulkan(std::string datapath, std::string outputpat
     _g_progress_cb_train = g_progress_cb_train;
     // Reset progress
     updateProgress(0.0f);
-
+    
     _renderer = new VulkanComputeGS();
+    _renderer->trainingMode = trainingMode;
+    _renderer->isObject = isObject;
+    
     _renderer->loadTestData(_dataPath);
     std::string sandbox_basepath = _renderer->basepath;
     
-    _renderer->trainingMode = trainingMode;
-    _renderer->isObject = isObject;
     
     _renderer->initVulkan();
     _renderer->prepare();
@@ -82,9 +83,9 @@ void InterfaceImplVulkan::TrainVulkan() {
 #if 1
             // Currently performance is not good.
             // Check for segmentation completion and apply if ready (only once)
-            if (!_renderer->segmentationFinished && isSegmentationComplete() && _renderer->trainingMode != SCENE) {
+            if (!_renderer->segmentationFinished && isSegmentationComplete() && _renderer->trainingMode != SCENE && _renderer->isObject) {
                 LOGI("Segmentation masks finished!");
-//                 _renderer->performSegmentationUpdate(_dataPath);
+                _renderer->performSegmentationUpdate(_dataPath);
                 _renderer->segmentationFinished = true;
 //                 LOGI("Foreground segmentation applied, continuing with foreground-only training.");
             }
@@ -139,7 +140,7 @@ void InterfaceImplVulkan::TrainVulkan() {
             }
             
             LOGE("PSNR: %{public}f ; steps: %{public}d; times: %{public}f", _renderer->total_psnr / _renderer->inputGaussian.img_list.size(), step, float(duration.count()));
-//             LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
+            LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
             
             updateProgress(100.0f);
             GetProcessVulkan();

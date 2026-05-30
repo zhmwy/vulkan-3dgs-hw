@@ -161,22 +161,11 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     int32_t toInsertIdx = 0;
     curPointsNum.InterlockedAdd(0, 1, toInsertIdx);
 
-    // rotate_array[4 * toInsertIdx + 0] = 200;
-    // rotate_array[4 * toInsertIdx + 1] = idx * 1.0;
-    // rotate_array[4 * toInsertIdx + 2] = toDensifyIdx_reg * 1.0;
-    // rotate_array[4 * toInsertIdx + 3] = toInsertIdx * 1.0;
-
-    // return;
-
     xyz_array[t2i(toInsertIdx, 0, 3)] = t2[0] + old_xyz.x;
     xyz_array[t2i(toInsertIdx, 1, 3)] = t2[1] + old_xyz.y;
     xyz_array[t2i(toInsertIdx, 2, 3)] = t2[2] + old_xyz.z;
 
-    // for (int i = 0; i < 3; i++) {
-    //     for (int j = 0; j < DD; j++) {
-    //         shs_array[t2i(toInsertIdx, i, j, 3, DD)] = shs_array[t2i(toDensifyIdx_reg, i, j, 3, DD)];
-    //     }
-    // }
+
     shs_array[3 * toInsertIdx + 0] = shs_array[3 * toDensifyIdx_reg + 0];
     shs_array[3 * toInsertIdx + 1] = shs_array[3 * toDensifyIdx_reg + 1];
     shs_array[3 * toInsertIdx + 2] = shs_array[3 * toDensifyIdx_reg + 2];

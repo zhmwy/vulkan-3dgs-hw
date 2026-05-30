@@ -43,10 +43,8 @@ const caseNames: string[] = [
 ]
 
 const chosenCase: string[] = [
-  "2025-06-04_15_34_45",
-  "2025-06-04_19_40_24",
-  "2025-06-04_20_26_45",
-  "2025-06-05_20_27_20"
+  "2025-06-04_15_59_26",
+  "2025-06-04_19_43_28"
 ]
 
 const sceneCases: string[] = [
@@ -57,7 +55,7 @@ const sceneCases: string[] = [
 ]
 
 
-let caseName = caseNames[0];
+let caseName = sceneCases[0];
 
 class GS_Mode {
   static readonly SCENE = 0 // 暂无特定优化

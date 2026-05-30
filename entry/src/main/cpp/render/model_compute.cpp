@@ -2,6 +2,7 @@
 
 #include "model_compute.h"
 #include "human/human.h"
+#include "human/face/face.h"
 
 /********************* For Unit Test ****************************/
 void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
@@ -24,7 +25,7 @@ void VulkanComputeGS::loadTestData(std::string& dataFolder, int flag)
     }
     else {
         bool resumed = false;
-        DataLoader::loadInput12(dataFolder, inputGaussian, resumed, isObject, HEIGHT, WIDTH);
+        DataLoader::loadInput12(dataFolder, inputGaussian, resumed, trainingMode, isObject, HEIGHT, WIDTH);
 //         DataLoader::loadInputTo(dataFolder, inputGaussian);
         if(resumed) hasKNN = true;
         
@@ -773,9 +774,9 @@ void VulkanComputeGS::optimizeStepCmd()
     if (training_step <= flow_steps) {
         bindPipeline2CommandBuffer(pipe_optimize, FORWARD_PIPE, X, 1, 1, true);
         
-        if(training_step >= 200000) {
-//             std::vector<uint32_t> constant = {(unsigned int)splat_count, (unsigned int)training_step, (unsigned int)current_img_idx, 0};
-//             bindPipeline2CommandBufferPushConstants(pipe_optimize_extr, FORWARD_PIPE, 1, 1, 1, std::vector<uint32_t> &constant);
+        if(training_step >= 100000) {
+            std::vector<uint32_t> constant = {(unsigned int)splat_count, (unsigned int)training_step, (unsigned int)current_img_idx, 0};
+            bindPipeline2CommandBufferPushConstants(pipe_optimize_extr, FORWARD_PIPE, 1, 1, 1, constant);
         }
         
     }
@@ -3904,7 +3905,7 @@ void VulkanComputeGS::loadAssets(int origin_width, int origin_height, float scal
         int dsp_height = static_cast<int>(origin_height * scale);
         cv::Mat dsp_img;
         cv::resize(img, dsp_img, cv::Size(dsp_width, dsp_height));
-        
+
         if (isObject && segmentationFinished){
             std::string& maskname = inputGaussian.mask_list[i];
             cv::Mat mask = cv::imread(maskname);
@@ -4555,7 +4556,7 @@ void VulkanComputeGS::executeTransCommand()
 
 // B. Member function of VulkanComputeGS to perform the segmentation workflow
 void VulkanComputeGS::performSegmentationUpdate(const std::string& dataPath) {
-    LOGI("Starting segmentation update workflow...");
+    LOGE("Starting segmentation update workflow...");
     
     // Step 1: Update mask_list to point to the segmentation masks
     inputGaussian.mask_list.clear();
@@ -4574,9 +4575,8 @@ void VulkanComputeGS::performSegmentationUpdate(const std::string& dataPath) {
     
     // Step 2: Reload assets with segmentation masks applied
     // Calculate scale from existing low_res images
-    float scale = static_cast<float>(inputGaussian.images_low_res[0].width) / static_cast<float>(image_width);
-    loadAssets(image_width, image_height, scale, true);
-    
+    loadAssets(image_width, image_height, low_resolotion_scale, true);
+    return;
     // Step 3: Get current 3DGS from GPU to CPU for segmentation
     buildComputeCommandBuffer([this]() { 
         createGpu2CpuCopy(splat_buffers.xyz_array);

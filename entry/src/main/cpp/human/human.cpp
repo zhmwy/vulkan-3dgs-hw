@@ -1,5 +1,6 @@
 #include "human.h"
 #include "info.h"
+#include "face/face.h"
 
 float RATIO;
 int ORIG_WIDTH;

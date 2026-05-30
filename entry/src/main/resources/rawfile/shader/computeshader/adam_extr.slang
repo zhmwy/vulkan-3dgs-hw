@@ -21,8 +21,8 @@ cbuffer PushConstants
 };
 
 
-static const float extr_lr = 0.001;
-static const float intr_lr = 0.1;
+static const float extr_lr = 0.01;
+static const float intr_lr = 0.001;
 static const float beta1 = 0.9;          // Decay rate for the first moment
 static const float beta2 = 0.999;        // Decay rate for the second moment
 static const float eps = 1e-15;
@@ -58,6 +58,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         camera_extrs[7 * cur_img_idx + i] += step;
     }
     camera_training_steps[cur_img_idx] += 1;
+    
 
     // intr
     training_step = _training_step + 1.0;
