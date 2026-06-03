@@ -5,7 +5,7 @@ std::vector<Base::Math::Vec3> readLandmark3D(const std::string& filename) {
     // Open the PLY file
     std::ifstream infile(filename);
     if (!infile.is_open()) {
-        std::cerr << "Cannot open the file: " << filename << std::endl;
+        LOGE("No landmark.ply\n");
         return {};
     }
 
@@ -202,7 +202,7 @@ PointCloud shrink_head(
 }
 
 // Helper function to check if a point is within the bounding box
-bool isPointInBBox(const Vec3& point, const std::vector<float>& bbox) {
+bool isPointInBBox(const Base::Math::Vec3& point, const std::vector<float>& bbox) {
     if (bbox.size() != 6) {
         return false;
     }
@@ -218,11 +218,11 @@ void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath)
     
     // 下颌线关键点应该有17个
     if (landmarks_3d.size() != 17) {
-        std::cerr << "Warning: Expected 17 landmarks, got " << landmarks_3d.size() << std::endl;
+//         std::cerr << "Warning: Expected 17 landmarks, got " << landmarks_3d.size() << std::endl;
     }
     
     // Check if body_bbox is valid
-    if (inputGaussian.body_bboxes.size() != 6) {
+    if (inputGaussian.body_bboxes[0].size() != 6) {
         std::cerr << "Warning: Invalid body_bbox, processing all points" << std::endl;
         // Fall back to original behavior if bbox is invalid
         auto new_cloud = shrink_head(inputGaussian.positions, landmarks_3d, 0.015f, 1.0f);
@@ -234,11 +234,12 @@ void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath)
         }
     } else {
         // Filter points within the bounding box
+        LOGE("Process points\n");
         PointCloud filtered_points;
         std::vector<size_t> indices_in_bbox;
         
         for (size_t i = 0; i < inputGaussian.positions.size(); ++i) {
-            if (isPointInBBox(inputGaussian.positions[i], inputGaussian.body_bboxes)) {
+            if (isPointInBBox(inputGaussian.positions[i], inputGaussian.body_bboxes[0])) {
                 filtered_points.push_back(inputGaussian.positions[i]);
                 indices_in_bbox.push_back(i);
             }
@@ -260,6 +261,7 @@ void FaceTune(DataLoader::InputInitStruct& inputGaussian, std::string scenePath)
     }
     
     // 保存
+    LOGE("Saving\n");
     std::filesystem::create_directories(scenePath + "/processed_gaussians");
     std::string saveProcessedGSFile = scenePath + "/processed_gaussians";
     DataLoader::saveToPLY_tinyply(saveProcessedGSFile, inputGaussian);

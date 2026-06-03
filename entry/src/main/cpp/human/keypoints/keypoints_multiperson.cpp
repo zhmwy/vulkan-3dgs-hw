@@ -153,7 +153,7 @@ int ProcessKeypoints(const std::string& inputPath) {
             // Process each detected person
             for (const auto& pose : result) {
                 float centerX = pose.box.x + pose.box.width / 2.0;
-                int personID = findPersonID(centerX, personXPositions);
+                int personID = findPersonID(centerX, personXPositions, 100000);
                 
                 if (personID == -1) {
                     // New person detected

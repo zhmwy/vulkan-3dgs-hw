@@ -91,10 +91,11 @@ std::vector<std::vector<cv::Point>> projectHeadCenter(DataLoader::InputInitStruc
     return all_projected_points;
 }
 
-#if 0
+#if 1
 // Modified createEnlargedFace function
 void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, 
-                                   std::vector<FaceProcessingInfo>& faceInfos, const bool& masked) {
+                                   std::vector<FaceProcessingInfo>& faceInfos,
+                                   const std::pair<int, int>& selectedIndices, const bool& masked) {
     // Create directories
     std::filesystem::create_directories(scenepath + "/human");
     std::filesystem::create_directories(scenepath + "/human/images");
@@ -117,8 +118,17 @@ void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct
     LOGI("Optimal face dimensions: width=%{public}d, height=%{public}d", 
          optimalFaceSize.width, optimalFaceSize.height);
     
-    // Process each face
-    for (int i = 0; i < faceInfos.size(); ++i) {
+    // Process only the selected views.
+    const int selectedFaceIndices[] = {selectedIndices.first, selectedIndices.second};
+    for (int selectedFacePos = 0; selectedFacePos < 2; ++selectedFacePos) {
+        int selectedFaceIndex = selectedFaceIndices[selectedFacePos];
+        if (selectedFaceIndex < 0 || selectedFaceIndex >= static_cast<int>(faceInfos.size())) {
+            continue;
+        }
+        if (selectedFacePos == 1 && selectedIndices.second == selectedIndices.first) {
+            continue;
+        }
+        int i = selectedFaceIndex;
         if (!faceInfos[i].isWithinBounds) {
             continue;
         }

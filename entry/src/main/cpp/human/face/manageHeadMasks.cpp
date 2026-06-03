@@ -1,5 +1,7 @@
 #include "face.h"
 
+#include <sstream>
+
 namespace fs = std::filesystem;
 
 // Structure to hold bounding box information
@@ -91,7 +93,7 @@ std::vector<float> calculateNewIntrinsics(
     return new_intr;
 }
 
-#if 0
+#if 1
 // Function to parse keypoints.txt file
 std::vector<KeypointData> parseKeypointsFile(const std::string& filepath) {
     std::vector<KeypointData> keypoints;

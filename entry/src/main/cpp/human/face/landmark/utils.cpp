@@ -13,7 +13,7 @@ std::string getBaseName(const std::string& path){
 }
 
 // Modified function to check face validity without requiring saved images
-std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, double>& faceAngles,
+std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, std::vector<double>>& faceAngles,
                                             const std::vector<cv::Point>& faceCenters,
                                             const std::vector<std::string>& imgList) {
     std::vector<FaceProcessingInfo> faceInfos;
@@ -39,7 +39,7 @@ std::vector<FaceProcessingInfo> analyzeFaces(const std::map<std::string, double>
         FaceProcessingInfo info;
         info.imageName = basename;
         info.faceCenter = scaledFaceCenter;
-        info.angle = angleIt->second;
+        info.angle = angleIt->second[0];
         info.isWithinBounds = isWithinBounds;
         
         faceInfos.push_back(info);

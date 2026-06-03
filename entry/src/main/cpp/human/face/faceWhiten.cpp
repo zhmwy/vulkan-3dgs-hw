@@ -270,7 +270,7 @@ void BeautifyGaussians(DataLoader::InputInitStruct& inputGaussian, std::string s
     
     for (size_t i = 0; i < inputGaussian.positions.size(); ++i) {
         bool inHeadBBox = (inputGaussian.head_bboxes.size() == 6) ? 
-                         isPointInBBox(inputGaussian.positions[i], inputGaussian.head_bboxes) : 
+                         isPointInBBox(inputGaussian.positions[i], inputGaussian.head_bboxes[0]) : 
                          true;
         
         if (inHeadBBox) {

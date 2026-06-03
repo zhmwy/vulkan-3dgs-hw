@@ -4749,11 +4749,11 @@ void VulkanComputeGS::saveGaussians(std::string dataPath, bool save_head){
 //         std::filesystem::create_directories(dataPath + "/visual_hull");
 //         DataLoader::saveToPLY_tinyply(dataPath + "/visual_hull", segmentedGaussian);
 //     }
-    
-//     FaceTune(inputGaussian, dataPath);
-//     auto begin = clk::now();
-//     BeautifyGaussians(inputGaussian, dataPath);
-//     LOGW("3DGS smoothing and whitening takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
+    LOGI("Beautify\n");
+    FaceTune(inputGaussian, dataPath);
+    auto begin = clk::now();
+    BeautifyGaussians(inputGaussian, dataPath);
+    LOGI("3DGS smoothing and whitening takes %{public}f seconds", std::chrono::duration<double>(clk::now() - begin).count());
 }
 
 

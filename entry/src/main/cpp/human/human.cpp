@@ -29,12 +29,12 @@ bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data, b
         
         std::vector<std::vector<cv::Point>> faceCenters = projectHeadCenter(data);
         
-#if 0
+#if 1
         if(masked){
             // Calculate face centers
                 
             // Analyze faces without requiring saved images
-            std::vector<FaceProcessingInfo> faceInfos = analyzeFaces(faceAngles, faceCenters, data.img_list);
+            std::vector<FaceProcessingInfo> faceInfos = analyzeFaces(faceAngles, faceCenters[0], data.img_list);
                 
             // Select two images based on analysis
             std::pair<int, int> selectedIndices = selectTwoImageIndices(faceInfos);
@@ -43,7 +43,7 @@ bool HumanPreprocess(std::string scenepath, DataLoader::InputInitStruct& data, b
             detectFace(scenepath, faceInfos, selectedIndices);
             if (selectedIndices.first != -1 && selectedIndices.second != -1) {
                 // Process faces and create enlarged faces
-                data.max_movement = (data.body_bbox[3] - data.body_bbox[2]) * 0.01;
+                data.max_movement = (data.body_bboxes[0][3] - data.body_bboxes[0][2]) * 0.01;
                 createEnlargedFace(scenepath, data, faceInfos, selectedIndices, masked);
                 ProcessLandmarks(scenepath, selectedIndices, faceInfos);
             }
