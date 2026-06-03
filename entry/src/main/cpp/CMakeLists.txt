@@ -33,8 +33,6 @@ add_library(3dgs SHARED
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
     cores/tinyply.cpp
-    cores/visual_hull_simp.cpp
-
 )
 
 

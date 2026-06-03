@@ -23,7 +23,6 @@
 // #include <vk_radix_sort.h>
 
 #include "cores/dataloader.h"
-#include "cores/visual_hull.h"
 
 #include "cores/random.h"
 #include "cores/timer.h"
@@ -146,9 +145,6 @@ public:
         vkgs::Buffer camera_center;     // 3  parameters
         vkgs::Buffer camera_extrs;
         
-        vkgs::Buffer body_bbox;
-        vkgs::Buffer is_body_point;
-        vkgs::Buffer max_movement;
         
         // alpha blending buffers
         vkgs::Buffer conic;
@@ -159,7 +155,6 @@ public:
         vkgs::Buffer tile_range;
         vkgs::Buffer background;
         vkgs::Buffer rfeat;
-        vkgs::Buffer rfeat_alpha;     // TODO: to delete
         vkgs::Buffer alpha_array;
         vkgs::Buffer final_T;
         vkgs::Buffer ncontrib;
@@ -271,15 +266,12 @@ public:
         std::vector<VkPipeline> pipelines;
     };
     Compute3DGS pipe_project, pipe_project_render;
-    Compute3DGS pipe_mask_body;
     Compute3DGS pipe_compute_key;
     Compute3DGS pipe_compute_tile;
     Compute3DGS pipe_inverse;
     Compute3DGS pipe_blending;
-    
-    Compute3DGS pipe_blending_int;
     Compute3DGS pipe_int2float;
-    Compute3DGS pipe_blending_object;
+
     
     Compute3DGS pipe_optimize;
     Compute3DGS pipe_optimize_extr;
@@ -289,7 +281,6 @@ public:
     Compute3DGS pipe_loss_mask;
     
     Compute3DGS pipe_copy_img2buffer;
-    Compute3DGS pipe_copy_buffer2img; 
     Compute3DGS pipe_buffer_fill;
     Compute3DGS pipe_sh;
     Compute3DGS pipe_sh_render;
@@ -300,7 +291,6 @@ public:
     Compute3DGS pipe_split;
     Compute3DGS pipe_clone_3dgs;
     Compute3DGS pipe_split_3dgs;
-    Compute3DGS pipe_densify_EFA;
     
     Compute3DGS pipe_reset_opacity;
     Compute3DGS pipe_extr_process;
@@ -388,8 +378,6 @@ public:
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
     void setAlphaBlendingPipeline();
-    void setAlphaBlendingIntPipeline();
-    void setAlphaBlendingObjectPipeline();
     
     void setIntToFloatGradientPipeline();
     void setOptimizationPipeline();
@@ -397,7 +385,6 @@ public:
     
     void setLossPipeline();
     void setSSIMPipeline();
-    void setLossMaskPipeline();
     
     void setComputeSHPipeline();
     void setComputeSHRenderPipeline();
@@ -410,7 +397,7 @@ public:
     
     void setExtrProcessPipeline();
     void setExtrProcessRenderPipeline();
-    void setMaskBodyPipeline();
+
 
     // 3dgs command buffer
     void forwardCmd();

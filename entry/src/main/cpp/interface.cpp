@@ -114,7 +114,6 @@ void InterfaceImplVulkan::TrainVulkan() {
         if (_isTraining) {
             // Post-training operations
             _renderer->total_psnr = 0;
-//             _renderer->inputGaussian.processAndCropForeground(_dataPath);
             
             for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
                 _renderer->renderImage(i);

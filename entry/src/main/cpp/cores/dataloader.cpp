@@ -6,7 +6,6 @@
 #include <string>
 #include <regex>
 #include <dirent.h>
-#include "visual_hull.h"
 #include <unordered_set>
 
 
@@ -672,10 +671,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
         std::string maskPath = scenepath + "/segmented/" + maskName;
         
         // Check if mask file exists before adding to list
-        if (std::filesystem::exists(maskPath)) {
-            data.mask_list.push_back(maskPath);
-//             data.mask_index.push_back(idx);  // Record the original image index
-        }
+        data.mask_list.push_back(maskPath);
         
         data.time_stamps.push_back(float(idx));
         ++idx;
