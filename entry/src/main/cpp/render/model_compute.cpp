@@ -84,8 +84,7 @@ void VulkanComputeGS::encodeCpu2Gpu()
     inputGaussian.scales.resize(MAX_SPLAT_COUNT);
     inputGaussian.opacities.resize(MAX_SPLAT_COUNT);
     inputGaussian.colors.resize(MAX_SPLAT_COUNT);
-    
-    vkCmdFillBufferGS(compute.commandBuffer, splat_buffers.is_body_point, 0, VK_WHOLE_SIZE, 0);
+
     TransComputeBarrierBlock();
     
     splat_buffers.xyz_array.FromCpu(
@@ -112,26 +111,6 @@ void VulkanComputeGS::encodeCpu2Gpu()
         compute.commandBuffer,
         inputGaussian.extr_tmp.data()
     );
-    
-    
-    if(inputGaussian.body_bboxes.size() == 6){
-        splat_buffers.body_bbox.FromCpu(
-            compute.commandBuffer,
-            inputGaussian.body_bboxes.data()
-        );
-        splat_buffers.max_movement.FromCpu(
-            compute.commandBuffer,
-            &inputGaussian.max_movement
-        );
-    }
-    
-    if(inputGaussian.normals.size() > 0) {
-        inputGaussian.normals.resize(MAX_SPLAT_COUNT);
-        splat_buffers.normal_array.FromCpu(
-            compute.commandBuffer,
-            inputGaussian.normals.data()
-        );
-    }
     
     std::vector<int> curPointsNum(1);
     curPointsNum[0] = splat_count;
@@ -972,23 +951,7 @@ void VulkanComputeGS::prepare3dgsBuffers()
         allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
-    splat_buffers.normal_array = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * 3 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
     
-    splat_buffers.body_bbox = vkgs::Buffer(
-        allocator, 6 * sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.is_body_point = vkgs::Buffer(
-        allocator, MAX_SPLAT_COUNT * sizeof(int32_t),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    splat_buffers.max_movement = vkgs::Buffer(
-        allocator, sizeof(float),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
     splat_buffers.dL_dshs_array = vkgs::Buffer(
         allocator, MAX_SPLAT_COUNT * 48 * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1115,11 +1078,7 @@ void VulkanComputeGS::prepare3dgsBuffers()
         allocator, image_width * image_height * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
-    splat_buffers.input_mask_array = vkgs::Buffer(
-        allocator, image_width * image_height * sizeof(uint8_t),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    );
-    
+
     splat_buffers.final_T = vkgs::Buffer(
         allocator, image_width * image_height * sizeof(float),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1581,45 +1540,6 @@ void VulkanComputeGS::setProjectionPipeline()
     std::cout << "[setProjectionPipeline] Projection pipeline set" << std::endl;
 }
 
-void VulkanComputeGS::setMaskBodyPipeline(){
-    const uint32_t bindingCount = 5;
-    createPipelineLayout(
-        pipe_mask_body,
-        bindingCount,  // Number of descriptor set bindings
-        true,
-        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
-    );
-
-    std::vector<vkgs::Buffer*> splatBuffers = {
-        &splat_buffers.xyz_array,       //0
-        &splat_buffers.is_body_point,    //1
-        &splat_buffers.body_bbox,      //2
-        &splat_buffers.curPointsNum,     //3
-        &splat_buffers.visible,     //4
-    };
-
-    updateDescriptorSet(pipe_mask_body.descriptorSet, splatBuffers);
-
-    pipe_mask_body.pipelines.resize(1);
-
-    // Load SPIR-V shader code
-    std::string shaderCode = getPath("shader/computeshader/mask_body.comp.spv");
-
-    VkComputePipelineCreateInfo pipelineInfo = {};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);
-    pipelineInfo.layout = pipe_mask_body.pipelineLayout;
-
-    VK_CHECK_RESULT(
-        vkCreateComputePipelinesGS(
-            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_mask_body.pipelines[FORWARD_PIPE]
-        )
-    );
-
-    std::cout << "[setMaskBodyPipeline] Mask Body pipeline set" << std::endl;
-}
-
-
 void VulkanComputeGS::setKNNPipeline()
 {
     const uint32_t bindingCount = 24;
@@ -1632,9 +1552,7 @@ void VulkanComputeGS::setKNNPipeline()
 
     std::vector<vkgs::Buffer*> splatBuffers = {
         &splat_buffers.xyz_array,       //0
-        &splat_buffers.scale_array,     //1
-        &splat_buffers.normal_array,
-        &splat_buffers.rotate_array
+        &splat_buffers.scale_array     //1
     };
 
     updateDescriptorSet(pipe_knn.descriptorSet, splatBuffers);
@@ -2163,43 +2081,6 @@ void VulkanComputeGS::setSSIMPipeline()
     );
 
     std::cout << "[setSSIMPipeline] ssim pipeline set" << std::endl;
-}
-
-void VulkanComputeGS::setLossMaskPipeline()
-{
-    const uint32_t bindingCount = 3;
-    createPipelineLayout(
-        pipe_loss_mask,
-        bindingCount,  // Number of descriptor set bindings
-        true,
-        sizeof(uint32_t) * 4 // Push constant size (xyz_size; width; height;)
-    );
-
-    std::vector<vkgs::Buffer*> splatBuffers = {
-        &splat_buffers.input_mask_array,                // 0
-        &splat_buffers.alpha_array,              // 1
-        &splat_buffers.dL_dalpha_array             // 2
-    };
-
-    updateDescriptorSet(pipe_loss_mask.descriptorSet, splatBuffers);
-
-    pipe_loss_mask.pipelines.resize(1);
-
-    // Load SPIR-V shader code
-    std::string shaderCode = getPath("shader/computeshader/loss_mask.comp.spv");
-
-    VkComputePipelineCreateInfo pipelineInfo = {};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineInfo.stage = loadShader(shaderCode, VK_SHADER_STAGE_COMPUTE_BIT);
-    pipelineInfo.layout = pipe_loss_mask.pipelineLayout;
-
-    VK_CHECK_RESULT(
-        vkCreateComputePipelinesGS(
-            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipe_loss_mask.pipelines[FORWARD_PIPE]
-        )
-    );
-
-    std::cout << "[setLossPipeline] Loss Pipeline set" << std::endl;
 }
 
 void VulkanComputeGS::setComputeKeyPipeline()
@@ -3425,7 +3306,6 @@ bool VulkanComputeGS::prepare()
     setExtrProcessRenderPipeline();
     
     setKNNPipeline();
-    setMaskBodyPipeline();
 //     buildComputeCommandBuffer();
     LOGI("Prepare: Finished.");
     prepared = true;

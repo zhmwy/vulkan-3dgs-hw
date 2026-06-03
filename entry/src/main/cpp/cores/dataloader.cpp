@@ -6,7 +6,7 @@
 #include <string>
 #include <regex>
 #include <dirent.h>
-#include "visual_hull.h"
+
 
 
 

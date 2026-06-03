@@ -40,8 +40,6 @@ float4 rotmatrix_to_unit_quaternion(float3x3 R)
 
 [[vk::binding(0)]] StructuredBuffer<float> point_positions;  // 每个点的3D位置，线性展开的float数组
 [[vk::binding(1)]] RWStructuredBuffer<float> avg_distances;    // 每个点的最近三个点平均距离
-[[vk::binding(2)]] StructuredBuffer<float> normals;  // 每个点的3D位置，线性展开的float数组
-[[vk::binding(3)]] RWStructuredBuffer<float> rotation_array;    // 每个点的最近三个点平均距离
 
 
 [[vk::push_constant]]

@@ -20,7 +20,6 @@
 
 
 #include "cores/dataloader.h"
-#include "cores/visual_hull.h"
 
 #include "cores/random.h"
 #include "cores/timer.h"
@@ -125,7 +124,6 @@ public:
         vkgs::Buffer intr_params;   // [4]
         vkgs::Buffer intr_avg;
         vkgs::Buffer intr_exp_avg;
-        vkgs::Buffer normal_array;
         
         
         vkgs::Buffer intr_params_render;
@@ -143,9 +141,6 @@ public:
         vkgs::Buffer camera_center;     // 3  parameters
         vkgs::Buffer camera_extrs;
         
-        vkgs::Buffer body_bbox;
-        vkgs::Buffer is_body_point;
-        vkgs::Buffer max_movement;
         
         // alpha blending buffers
         vkgs::Buffer conic;
@@ -191,7 +186,6 @@ public:
         // for groundtruth
         vkgs::Buffer input_image_array;
         vkgs::Buffer input_image_alpha_array;
-        vkgs::Buffer input_mask_array;
 
         vkgs::Buffer dL_drfeat;
         vkgs::Buffer dL_dalpha_array;
@@ -268,7 +262,6 @@ public:
         std::vector<VkPipeline> pipelines;
     };
     Compute3DGS pipe_project, pipe_project_render;
-    Compute3DGS pipe_flow, pipe_mask_body;
     Compute3DGS pipe_compute_key;
     Compute3DGS pipe_compute_tile;
     Compute3DGS pipe_inverse;
@@ -278,8 +271,6 @@ public:
     Compute3DGS pipe_blending_object;
     
     Compute3DGS pipe_optimize;
-    Compute3DGS pipe_post_flow_optimize;
-    Compute3DGS pipe_optimize_flow;
     Compute3DGS pipe_optimize_extr;
     
     Compute3DGS pipe_loss;
@@ -389,7 +380,6 @@ public:
     
     void setLossPipeline();
     void setSSIMPipeline();
-    void setLossMaskPipeline();
     
     void setComputeSHPipeline();
     void setComputeSHRenderPipeline();
@@ -402,7 +392,6 @@ public:
     
     void setExtrProcessPipeline();
     void setExtrProcessRenderPipeline();
-    void setMaskBodyPipeline();
 
     // 3dgs command buffer
     void forwardCmd();

@@ -37,18 +37,6 @@ add_library(3dgs SHARED
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
     cores/tinyply.cpp
-    cores/visual_hull_simp.cpp
-
-#    human/HiAI/HIAIModelManager.cpp human/HiAI/utils.cpp
-#    human/human.cpp
-#    human/keypoints/keypoints_multiperson.cpp human/keypoints/utils.cpp
-#    human/triangulation/triangulation_multiperson.cpp
-#    human/SMPL/src/fit_smpl_multiperson.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
-#    human/SMPL/src/smpl/BlendShape.cpp human/SMPL/src/smpl/JointRegression.cpp human/SMPL/src/smpl/WorldTransformation.cpp
-#    human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp
-#    human/SMPL/src/smpl/smpl_male.cpp
-#    human/segmentation/segment.cpp human/segmentation/utils.cpp
-#    human/face/createEnlargedFace.cpp human/face/manageHeadMasks.cpp
 
 )
 
