@@ -23,16 +23,4 @@ void computeMain(uint3 dispatchThreadID : SV_DispatchThreadID)
         return;
 
     InputBuffer[idx] = 1;
-    // if (training_step >= 501 && (training_step - 1) % 100 == 0) {
-    //     float opacity_act = 1 / (1 + exp(-opacity_array[idx]));
-    //     if (opacity_act < min_opacity) {
-    //         InputBuffer[idx] = 0;
-    //     }
-    //     else {
-    //         InputBuffer[idx] = 1;
-    //     }
-    // }
-    // else {
-    //     InputBuffer[idx] = 1;
-    // }
 }

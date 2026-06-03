@@ -137,7 +137,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     int32_t rect_max_y = tile_rect_reg[3];
     int grid_width = (W + BLOCK_X - 1) / BLOCK_X;
 
-    const float opacity_factor_threshold = log(opacity_act[idx] * 255.0f);
+    // const float opacity_factor_threshold = log(opacity_act[idx] * 255.0f);
     float3 conic_reg = {
         conic[t2i(idx, 0, 3)],
         conic[t2i(idx, 1, 3)],
@@ -151,18 +151,18 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
             float2 tile_max = { (x + 1) * BLOCK_X - 1, (y + 1) * BLOCK_Y - 1 };
 
 
-            float max_opac_factor = max_contrib_power_rect_gaussian_float(conic_reg, uvd_reg, tile_min, tile_max);
+            // float max_opac_factor = max_contrib_power_rect_gaussian_float(conic_reg, uvd_reg, tile_min, tile_max);
 
             uint32_t key = y * grid_width + x;
             key <<= 19;
             uint32_t bits = float32ToFloat20(uvd_reg.z);
             key |= bits;
 
-            if (max_opac_factor <= opacity_factor_threshold) {
-                unsorted_keys_array[offset] = key;
-                unsorted_idx_array[offset] = idx;
-                offset++;
-            }
+            // if (max_opac_factor <= opacity_factor_threshold) {
+            unsorted_keys_array[offset] = key;
+            unsorted_idx_array[offset] = idx;
+            offset++;
+            // }
         }
     }
 

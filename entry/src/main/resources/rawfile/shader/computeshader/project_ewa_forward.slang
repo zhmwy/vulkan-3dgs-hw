@@ -106,13 +106,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     }
 
 
-    // if (training_step >= 501 && (training_step - 1) % 100 == 0) {
-    //     if (opacity_act_array[idx] < min_opacity) {
-    //         visible_array[idx] = 0;
-    //         return;
-    //     }
-    // }
-
     float norm_rotate = sqrt(rotate_reg[0] * rotate_reg[0] +
                              rotate_reg[1] * rotate_reg[1] +
                              rotate_reg[2] * rotate_reg[2] +
@@ -120,7 +113,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float4 rotate_act_reg = rotate_reg / norm_rotate;
 
     // 1. project point
-    // float3 xw = xyz_array[idx];
     float3 xw = {
         xyz_array[3 * idx],
         xyz_array[3 * idx + 1],
@@ -144,21 +136,21 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         xc.z
     );
 
-    // float x_limit_min = -0.15 * width;
-    // float x_limit_max = 1.15 * width;
-    // float y_limit_min = -0.15 * height;
-    // float y_limit_max = 1.15 * height;
-    // if (uvd_reg.x < x_limit_min || uvd_reg.x > x_limit_max ||
-    //     uvd_reg.y < y_limit_min || uvd_reg.y > y_limit_max) {
-    //     visible_array[idx] = 0;
-    //     return;
-    // }
-
-    if (uvd_reg.x < 0 || uvd_reg.x >= width ||
-        uvd_reg.y < 0 || uvd_reg.y >= height) {
+    float x_limit_min = -0.15 * width;
+    float x_limit_max = 1.15 * width;
+    float y_limit_min = -0.15 * height;
+    float y_limit_max = 1.15 * height;
+    if (uvd_reg.x < x_limit_min || uvd_reg.x > x_limit_max ||
+        uvd_reg.y < y_limit_min || uvd_reg.y > y_limit_max) {
         visible_array[idx] = 0;
         return;
     }
+
+    // if (uvd_reg.x < 0 || uvd_reg.x >= width ||
+    //     uvd_reg.y < 0 || uvd_reg.y >= height) {
+    //     visible_array[idx] = 0;
+    //     return;
+    // }
 
 
     uvd_array[3 * idx] = uvd_reg.x;
@@ -218,9 +210,8 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float mid = 0.5f * (cov.x + cov.z);
     float lambda1 = mid + sqrt(max(0.1f, mid * mid - det));
     float lambda2 = mid - sqrt(max(0.1f, mid * mid - det));
-    float my_radius = ceil(2.0f * sqrt(max(lambda1, lambda2)));
+    float my_radius = ceil(3.0f * sqrt(max(lambda1, lambda2)));
     int2 grid = int2((width + BLOCK_X - 1) / BLOCK_X, (height + BLOCK_Y - 1) / BLOCK_Y);
-    // int2 grid = int2(width, height);
     int4 range = get_rect(uvd_reg, int(my_radius), grid);
 
     if ((range[2] - range[0]) * (range[3] - range[1]) <= 0) {

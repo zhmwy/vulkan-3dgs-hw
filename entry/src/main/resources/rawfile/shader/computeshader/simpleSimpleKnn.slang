@@ -112,8 +112,7 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     }
 
     // 计算平均值
-    // float avgDistance = (nearestDistances.x + nearestDistances.y + nearestDistances.z) / 3.0f;
-    float avgDistance = nearestDistances.x;
+    float avgDistance = (nearestDistances.x + nearestDistances.y + nearestDistances.z) / 3.0f;
 
     // 应用对数变换和结果输出
     float logAvgDistance = log(avgDistance) / 2.0f;

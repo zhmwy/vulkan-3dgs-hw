@@ -57,7 +57,7 @@ const sceneCases: string[] = [
 ]
 
 
-let caseName = caseNames[1];
+let caseName = caseNames[10];
 
 class GS_Mode {
   static readonly SCENE = 0 // 暂无特定优化
@@ -113,7 +113,7 @@ struct Index {
       // }
       // caseName = caseNames[4];
       await this.readFiles(filesDir + "/" + caseName + "/images", this.segmentViews);        // 调用 readFiles 读取文件kl;lkm
-      hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`)
+      // hilog.info(0x0000, TAG, `文件列表已获取，沙盒内文件: ${this.pathList}`)
 
       if(trainingMode == GS_Mode.OBJECT){
         this.segmentAllImagesInSandbox();
@@ -172,7 +172,7 @@ struct Index {
       let options: ListFileOptions = {
         recursion: false,  // 不递归子目录
       };
-      hilog.info(0x0000, TAG, `正在读取 ${path}中的文件`);
+      // hilog.info(0x0000, TAG, `正在读取 ${path}中的文件`);
 
       // 获取文件列表
       let files = await fs.listFile(path, options);
@@ -189,7 +189,7 @@ struct Index {
       } else {
         // 否则使用所有图片
         this.pathList = allImages;
-        hilog.info(0x0000, TAG, `使用所有 ${this.pathList.length} 张图片`);
+        // hilog.info(0x0000, TAG, `使用所有 ${this.pathList.length} 张图片`);
       }
 
     } catch (err) {
@@ -220,12 +220,12 @@ struct Index {
   private async segmentAllImagesInSandbox() {
     fs.mkdir(getContext().filesDir + `/${caseName}/segmented/`);
 
-    hilog.info(0x0000, TAG, `开始分割 ${this.pathList.length} 张图片`);
+    // hilog.info(0x0000, TAG, `开始分割 ${this.pathList.length} 张图片`);
 
     for (let i = 0; i < this.pathList.length; i++) {
       let path = this.pathList[i];
       let fullPath = getContext().filesDir + `/${caseName}/images/` + path;
-      hilog.info(0x0000, TAG, `正在分割第 ${i + 1}/${this.pathList.length} 张: ${path}`);
+      // hilog.info(0x0000, TAG, `正在分割第 ${i + 1}/${this.pathList.length} 张: ${path}`);
 
       let fileSource = await fileIo.open(fullPath, fileIo.OpenMode.READ_ONLY)
 
@@ -259,7 +259,7 @@ struct Index {
           quality: 100
         });
         fs.closeSync(file);
-        hilog.info(0x0000, TAG, `已保存分割图 ${i + 1}/${this.pathList.length}: ${savePath}`);
+        // hilog.info(0x0000, TAG, `已保存分割图 ${i + 1}/${this.pathList.length}: ${savePath}`);
       } else {
         hilog.warn(0x0000, TAG, `图像 ${path} 分割无前景图`);
       }

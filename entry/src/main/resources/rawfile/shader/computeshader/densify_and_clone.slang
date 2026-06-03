@@ -30,18 +30,9 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     if (idx >= xyz_size)
         return;
 
-    if (idx >= max(xyz_size * 0.05, 25000.0))
-        return;
-
     uint32_t toDensifyIdx_reg = toDensifyIdx_array[idx];
-    if (1 / (1 + exp(-opacity_array[toDensifyIdx_reg])) < min_opacity) {
-        return;
-    }
-    
-    if (grads[toDensifyIdx_reg] < densify_grad_threshold && training_step > 500 && training_step < 2000)
-        return;
 
-    if (grads[toDensifyIdx_reg] < 0.0002 && training_step >= 2000)
+    if (grads[toDensifyIdx_reg] < densify_grad_threshold)
         return;
 
     float3 scale_act = {
@@ -51,6 +42,14 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     };
     float scale_act_max = max(max(scale_act.x, scale_act.y), scale_act.z);
     if (scale_act_max > percent_dense * scene_extent)
+        return;
+
+
+
+
+    int32_t value = 0;
+    curPointsNum.InterlockedAdd(0, 0, value);
+    if (value >= MAX_SPLAT_COUNT)
         return;
 
     uint32_t toInsertIdx = 0;

@@ -128,7 +128,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
 
                 // alpha pruning
                 float alpha = min(0.99f, shared_opacity[j] * exp(power));
-                // float alpha = min(0.99f, shared_opacity[j] * (1 + power));
 
                 if (alpha < 1.0 / 255.0f)
                     continue;

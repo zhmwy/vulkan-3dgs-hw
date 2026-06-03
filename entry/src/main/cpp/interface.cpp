@@ -65,7 +65,6 @@ void InterfaceImplVulkan::TrainVulkan() {
     if (!_isInitialized || _isTraining) return;
         
     _isTraining = true;
-//     GetProcessVulkan();
 
     try {
         std::vector<int> max_steps = {7000, 500, 500};
@@ -78,17 +77,7 @@ void InterfaceImplVulkan::TrainVulkan() {
         
         while(duration.count() < total_time) {
             if (!_isTraining) break;
-
-#if 1
-            // Currently performance is not good.
-            // Check for segmentation completion and apply if ready (only once)
-            if (!_renderer->segmentationFinished && isSegmentationComplete() && _renderer->trainingMode != SCENE) {
-                LOGI("Segmentation masks finished!");
-//                 _renderer->performSegmentationUpdate(_dataPath);
-                _renderer->segmentationFinished = true;
-//                 LOGI("Foreground segmentation applied, continuing with foreground-only training.");
-            }
-#endif       
+                
             _renderer->render();
             updateProgress(static_cast<float>(duration.count() * 100) / total_time);
             GetProcessVulkan();
@@ -110,13 +99,7 @@ void InterfaceImplVulkan::TrainVulkan() {
 //         // Main training loop
 //         for (step = 0; step < max_steps[0]; ++step) {
 //             if (!_isTraining) break;
-//                
-//             if (!_renderer->segmentationFinished && isSegmentationComplete() && _renderer->trainingMode != SCENE) {
-//                 LOGI("Segmentation masks finished!");
-// //                 _renderer->performSegmentationUpdate(_dataPath);
-//                 _renderer->segmentationFinished = true;
-// //                 LOGI("Foreground segmentation applied, continuing with foreground-only training.");
-//             }
+//
 //                
 //             _renderer->render();
 //             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
@@ -124,14 +107,12 @@ void InterfaceImplVulkan::TrainVulkan() {
 //         }
 //         end = std::chrono::high_resolution_clock::now();
 //         duration = end - start;
-
-//         _renderer->saveCameras(_dataPath);
+        
         _renderer->saveGaussians(_dataPath);
         
         if (_isTraining) {
             // Post-training operations
             _renderer->total_psnr = 0;
-//             _renderer->inputGaussian.processAndCropForeground(_dataPath);
             
             for (size_t i = 0; i < _renderer->inputGaussian.img_list.size(); i++) {
                 _renderer->renderImage(i);
@@ -139,7 +120,6 @@ void InterfaceImplVulkan::TrainVulkan() {
             }
             
             LOGE("PSNR: %{public}f ; steps: %{public}d; times: %{public}f", _renderer->total_psnr / _renderer->inputGaussian.img_list.size(), step, float(duration.count()));
-//             LOGI("PSNR_mask: %{public}f", _renderer->total_psnr_mask / _renderer->total_psnr_mask_num);
             
             updateProgress(100.0f);
             GetProcessVulkan();

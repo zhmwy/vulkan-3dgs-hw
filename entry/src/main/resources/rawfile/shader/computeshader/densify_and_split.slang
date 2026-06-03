@@ -75,18 +75,9 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     if (idx >= xyz_size)
         return;
 
-    if (idx >= max(xyz_size * 0.05, 25000.0))
-        return;
-
     uint32_t toDensifyIdx_reg = toDensifyIdx_array[idx];
-    if (1 / (1 + exp(-opacity_array[toDensifyIdx_reg])) < min_opacity) {
-        return;
-    }
 
-    if (grads[toDensifyIdx_reg] < densify_grad_threshold && training_step > 500 && training_step < 2000)
-        return;
-
-    if (grads[toDensifyIdx_reg] < 0.0002 && training_step >= 2000)
+    if (grads[toDensifyIdx_reg] < densify_grad_threshold)
         return;
 
     float3 scale_act = {
@@ -97,6 +88,13 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     float scale_act_max = max(max(scale_act.x, scale_act.y), scale_act.z);
     if (scale_act_max <= percent_dense * scene_extent)
         return;
+
+    int32_t value = 0;
+    curPointsNum.InterlockedAdd(0, 0, value);
+    if (value >= MAX_SPLAT_COUNT)
+        return;
+
+
 
     
     float4 rotate_reg = {
@@ -118,29 +116,29 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
         xyz_array[t2i(toDensifyIdx_reg, 2, 3)],
     };
 
-    // float3 sample = normalRandomXYZ(old_xyz, scale_act);
-    // float3 sample2 = normalRandomXYZ(old_xyz + float3(0.1, 0.2, 0.3), scale_act);
+    float3 sample = normalRandomXYZ(old_xyz, scale_act);
+    float3 sample2 = normalRandomXYZ(old_xyz + float3(0.1, 0.2, 0.3), scale_act);
 
-    float3 sample = { 0, 0, 0 };
-    if (scale_act.x >= scale_act.y && scale_act.x >= scale_act.z)
-        sample[0] = scale_act.x * 0.6636;
-    else if (scale_act.y >= scale_act.x && scale_act.y >= scale_act.z)
-        sample[1] = scale_act.y * 0.6636;
-    else
-        sample[2] = scale_act.z * 0.6636;
+    // float3 sample = { 0, 0, 0 };
+    // if (scale_act.x >= scale_act.y && scale_act.x >= scale_act.z)
+    //     sample[0] = scale_act.x * 0.6636;
+    // else if (scale_act.y >= scale_act.x && scale_act.y >= scale_act.z)
+    //     sample[1] = scale_act.y * 0.6636;
+    // else
+    //     sample[2] = scale_act.z * 0.6636;
 
     float3 t1 = {
         R[0][0] * sample[0] + R[0][1] * sample[1] + R[0][2] * sample[2],
         R[1][0] * sample[0] + R[1][1] * sample[1] + R[1][2] * sample[2],
         R[2][0] * sample[0] + R[2][1] * sample[1] + R[2][2] * sample[2]
     };
-    float3 t2 = -t1;
+    // float3 t2 = -t1;
 
-    // float3 t2 = {
-    //     R[0][0] * sample2[0] + R[0][1] * sample2[1] + R[0][2] * sample2[2],
-    //     R[1][0] * sample2[0] + R[1][1] * sample2[1] + R[1][2] * sample2[2],
-    //     R[2][0] * sample2[0] + R[2][1] * sample2[1] + R[2][2] * sample2[2]
-    // };
+    float3 t2 = {
+        R[0][0] * sample2[0] + R[0][1] * sample2[1] + R[0][2] * sample2[2],
+        R[1][0] * sample2[0] + R[1][1] * sample2[1] + R[1][2] * sample2[2],
+        R[2][0] * sample2[0] + R[2][1] * sample2[1] + R[2][2] * sample2[2]
+    };
 
     float3 new_scale12 = log(scale_act / 1.6);
 
@@ -160,13 +158,6 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     // 2. 添加到后面
     int32_t toInsertIdx = 0;
     curPointsNum.InterlockedAdd(0, 1, toInsertIdx);
-
-    // rotate_array[4 * toInsertIdx + 0] = 200;
-    // rotate_array[4 * toInsertIdx + 1] = idx * 1.0;
-    // rotate_array[4 * toInsertIdx + 2] = toDensifyIdx_reg * 1.0;
-    // rotate_array[4 * toInsertIdx + 3] = toInsertIdx * 1.0;
-
-    // return;
 
     xyz_array[t2i(toInsertIdx, 0, 3)] = t2[0] + old_xyz.x;
     xyz_array[t2i(toInsertIdx, 1, 3)] = t2[1] + old_xyz.y;

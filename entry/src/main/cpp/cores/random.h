@@ -35,30 +35,33 @@ public:
             arr[i] = i;
         std::shuffle(arr.begin(), arr.end(), gen);
     }
-    void initialize(std::vector<int> trainOrder) {
-        arr = trainOrder;
-        _range = -1;
-    }
-    void initialize(std::vector<std::vector<int>> _trainOrders) {
-        this->trainOrders = _trainOrders;
-        _range = trainOrders.size();
-        gen.seed(rd()); 
-        dist = std::uniform_int_distribution<>(0, _range - 1);
-    }
     
+//     void initialize(std::vector<int> trainOrder) {
+//         arr = trainOrder;
+//         _range = -1;
+//     }
+//     void initialize(std::vector<std::vector<int>> _trainOrders) {
+//         this->trainOrders = _trainOrders;
+//         _range = trainOrders.size();
+//         gen.seed(rd()); 
+//         dist = std::uniform_int_distribution<>(0, _range - 1);
+//     }
     
     int generate() {
-//         int k = arr[_current_idx % arr.size()];
+        int k = arr[_current_idx % arr.size()];
+        _current_idx++;
+        if (_current_idx % arr.size() == 0) {
+            gen.seed(rd()); 
+            std::shuffle(arr.begin(), arr.end(), gen);
+        }
+        return k;
+        
+//         if(_current_idx % _range == 0){
+//             arr = trainOrders[dist(gen)];
+//         }
+//         int k = arr[_current_idx % _range];
 //         _current_idx++;
 //         return k;
-
-        if(_current_idx % _range == 0){
-            arr = trainOrders[dist(gen)];
-            arr = trainOrders[0];
-        }
-        int k = arr[_current_idx % _range];
-        _current_idx++;
-        return k;
     }
 
     

@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <unordered_set>
 #include "tinyply.h"
 #include "vulkancomputebase.h"
 
@@ -37,7 +38,6 @@ public:
         std::vector<Base::Math::Vec4> rotations;      // Rotation (rotate_0, rotate_1, rotate_2, rotate_3)
         std::vector<float> opacities;          // Opacity
         std::vector<Base::Math::Vec3> normals;
-        std::vector<float> intervals;
         
         struct Data {
             float values[48];  // 48维浮点数组
@@ -71,52 +71,31 @@ public:
 
         std::string basepath = "/data/storage/el1/base/files";
         
-        std::vector<float> time_stamps; // Time for Gaussian-Flow
-        std::vector<int> mask_index; // Record which images are segmented
 
+        std::vector<int> mask_index; // Record which images are segmented
         
         int width, height;
         
         std::vector<int> trainOrder;
         std::vector<std::vector<int>> trainOrders;
         
-        //void normalizeData();
-        //void computePositionStats();
-        void getNerfppNorm();
-        
-        void denormalizeExtr();
-        void denormalizePoints();
-        
-        void shuffleImage();
-        
         int findMaxPose(std::set<int>& chosen);
         void getTrainOrder(int first_id = 0);
         void getTrainOrders();
-        void compute_3D_interval();
         
-        void processAndCropForeground(const std::string& scenepath);
+        void getNerfppNorm();
+        
+        void shuffleImage();
+        
     };
 
-    static PlyDataStruct load_input_data(const std::string& filepath);
+
     
-    static void loadInputLegoInitDatav2(std::string dataFolder, DataLoader::InputInitStruct& data, bool& resumed);
-    static InputInitStruct loadHeadGaussians(std::string dataFolder, DataLoader::InputInitStruct& gaussian);
     static void loadInputGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data);
-    static void loadExtraGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data);
     
-    static void loadExtrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
-    static void loadIntrinsics(std::string dataPath, DataLoader::InputInitStruct& data);
-    
-    static void loadInputTo(const std::string _scenepath, DataLoader::InputInitStruct& data);
-    static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int trainingMode, 
+
+    static void loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, 
                             int height = 640, int width = 480);
-    static void createEnlargedFace(const std::string scenepath, DataLoader::InputInitStruct& data, std::vector<cv::Point>& faceCenters);
-    
-    static std::vector<cv::Point> projectHeadCenter(DataLoader::InputInitStruct& data);
-    
+
     static void saveToPLY_tinyply(const std::string& filename, const DataLoader::InputInitStruct& data);
-    static void printPlyHeader(const std::string& filepath);
-    
-    static void saveCameras(const std::string fullDataPath, const DataLoader::InputInitStruct& data);
-    
 };

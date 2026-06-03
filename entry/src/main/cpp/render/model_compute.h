@@ -12,22 +12,18 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 #include "file/file_operator.h"
-// #include "vulkan_obj_model.h"
-// #include "common/common.h"
 #include <chrono>
 #include <thread>
 
 #include "base/math/matrix.h"
 #include "base/math/matrix_util.h"
 
-// #include <vk_radix_sort.h>
 
 #include "cores/dataloader.h"
 #include "cores/visual_hull.h"
 
 #include "cores/random.h"
 #include "cores/timer.h"
-// #include "vulkanbase\VulkanOhos.h"
 #include "cores/dataloader.h"
 #include <assert.h>
 #include <cmath> // For log function
@@ -69,7 +65,6 @@ class VulkanComputeGS : public VulkanComputeBase
 {
 public:
     void loadTestData(std::string& dataFolder, int flag=-1);
-    void performSegmentationUpdate(const std::string& dataPath);
     void encodeCpu2Gpu();
     void createGpu2CpuCopys();
     VulkanComputeGS();
@@ -89,22 +84,19 @@ public:
     int training_step = 0;
     int max_training_step = 10000;
     
-    int densify_start_step = 350;
+    int densify_start_step = 500;
     int densify_end_step = 6500;
     int densify_interval_step = 100;
     
     float low_resolotion_scale = 0.25;
-
-    int flow_steps = 200000;
-    int low_resolution_steps = 500;
+    
+    int low_resolution_steps = -1;
     int sh_degree = 1;
     
     int trainingMode;  // 0 for scene, 1 for object, 2 for single human, 3 for multi-persons
     bool isObject;  // decide whether to train object only
     bool segmentationFinished = false; // Do not change this unless you are confident that segmentation has been done
-    bool isEFA = false;
-    bool isflow = false;
-    
+
     RandomGenerator random_generator;
     int current_img_idx = 0;
     
@@ -151,20 +143,6 @@ public:
         vkgs::Buffer camera_center;     // 3  parameters
         vkgs::Buffer camera_extrs;
         
-        // Gaussian-Flow buffers
-        vkgs::Buffer time_stamp;
-        vkgs::Buffer xyz_base_array; 
-        vkgs::Buffer rot_base_array;
-        vkgs::Buffer xyz_flow_params;     // [P, 16, 3, 3]
-        vkgs::Buffer rot_flow_params;     // [P, 16, 4, 3]
-        vkgs::Buffer xyz_flow;     // [P, 16, 3, 3]
-        vkgs::Buffer rot_flow;     // [P, 16, 4, 3]
-        vkgs::Buffer dL_dxyz_flow;
-        vkgs::Buffer dL_drot_flow;
-        vkgs::Buffer xyz_flow_avg;
-        vkgs::Buffer rot_flow_avg;
-        vkgs::Buffer xyz_flow_exp_avg;
-        vkgs::Buffer rot_flow_exp_avg;
         vkgs::Buffer body_bbox;
         vkgs::Buffer is_body_point;
         vkgs::Buffer max_movement;
@@ -178,7 +156,6 @@ public:
         vkgs::Buffer tile_range;
         vkgs::Buffer background;
         vkgs::Buffer rfeat;
-        vkgs::Buffer rfeat_alpha;     // TODO: to delete
         vkgs::Buffer alpha_array;
         vkgs::Buffer final_T;
         vkgs::Buffer ncontrib;
@@ -295,9 +272,8 @@ public:
     Compute3DGS pipe_compute_key;
     Compute3DGS pipe_compute_tile;
     Compute3DGS pipe_inverse;
-    Compute3DGS pipe_blending;
     
-    Compute3DGS pipe_blending_int;
+    Compute3DGS pipe_blending;
     Compute3DGS pipe_int2float;
     Compute3DGS pipe_blending_object;
     
@@ -322,7 +298,6 @@ public:
     Compute3DGS pipe_split;
     Compute3DGS pipe_clone_3dgs;
     Compute3DGS pipe_split_3dgs;
-    Compute3DGS pipe_densify_EFA;
     
     Compute3DGS pipe_reset_opacity;
     Compute3DGS pipe_extr_process;
@@ -387,11 +362,9 @@ public:
 
     // 3dgs compute pipelines
     void setBufferFillPipeline();
-    void setResetPSNRPipeline();
     void setImage2BufferPipeline();
-    void setBuffer2ImagePipeline();
+
     void prepare3dgsBuffers();
-    void setFlowPipeline();
     void setProjectionPipeline();  
     void setKNNPipeline();
     void setProjectionRenderPipeline();
@@ -402,22 +375,16 @@ public:
     void setDensificationStatsPipeline();
     void setMeanGradPipeline();
     void setClonePipeline();
-    void setPrunePipeline();
     void setSplitPipeline();
-    void setClone3DGSPipeline();
-    void setSplit3DGSPipeline();
-    void setDensifyEFAPipeline();
+
     
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
+
     void setAlphaBlendingPipeline();
-    void setAlphaBlendingIntPipeline();
-    void setAlphaBlendingObjectPipeline();
     
     void setIntToFloatGradientPipeline();
     void setOptimizationPipeline();
-    void setPostFlowOptimPipeline();
-    void setOptimizeFlowPipeline();
     void setExtrOptimizationPipeline();
     
     void setLossPipeline();
@@ -456,8 +423,6 @@ public:
     }
     void radixSortCmd(uint32_t numInstances);
     void copyExtrCmd();
-    void initBaseCmd();
-    void copyBaseCmd();
 
     // Methods
     void prepreAllocator();
@@ -484,7 +449,6 @@ public:
     
     void printGpuBuffers();
     void saveGaussians(std::string dataPath, bool save_head = false);
-    void saveCameras(std::string dataPath);
     
     virtual void getEnabledFeatures() override;
     virtual void getEnabledExtensionsGS() override;
