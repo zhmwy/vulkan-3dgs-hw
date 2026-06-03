@@ -20,47 +20,21 @@ include_directories(
 
 add_library(3dgs SHARED
     interface.cpp
-#    render/plugin_render.cpp
-#    render/algorithm/fsr.cpp
-#    render/render_to_cv_mat.cpp
-#    napi_init.cpp
-#    render/vulkanRender.cpp
-#    manager/plugin_manager.cpp
     vulkanbase/VulkanOhos.cpp
-#    vulkanbase/VulkanBuffer.cpp
     vulkanbase/VulkanDevice.cpp
     vulkanbase/vulkancomputebase.cpp
     vulkanbase/VulkanInitializers.hpp
-#    vulkanbase/VulkanSwapChain.cpp
     vulkanbase/VulkanTools.cpp
     vulkanbase/VulkanTexture.cpp
     file/file_operator.cpp
     file/file.cpp
-    # render/model_3d_sponza.cpp
-#    render/vulkan_obj_model.cpp
-#    render/vulkan_obj_mesh.cpp
     render/model_compute.cpp
     cores/buffer.cpp
     cores/cpu_buffer.cpp
     cores/dataloader.cpp
     cores/tinyply.cpp
     cores/visual_hull_simp.cpp
-#    cores/video2images.cpp
-    human/HiAI/HIAIModelManager.cpp human/HiAI/utils.cpp
-    human/human.cpp
-    human/keypoints/keypoints_multiperson.cpp human/keypoints/utils.cpp
-    human/triangulation/triangulation_multiperson.cpp
-    human/SMPL/src/fit_smpl_multiperson.cpp human/SMPL/src/get_theta.cpp human/SMPL/src/get_theta_from_skeleton.cpp human/SMPL/src/smpl/SMPL.cpp
-    human/SMPL/src/smpl/BlendShape.cpp human/SMPL/src/smpl/JointRegression.cpp human/SMPL/src/smpl/WorldTransformation.cpp
-    human/SMPL/src/smpl/LinearBlendSkinning.cpp human/SMPL/src/toolbox/Exception.cpp human/SMPL/src/definition/def.cpp
-    human/SMPL/src/smpl/smpl_male.cpp
-    human/segmentation/segment.cpp human/segmentation/utils.cpp
-    human/face/createEnlargedFace.cpp human/face/manageHeadMasks.cpp
-    human/face/faceThinner.cpp human/face/faceWhiten.cpp
 
-    human/face/beauty_filters.cpp
-    human/face/landmark/landmark2d.cpp human/face/landmark/bfm_data.cpp human/face/landmark/landmark3d.cpp
-    human/face/landmark/faceDetect.cpp human/face/landmark/utils.cpp
 )
 
 
@@ -68,7 +42,6 @@ target_include_directories(3dgs PUBLIC
         3rdParty
         3rdParty/glm
         3rdParty/
-#        3rdParty/vulkan_radix_sort
         vulkanbase
 )
 
@@ -130,8 +103,6 @@ target_link_libraries(3dgs PUBLIC
 # Human Part
 
 #target_link_libraries(3dgs PUBLIC ${NATIVERENDER_ROOT_PATH}/../../../libs/${OHOS_ARCH}/libsmpl.so)
-target_include_directories(3dgs PUBLIC human/SMPL/include)
-target_include_directories(3dgs PUBLIC human/segmentation)
 FIND_LIBRARY(hiai_foundation-lib hiai_foundation)
 
 target_link_libraries(3dgs PUBLIC libace_napi.z.so

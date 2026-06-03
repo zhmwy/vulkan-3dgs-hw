@@ -79,17 +79,7 @@ void InterfaceImplVulkan::TrainVulkan() {
         
         while(duration.count() < total_time) {
             if (!_isTraining) break;
-
-#if 1
-            // Currently performance is not good.
-            // Check for segmentation completion and apply if ready (only once)
-            if (!_renderer->segmentationFinished && isSegmentationComplete() && _renderer->trainingMode != SCENE && _renderer->isObject) {
-                LOGI("Segmentation masks finished!");
-                _renderer->performSegmentationUpdate(_dataPath);
-                _renderer->segmentationFinished = true;
-//                 LOGI("Foreground segmentation applied, continuing with foreground-only training.");
-            }
-#endif       
+                
             _renderer->render();
             updateProgress(static_cast<float>(duration.count() * 100) / total_time);
             GetProcessVulkan();
@@ -111,14 +101,6 @@ void InterfaceImplVulkan::TrainVulkan() {
 //         // Main training loop
 //         for (step = 0; step < max_steps[0]; ++step) {
 //             if (!_isTraining) break;
-//                
-//             if (!_renderer->segmentationFinished && isSegmentationComplete() && _renderer->trainingMode != SCENE) {
-//                 LOGI("Segmentation masks finished!");
-// //                 _renderer->performSegmentationUpdate(_dataPath);
-//                 _renderer->segmentationFinished = true;
-// //                 LOGI("Foreground segmentation applied, continuing with foreground-only training.");
-//             }
-//                
 //             _renderer->render();
 //             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
 //             GetProcessVulkan();

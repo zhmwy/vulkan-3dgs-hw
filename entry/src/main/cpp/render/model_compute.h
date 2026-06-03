@@ -69,7 +69,6 @@ class VulkanComputeGS : public VulkanComputeBase
 {
 public:
     void loadTestData(std::string& dataFolder, int flag=-1);
-    void performSegmentationUpdate(const std::string& dataPath);
     void encodeCpu2Gpu();
     void createGpu2CpuCopys();
     VulkanComputeGS();
@@ -94,16 +93,12 @@ public:
     int densify_interval_step = 100;
     
     float low_resolotion_scale = 0.25;
-
-    int flow_steps = 200000;
     int low_resolution_steps = 500;
     int sh_degree = 1;
     
     int trainingMode;  // 0 for scene, 1 for object, 2 for single human, 3 for multi-persons
     bool isObject;  // decide whether to train object only
     bool segmentationFinished = false; // Do not change this unless you are confident that segmentation has been done
-    bool isEFA = false;
-    bool isflow = false;
     
     RandomGenerator random_generator;
     int current_img_idx = 0;
@@ -151,20 +146,6 @@ public:
         vkgs::Buffer camera_center;     // 3  parameters
         vkgs::Buffer camera_extrs;
         
-        // Gaussian-Flow buffers
-        vkgs::Buffer time_stamp;
-        vkgs::Buffer xyz_base_array; 
-        vkgs::Buffer rot_base_array;
-        vkgs::Buffer xyz_flow_params;     // [P, 16, 3, 3]
-        vkgs::Buffer rot_flow_params;     // [P, 16, 4, 3]
-        vkgs::Buffer xyz_flow;     // [P, 16, 3, 3]
-        vkgs::Buffer rot_flow;     // [P, 16, 4, 3]
-        vkgs::Buffer dL_dxyz_flow;
-        vkgs::Buffer dL_drot_flow;
-        vkgs::Buffer xyz_flow_avg;
-        vkgs::Buffer rot_flow_avg;
-        vkgs::Buffer xyz_flow_exp_avg;
-        vkgs::Buffer rot_flow_exp_avg;
         vkgs::Buffer body_bbox;
         vkgs::Buffer is_body_point;
         vkgs::Buffer max_movement;
@@ -205,7 +186,7 @@ public:
         vkgs::Buffer rotate_array_exp_avg;
         vkgs::Buffer feature_array_exp_avg;
         vkgs::Buffer opacity_array_exp_avg;
-
+        
         
         vkgs::Buffer camera_extrs_avg;
         vkgs::Buffer camera_extrs_exp_avg;
@@ -246,7 +227,6 @@ public:
         vkgs::Buffer xyz_gradient_mean_int;
         vkgs::Buffer prev_selected_mask;
         vkgs::Buffer prev_lff_xyz_grad;
-        vkgs::Buffer interval_coef;
 
         vkgs::Buffer dL_duvd_int;
         vkgs::Buffer dL_dconic_int;
@@ -291,7 +271,7 @@ public:
         std::vector<VkPipeline> pipelines;
     };
     Compute3DGS pipe_project, pipe_project_render;
-    Compute3DGS pipe_flow, pipe_mask_body;
+    Compute3DGS pipe_mask_body;
     Compute3DGS pipe_compute_key;
     Compute3DGS pipe_compute_tile;
     Compute3DGS pipe_inverse;
@@ -302,8 +282,6 @@ public:
     Compute3DGS pipe_blending_object;
     
     Compute3DGS pipe_optimize;
-    Compute3DGS pipe_post_flow_optimize;
-    Compute3DGS pipe_optimize_flow;
     Compute3DGS pipe_optimize_extr;
     
     Compute3DGS pipe_loss;
@@ -391,7 +369,7 @@ public:
     void setImage2BufferPipeline();
     void setBuffer2ImagePipeline();
     void prepare3dgsBuffers();
-    void setFlowPipeline();
+
     void setProjectionPipeline();  
     void setKNNPipeline();
     void setProjectionRenderPipeline();
@@ -406,7 +384,6 @@ public:
     void setSplitPipeline();
     void setClone3DGSPipeline();
     void setSplit3DGSPipeline();
-    void setDensifyEFAPipeline();
     
     void setResetOpacityPipeline();
     void setInverseIndexPipeline();
@@ -416,8 +393,6 @@ public:
     
     void setIntToFloatGradientPipeline();
     void setOptimizationPipeline();
-    void setPostFlowOptimPipeline();
-    void setOptimizeFlowPipeline();
     void setExtrOptimizationPipeline();
     
     void setLossPipeline();
@@ -456,8 +431,6 @@ public:
     }
     void radixSortCmd(uint32_t numInstances);
     void copyExtrCmd();
-    void initBaseCmd();
-    void copyBaseCmd();
 
     // Methods
     void prepreAllocator();

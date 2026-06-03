@@ -7,202 +7,8 @@
 #include <regex>
 #include <dirent.h>
 #include "visual_hull.h"
-#include "human/human.h"
+#include <unordered_set>
 
-
-int extractNumberKtx(const std::string& str) {
-    std::regex re("r_(\\d+)\\.ktx");
-    std::smatch match;
-    if (std::regex_search(str, match, re)) {
-        return std::stoi(match[1].str()); // Extract and convert the number
-    }
-    return -1; // Return -1 if no number is found (optional, depends on data guarantee)
-}
-
-int extractNumberTxt(const std::string& str) {
-    std::regex re("r_(\\d+)\\.txt");
-    std::smatch match;
-    if (std::regex_search(str, match, re)) {
-        return std::stoi(match[1].str()); // Extract and convert the number
-    }
-    return -1; // Return -1 if no number is found (optional, depends on data guarantee)
-}
-
-DataLoader::PlyDataStruct DataLoader::load_input_data(const std::string& filepath){
-    DataLoader::PlyDataStruct data;
-
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-
-    std::shared_ptr<PlyData> x, y, z, scale_x, scale_y, scale_z, rotate_0, rotate_1, rotate_2, rotate_3;
-
-    try {
-        x = plyFile.request_properties_from_element("vertex", { "x" });
-        y = plyFile.request_properties_from_element("vertex", { "y" });
-        z = plyFile.request_properties_from_element("vertex", { "z" });
-        scale_x = plyFile.request_properties_from_element("vertex", { "scale_x" });
-        scale_y = plyFile.request_properties_from_element("vertex", { "scale_y" });
-        scale_z = plyFile.request_properties_from_element("vertex", { "scale_z" });
-        rotate_0 = plyFile.request_properties_from_element("vertex", { "rotate_0" });
-        rotate_1 = plyFile.request_properties_from_element("vertex", { "rotate_1" });
-        rotate_2 = plyFile.request_properties_from_element("vertex", { "rotate_2" });
-        rotate_3 = plyFile.request_properties_from_element("vertex", { "rotate_3" });
-    }
-    catch (const std::exception& e) {
-        std::cout << "Error reading properties: " << e.what() << std::endl;
-    }
-
-    plyFile.read(file);
-
-    // To GLM
-    size_t numVertices = x->count;
-
-    for (size_t i = 0; i < numVertices; ++i) {
-        data.xyz.emplace_back(
-            reinterpret_cast<float*>(x->buffer.get())[i],
-            reinterpret_cast<float*>(y->buffer.get())[i],
-            reinterpret_cast<float*>(z->buffer.get())[i]
-        );
-
-        data.scale.emplace_back(
-            reinterpret_cast<float*>(scale_x->buffer.get())[i],
-            reinterpret_cast<float*>(scale_y->buffer.get())[i],
-            reinterpret_cast<float*>(scale_z->buffer.get())[i]
-        );
-
-        data.rotate.emplace_back(
-            reinterpret_cast<float*>(rotate_0->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_1->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_2->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_3->buffer.get())[i]
-        );
-    }
-
-    return data;
-}
-
-void DataLoader::printPlyHeader(const std::string& filepath)
-{
-    DataLoader::PlyDataStruct data;
-
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("Failed to open PLY file.");
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-    std::cout << "\t[ply_header] Type: " << (plyFile.is_binary_file() ? "binary" : "ascii") << std::endl;
-    for (const auto& c : plyFile.get_comments()) std::cout << "\t[ply_header] Comment: " << c << std::endl;
-    for (const auto& c : plyFile.get_info()) std::cout << "\t[ply_header] Info: " << c << std::endl;
-
-    for (const auto& e : plyFile.get_elements())
-    {
-        std::cout << "\t[ply_header] element: " << e.name << " (" << e.size << ")" << std::endl;
-        for (const auto& p : e.properties)
-        {
-            std::cout << "\t[ply_header] \tproperty: " << p.name << " (type=" << tinyply::PropertyTable[p.propertyType].str << ")";
-            if (p.isList) std::cout << " (list_type=" << tinyply::PropertyTable[p.listType].str << ")";
-            std::cout << std::endl;
-        }
-    }
-}
-
-void extractIntrinsics(const std::vector<std::string>& file_list, std::vector<std::vector<float>>& intrinsics) {
-    for (const std::string& filename : file_list) {
-        std::ifstream file(filename);
-        if (!file.is_open()) {
-            std::cerr << "Failed to open intrinsic file: " << filename << std::endl;
-            continue;
-        }
-
-        std::vector<float> intr(4, 0.0f);  // 预留 4 个浮点数
-        for (int i = 0; i < 4; ++i) {
-            file >> intr[i];
-        }
-        file.close();
-
-        if (intr.size() == 4) {
-            intrinsics.push_back(intr);
-        }
-        else {
-            std::cerr << "Invalid intrinsic file format in: " << filename << std::endl;
-        }
-    }
-}
-
-void extractExtrinsics(const std::vector<std::string>& files, std::vector<std::vector<float>>& extrinsics) {
-    for (const auto& entry : files) {
-        if (entry.find("cameras.txt") == std::string::npos) {
-            std::ifstream file(entry);
-            if (!file.is_open()) throw std::runtime_error("Failed to open file.");
-
-            std::string line;
-            std::vector<float> extrinsicValues;
-            while (std::getline(file, line)) {
-                std::istringstream iss(line);
-                float value;
-
-                // Read values from the line
-                while (iss >> value) {
-                    extrinsicValues.push_back(value);
-                }
-            }
-            extrinsics.push_back(extrinsicValues);
-        }
-    }
-}
-
-long long extractNumber(const std::string& str) {
-    std::string imgName = std::filesystem::path(str).stem().string();
-    
-    std::string numberStr;
-
-    // 遍历文件名，提取数字部分
-    for (char ch : imgName) {
-        if (std::isdigit(ch)) {
-            numberStr += ch;
-        }
-    }
-    
-    // 如果提取到数字，则返回转换后的数字
-    if (!numberStr.empty()) {
-        try {
-            return std::stoll(numberStr); // 使用 stoll 转换为 long long
-        }
-        catch (const std::invalid_argument& e) {
-            std::cerr << "Invalid number in string: " << str << std::endl;
-            throw;
-        }
-    }
-
-    // 如果没有找到数字，返回默认值（例如：0）
-    return 0;
-}
-
-void getFilesInDirectory(std::string path, std::string ext, std::vector<std::string>& outFiles){
-    DIR* dir = opendir(path.c_str());
-    if (!dir) {
-        std::cerr << "Error: Could not open directory " << path << std::endl;
-    }
-
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != nullptr) {
-        std::string filename = entry->d_name;
-
-        // Skip "." and ".." entries
-        if (filename == "." || filename == "..") {
-            continue;
-        }
-
-        // Check if the filename matches the pattern "r_*.ktx"
-        if (filename.size() > ext.size() && filename.substr(filename.size() - ext.size(), ext.size()) == ext){
-            outFiles.push_back(path + "/" + filename);
-        }
-    }
-    closedir(dir);
-}
 
 struct Vec3Hash {
     size_t operator()(const Base::Math::Vec3& v) const {
@@ -241,95 +47,6 @@ Base::Math::Mat4X4 quat2matrix(DataLoader::InputInitStruct::DataExtr& extr) {
     W2C[2][3] = tz;
 
     return W2C;
-}
-
-/*
-void DataLoader::InputInitStruct::normalizeData() {
-    if (positions.empty()) {
-        std::cerr << "Error: No data available for normalization!" << std::endl;
-        return;
-    }
-
-    float stddev = glm::sqrt(variance) + 1e-6f;  // **保证所有维度的缩放一致**
-
-    // **标准化 positions**
-    for (auto& pos : positions) {
-        pos = (pos - mean) / stddev;
-    }
-    for (auto& scale : scales) {
-        scale = scale - glm::log(stddev);
-    }
-    
-    for (auto& extr : extr_tmp) {
-
-        glm::mat4 W2C = quat2matrix(extr);
-        glm::mat4 C2W = glm::inverse(W2C);
-        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
-        
-        glm::vec3 normalized_center = (cam_center - mean) / stddev;
-        C2W[0][3] = normalized_center.x;
-        C2W[1][3] = normalized_center.y;
-        C2W[2][3] = normalized_center.z;
-
-        W2C = glm::inverse(C2W);
-
-        extr.values[4] = W2C[0][3];
-        extr.values[5] = W2C[1][3];
-        extr.values[6] = W2C[2][3];
-    }
-    
-    for (auto& extr : extr_tmp_test) {
-
-        glm::mat4 W2C = quat2matrix(extr);
-        glm::mat4 C2W = glm::inverse(W2C);
-        glm::vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
-
-        glm::vec3 normalized_center = (cam_center - mean) / stddev;
-        C2W[0][3] = normalized_center.x;
-        C2W[1][3] = normalized_center.y;
-        C2W[2][3] = normalized_center.z;
-
-        W2C = glm::inverse(C2W);
-
-        extr.values[4] = W2C[0][3];
-        extr.values[5] = W2C[1][3];
-        extr.values[6] = W2C[2][3];
-    }
-}*/
-
-void DataLoader::InputInitStruct::denormalizeExtr() {
-    float stddev = sqrt(variance) + 1e-6f;
-    for (auto& extr: extr_tmp) {
-        Base::Math::Mat4X4 W2C = quat2matrix(extr);
-        Base::Math::Mat4X4 C2W = Base::Math::Inverse(W2C);
-        Base::Math::Vec3 cam_center(C2W[0][3], C2W[1][3], C2W[2][3]);
-        
-        Base::Math::Vec3 normalized_center = cam_center * stddev + Base::Math::Vec3(mean[0], mean[1], mean[2]);
-        C2W[0][3] = normalized_center.x;
-        C2W[1][3] = normalized_center.y;
-        C2W[2][3] = normalized_center.z;
-        W2C = Base::Math::Inverse(C2W);
-        
-        extr.values[4] = W2C[0][3];
-        extr.values[5] = W2C[1][3];
-        extr.values[6] = W2C[2][3];
-    }
-}
-
-void DataLoader::InputInitStruct::denormalizePoints() {
-    if (positions.empty()) {
-        return;
-    }
-    float stddev = sqrt(variance) + 1e-6f;
-    
-    for (auto& pos : positions) {
-        pos = pos * stddev + Base::Math::Vec3(mean[0], mean[1], mean[2]);
-    }
-    
-    float logdev = log(stddev);
-    for (auto& scale : scales) {
-        scale = scale + Base::Math::Vec3(logdev, logdev, logdev);
-    }
 }
 
 
@@ -444,84 +161,6 @@ void DataLoader::InputInitStruct::getTrainOrders()
     }
 }
 
-void projectPoints(
-    const Eigen::Matrix<float, Eigen::Dynamic, 3>& points_world,
-    const Eigen::Matrix3f& R,
-    const Eigen::Vector3f& T,
-    float fx, float fy, float cx, float cy,
-    Eigen::Matrix<float, Eigen::Dynamic, 3>& projected_points
-)
-{
-    Eigen::Matrix<float, Eigen::Dynamic, 3> points_cam = (R * points_world.transpose()).transpose();
-    points_cam.rowwise() += T.transpose();
-    
-    // Project to image plane (vectorized)
-    projected_points.resize(points_cam.rows(), 3);
-    Eigen::VectorXf z_inv = points_cam.col(2).cwiseInverse();
-    projected_points.col(0) = (points_cam.col(0).array() * z_inv.array()) * fx + cx;
-    projected_points.col(1) = (points_cam.col(1).array() * z_inv.array()) * fy + cy;
-    projected_points.col(2) = points_cam.col(2);
-}
-
-void DataLoader::InputInitStruct::compute_3D_interval()
-{
-    intervals = std::vector<float>(positions.size(), 100000);
-    
-    Eigen::Matrix<float, Eigen::Dynamic, 3> all_positions(positions.size(), 3);
-    for (size_t i = 0; i < positions.size(); ++i) {
-        all_positions(i, 0) = positions[i].x;
-        all_positions(i, 1) = positions[i].y;
-        all_positions(i, 2) = positions[i].z;
-    }
-    float fx = intr_tmp[0][0];
-    float fy = intr_tmp[0][1];
-    float cx = intr_tmp[0][2];
-    float cy = intr_tmp[0][3];
-    
-    float max_dist = -1;
-    float min_dist = 10000;
-    
-    for (auto& extr : extr_tmp) {
-        Eigen::Quaternionf q(extr.values[0], extr.values[1], extr.values[2], extr.values[3]);
-        q.normalize();
-        auto R = q.toRotationMatrix();
-        Eigen::Vector3f T(extr.values[4], extr.values[5], extr.values[6]);
-        
-        Eigen::Matrix<float, Eigen::Dynamic, 3> projected_points;
-        projectPoints(all_positions, R, T, fx, fy, cx, cy, projected_points);
-        
-        for(int i = 0; i < positions.size(); i++) {
-            
-            float u = projected_points(i, 0);
-            float v = projected_points(i, 1);
-            float d = projected_points(i, 2);
-            
-            if (u < 0 || u >= width || v < 0 || v >= height || d < 0.2)
-                continue;
-            
-            intervals[i] = std::min(intervals[i], d);
-            max_dist = std::max(max_dist, d);
-            min_dist = std::min(min_dist, d);
-        }
-    }
-    
-    for (int i = 0; i < intervals.size(); i++) {
-        if (intervals[i] > 1000){
-            intervals[i] = max_dist / fx;
-        }
-        else{
-            intervals[i] /= fx;
-        }
-    }
-    max_dist = log(max_dist / fx);
-    min_dist = log(min_dist / fx);
-    
-    // normalize
-    for(int i = 0; i < intervals.size(); i++) {
-        intervals[i] = (intervals[i] - min_dist) / (max_dist - min_dist);
-    }
-}
-
 
 void DataLoader::InputInitStruct::getNerfppNorm() {
     this->radius = -1.0;
@@ -548,7 +187,6 @@ void DataLoader::InputInitStruct::getNerfppNorm() {
 void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data) {
     std::ifstream file(gaussianPath, std::ios::binary);
     if (!file.is_open()){
-        LOGE("Failed to open PLY file from %{public}s.", gaussianPath.c_str());
         return;
     }
 
@@ -651,109 +289,6 @@ void DataLoader::loadInputGaussianData(std::string& gaussianPath, DataLoader::In
         data.colors.push_back(colorData);
     }
     LOGI("Resume from gaussians OK! Read %{public}zu points.", data.positions.size());
-}
-
-void DataLoader::loadExtraGaussianData(std::string& gaussianPath, DataLoader::InputInitStruct& data) {
-    std::ifstream file(gaussianPath, std::ios::binary);
-    if (!file.is_open()){
-        LOGE("Failed to open PLY file from %{public}s.", gaussianPath.c_str());
-        return;
-    }
-
-    PlyFile plyFile;
-    plyFile.parse_header(file);
-
-    // Declare shared pointers to request each property from the PLY file
-    std::shared_ptr<PlyData> x, y, z;
-    std::shared_ptr<PlyData> scale_x, scale_y, scale_z;
-    std::shared_ptr<PlyData> rotate_0, rotate_1, rotate_2, rotate_3;
-    std::shared_ptr<PlyData> opacity;
-    std::shared_ptr<PlyData> r, g, b;
-    std::vector<std::shared_ptr<PlyData>> colorProps;
-    
-    try {
-        // Request each property from the "vertex" element
-        x = plyFile.request_properties_from_element("vertex", { "x" });
-        y = plyFile.request_properties_from_element("vertex", { "y" });
-        z = plyFile.request_properties_from_element("vertex", { "z" });
-        scale_x = plyFile.request_properties_from_element("vertex", { "scale_0" });
-        scale_y = plyFile.request_properties_from_element("vertex", { "scale_1" });
-        scale_z = plyFile.request_properties_from_element("vertex", { "scale_2" });
-        rotate_0 = plyFile.request_properties_from_element("vertex", { "rot_0" });
-        rotate_1 = plyFile.request_properties_from_element("vertex", { "rot_1" });
-        rotate_2 = plyFile.request_properties_from_element("vertex", { "rot_2" });
-        rotate_3 = plyFile.request_properties_from_element("vertex", { "rot_3" });
-        opacity = plyFile.request_properties_from_element("vertex", { "opacity" });
-        
-        for (int i = 0; i < 3; ++i) {
-            std::string propName = "f_dc_" + std::to_string(i);
-            colorProps.push_back(plyFile.request_properties_from_element("vertex", { propName }));
-        }
-
-        for (int i = 0; i < 45; ++i) {
-            std::string propName = "f_rest_" + std::to_string(i);
-            colorProps.push_back(plyFile.request_properties_from_element("vertex", { propName }));
-        }
-        
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error reading properties: " << e.what() << std::endl;
-    }
-    
-    plyFile.read(file);
-    size_t numVertices = x->count;
-    
-    for (size_t i = 0; i < numVertices; ++i) {
-        Base::Math::Vec3 pos(
-            reinterpret_cast<float*>(x->buffer.get())[i],
-            reinterpret_cast<float*>(y->buffer.get())[i],
-            reinterpret_cast<float*>(z->buffer.get())[i]
-        );
-        data.positions.push_back(pos);
-
-        Base::Math::Vec3 scale(
-            reinterpret_cast<float*>(scale_x->buffer.get())[i],
-            reinterpret_cast<float*>(scale_y->buffer.get())[i],
-            reinterpret_cast<float*>(scale_z->buffer.get())[i]
-        );
-        data.scales.push_back(scale);
-
-        Base::Math::Vec4 rotate(
-            reinterpret_cast<float*>(rotate_0->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_1->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_2->buffer.get())[i],
-            reinterpret_cast<float*>(rotate_3->buffer.get())[i]
-        );
-        data.rotations.push_back(rotate);
-
-        data.opacities.push_back(reinterpret_cast<float*>(opacity->buffer.get())[i]);
-
-        // 处理颜色数据
-        DataLoader::InputInitStruct::Data colorData = {};
-        for (size_t j = 0; j < colorProps.size(); ++j) {
-            float value = reinterpret_cast<float*>(colorProps[j]->buffer.get())[i];
-            if(j < 3){
-                colorData.values[j / 3 + (j % 3) * 16] = value;
-            }
-            else if(j < 18){
-                colorData.values[j-2] = value;
-            }
-            else if(j < 33){
-                colorData.values[j-1] = value;
-            }
-            else{
-                colorData.values[j] = value;
-            }
-        }
-        data.colors.push_back(colorData);
-    }
-    LOGI("Resume from gaussians OK! Read %{public}zu points.", data.positions.size());
-}
-
-DataLoader::InputInitStruct  DataLoader::loadHeadGaussians(std::string dataPath, DataLoader::InputInitStruct& data) {
-    std::string resume_gaussian_path = dataPath + "/head/point_cloud.ply";
-    loadInputGaussianData(resume_gaussian_path, data );
-    return data;
 }
 
 void DataLoader::saveToPLY_tinyply(const std::string& fullDataPath, const DataLoader::InputInitStruct& data) {
@@ -865,7 +400,7 @@ void DataLoader::saveCameras(const std::string fullDataPath, const DataLoader::I
 }
 
 
-void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data, bool filter=false){
+void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data){
     std::ifstream pointsFile(pointsFilePath);
     if (!pointsFile.is_open()) {
         LOGE("Failed to open %{public}s file.", pointsFilePath.c_str());
@@ -889,13 +424,6 @@ void load3DPoints(std::string& pointsFilePath, DataLoader::InputInitStruct& data
         if (uniquePoints.find(pos) != uniquePoints.end()) {
             continue;
         }
-//         if(filter && data.body_bbox.size() > 0){
-//             if(x < data.body_bbox[0] || x > data.body_bbox[1] || 
-//                 y < data.body_bbox[2] || y > data.body_bbox[3] || 
-//                 z < data.body_bbox[4] || z > data.body_bbox[5]){
-//                 continue;
-//             }
-//         }
         uniquePoints.insert(pos);
         
         // Store the point position.
@@ -1047,115 +575,6 @@ void prependSkyboxPoints(
     }
 }
 
-void DataLoader::InputInitStruct::processAndCropForeground(const std::string& scenepath) {
-    // Create foreground directory
-    const std::vector<string> target = this->img_list;
-    std::filesystem::create_directories(scenepath + "/foreground");
-    
-    // Ensure intr_tmp has enough entries for all images if needed
-    if (this->intr_tmp.size() == 1 && target.size() > 1) {
-        std::vector<float> first_intrinsic = this->intr_tmp[0];
-        this->intr_tmp.resize(target.size(), first_intrinsic);
-    }
-    
-    // Process each image
-    for (size_t i = 0; i < target.size(); ++i) {
-        std::string imagePath = target[i];
-        
-        // Extract filename from path
-        std::string filename = std::filesystem::path(imagePath).filename().string();
-        std::string nameWithoutExt = std::filesystem::path(filename).stem().string();
-        
-        // Construct mask path (replace "images" with "segmented" and .jpg with .png)
-        std::string maskPath = imagePath;
-        size_t pos = maskPath.find("/images/");
-        if (pos != std::string::npos) {
-            maskPath.replace(pos, 8, "/segmented/");
-        }
-        // Replace extension from .jpg to .png
-        size_t lastDot = maskPath.find_last_of('.');
-        if (lastDot != std::string::npos) {
-            maskPath = maskPath.substr(0, lastDot) + ".png";
-        }
-        
-        // Read mask
-        cv::Mat mask = cv::imread(maskPath, cv::IMREAD_GRAYSCALE);
-        if (mask.empty()) {
-            LOGE("Failed to read mask: %s", maskPath.c_str());
-            continue;
-        }
-        
-        // Find bounding box of foreground (white pixels)
-        std::vector<cv::Point> whitePixels;
-        cv::findNonZero(mask, whitePixels);
-        
-        if (whitePixels.empty()) {
-            LOGE("No foreground pixels found in mask: %s", maskPath.c_str());
-            continue;
-        }
-        
-        cv::Rect boundingBox = cv::boundingRect(whitePixels);
-        
-        // Find center of bounding box
-        cv::Point center(boundingBox.x + boundingBox.width / 2, 
-                        boundingBox.y + boundingBox.height / 2);
-        
-        LOGI("Image %s: Bounding box center at (%d, %d)", 
-             filename.c_str(), center.x, center.y);
-        
-        // Read original image
-        cv::Mat image = cv::imread(imagePath);
-        if (image.empty()) {
-            LOGE("Failed to read image: %s", imagePath.c_str());
-            continue;
-        }
-        
-        // Crop image from center with 640 width and 480 height
-        cv::Point actualTopLeft;
-        cv::Mat croppedImage = cropImage(image, center, cv::Size(480, 640), actualTopLeft);
-        
-        // Save cropped image to foreground folder (keeping original filename)
-        std::string outputPath = scenepath + "/foreground/obj_" + filename;
-        cv::imwrite(outputPath, croppedImage);
-        
-        LOGI("Saved cropped image to: %{public}s", outputPath.c_str());
-        
-        // Add cropped image path to data
-        this->img_list.push_back(outputPath);
-        
-        // Calculate new intrinsics for the cropped image
-        std::vector<float> intr = this->intr_tmp[i];
-        float scale_factor = image.cols / 480.0; // No scaling, just cropping at original resolution
-        std::vector<float> new_intr = calculateNewIntrinsics(
-            intr[0], intr[1], intr[2], intr[3],
-            actualTopLeft, cv::Size(480, 640), scale_factor
-        );
-        
-        LOGI("New intrinsics - fx:%{public}f fy:%{public}f cx:%{public}f cy:%{public}f", 
-             new_intr[0], new_intr[1], new_intr[2], new_intr[3]);
-        
-        // Add new intrinsics to data
-        this->intr_tmp.push_back(new_intr);
-        
-        // If there are extrinsics, copy them as well
-        if (i < this->extr_tmp.size()) {
-            this->extr_tmp.push_back(this->extr_tmp[i]);
-        }
-        
-        // If there are timestamps, copy them as well
-        if (i < this->time_stamps.size()) {
-            this->time_stamps.push_back(this->time_stamps[i]);
-        }
-    }
-    
-    // Update test extrinsics if needed
-    if (!this->extr_tmp.empty()) {
-        this->extr_tmp_test = this->extr_tmp;
-    }
-    
-    LOGI("Processed %zu images for foreground cropping", target.size());
-}
-
 void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInitStruct& data, bool& resumed, int trainingMode, bool isObject,
                             int height, int width)
 {
@@ -1282,24 +701,8 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     loadInputGaussianData(resume_gaussian_path, data);
     if (data.positions.size() == 0){
         LOGW("Resuming from ply failed, starting from points3D.txt");
-        bool is_human = HumanPreprocess(scenepath, data, trainingMode==HUMAN);
-
         std::string pointsFilePath = slampath + "/points3D.txt";
-        load3DPoints(pointsFilePath, data, (is_human && trainingMode==HUMAN));
-        
-        
-        if (is_human) {
-            int personIndex = 1;
-            while (true) {
-                std::string smplPath = scenepath + "/" + "smpl" + std::to_string(personIndex) + ".txt";
-                std::ifstream file(smplPath);
-                if (!file.good()) {
-                    break;
-                }
-                load3DPoints(smplPath, data);
-                ++personIndex;
-            }
-        }
+        load3DPoints(pointsFilePath, data);
     }
     else {
         resumed = true;
@@ -1323,14 +726,7 @@ void DataLoader::loadInput12(const std::string _scenepath, DataLoader::InputInit
     
     prependSkyboxPoints(data, 10000, 0.01, 10.0);
 
-//     if(isObject){
-//         data = performVisualHullSegmentation(data);
-//     }
-//     if(trainingMode == OBJECT){
-//         data.processAndCropForeground(scenepath);
-//     }
 
-//     saveCameras(scenepath, data);
     imagesFile.close();
     camerasFile.close();
 }
