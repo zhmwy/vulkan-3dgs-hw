@@ -6,6 +6,7 @@ import CommonConstants from '../common/CommonConstants';
 import { subjectSegmentation } from '@kit.CoreVisionKit';
 import { image } from '@kit.ImageKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { common } from '@kit.AbilityKit';
 import { fileIo, ListFileOptions } from '@kit.CoreFileKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
@@ -43,8 +44,10 @@ const caseNames: string[] = [
 ]
 
 const chosenCase: string[] = [
-  "2025-06-04_15_59_26",
-  "2025-06-04_19_43_28"
+  "2025-06-04_15_34_45",
+  "2025-06-04_19_40_24",
+  "2025-06-04_20_26_45",
+  "2025-06-05_20_27_20"
 ]
 
 const sceneCases: string[] = [
@@ -119,8 +122,20 @@ struct Index {
 
       await nativeRender.train3DGS(this.resmgr, caseName, GS_Mode.OBJECT, isObject);  // for循环
       this.message = "Training Complete!";
+      await this.terminateApp();
     } catch (error) {
       // Handle error
+    }
+  }
+
+  private async terminateApp(): Promise<void> {
+    try {
+      const abilityContext = getContext(this) as common.UIAbilityContext;
+      hilog.info(0x0000, TAG, `terminate self`);
+      await abilityContext.terminateSelf();
+    } catch (err) {
+      const error = err as BusinessError;
+      hilog.error(0x0000, TAG, `Failed to terminate app: ${error.code}, ${error.message}`);
     }
   }
 
@@ -183,7 +198,7 @@ struct Index {
       // 如果指定了选择数量，则均匀选择N张图片
       if (numToSelect && numToSelect > 0 && numToSelect < allImages.length) {
         this.pathList = this.selectImagesEvenly(allImages, numToSelect);
-        // hilog.info(0x0000, TAG, `从 ${allImages.length} 张图片中均匀选择了 ${this.pathList.length} 张`);
+        hilog.info(0x0000, TAG, `从 ${allImages.length} 张图片中均匀选择了 ${this.pathList.length} 张`);
       } else {
         // 否则使用所有图片
         this.pathList = allImages;
