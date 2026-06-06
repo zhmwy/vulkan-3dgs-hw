@@ -6,6 +6,7 @@ import CommonConstants from '../common/CommonConstants';
 import { subjectSegmentation } from '@kit.CoreVisionKit';
 import { image } from '@kit.ImageKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { common } from '@kit.AbilityKit';
 import { fileIo, ListFileOptions } from '@kit.CoreFileKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { fileIo as fs } from '@kit.CoreFileKit';  // 导入 fs (fileIo)
@@ -121,8 +122,20 @@ struct Index {
 
       await nativeRender.train3DGS(this.resmgr, caseName, GS_Mode.OBJECT, isObject);  // for循环
       this.message = "Training Complete!";
+      await this.terminateApp();
     } catch (error) {
       // Handle error
+    }
+  }
+
+  private async terminateApp(): Promise<void> {
+    try {
+      const abilityContext = getContext(this) as common.UIAbilityContext;
+      hilog.info(0x0000, TAG, `terminate self`);
+      await abilityContext.terminateSelf();
+    } catch (err) {
+      const error = err as BusinessError;
+      hilog.error(0x0000, TAG, `Failed to terminate app: ${error.code}, ${error.message}`);
     }
   }
 

@@ -13,7 +13,9 @@ assets
 
 .clang*
 .idea
-
+run_deveco_cli.ps1
+cli-run-hilog.log
+result/
 
 entry/src/main/cpp/human/SMPL/src/smpl/smpl_male.cpp
 
