@@ -28,7 +28,8 @@ private:
 public:
     void initialize(int range) {
         _range = range;
-        gen.seed(rd());             // Seed the generator
+        constexpr uint32_t fixedSeed = 0;
+        gen.seed(fixedSeed);             // Seed the generator
         dist = std::uniform_int_distribution<>(0, range - 1); // Set the distribution range
         arr.resize(range, 0);
         for(int i = 0; i < range; i++)
@@ -51,7 +52,7 @@ public:
         int k = arr[_current_idx % arr.size()];
         _current_idx++;
         if (_current_idx % arr.size() == 0) {
-            gen.seed(rd()); 
+//             gen.seed(rd()); 
             std::shuffle(arr.begin(), arr.end(), gen);
         }
         return k;

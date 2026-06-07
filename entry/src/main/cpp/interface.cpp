@@ -67,7 +67,7 @@ void InterfaceImplVulkan::TrainVulkan() {
     _isTraining = true;
 
     try {
-        std::vector<int> max_steps = {7000, 500, 500};
+        std::vector<int> max_steps = {84, 500, 500};
         
         double total_time = 60.0;
         auto start = std::chrono::high_resolution_clock::now();
@@ -75,38 +75,37 @@ void InterfaceImplVulkan::TrainVulkan() {
         std::chrono::duration<double> duration = end - start;
         int step = 0;
         
-        while(duration.count() < total_time) {
+//         while(duration.count() < total_time) {
+//             if (!_isTraining) break;
+//                
+//             _renderer->render();
+//             updateProgress(static_cast<float>(duration.count() * 100) / total_time);
+//             GetProcessVulkan();
+//             step++;
+//
+//             end = std::chrono::high_resolution_clock::now();
+//             duration = end - start;
+//
+//             // do not densify in the last 5 seconds
+//             if (duration.count() > total_time - 5.0){
+//                 _renderer->densify_start_step = 100000;
+//             }
+//
+//             if (duration.count() > total_time - 15.0){
+//                 _renderer->low_resolution_steps = -1;
+//             }
+//         }
+        
+        // Main training loop
+        for (step = 0; step < max_steps[0]; ++step) {
             if (!_isTraining) break;
                 
             _renderer->render();
-            updateProgress(static_cast<float>(duration.count() * 100) / total_time);
+            updateProgress(static_cast<float>(step * 100) / max_steps[0]);
             GetProcessVulkan();
-            step++;
-
-            end = std::chrono::high_resolution_clock::now();
-            duration = end - start;
-
-            // do not densify in the last 5 seconds
-            if (duration.count() > total_time - 5.0){
-                _renderer->densify_start_step = 100000;
-            }
-
-            if (duration.count() > total_time - 15.0){
-                _renderer->low_resolution_steps = -1;
-            }
         }
-        
-//         // Main training loop
-//         for (step = 0; step < max_steps[0]; ++step) {
-//             if (!_isTraining) break;
-//
-//                
-//             _renderer->render();
-//             updateProgress(static_cast<float>(step * 100) / max_steps[0]);
-//             GetProcessVulkan();
-//         }
-//         end = std::chrono::high_resolution_clock::now();
-//         duration = end - start;
+        end = std::chrono::high_resolution_clock::now();
+        duration = end - start;
         
         _renderer->saveGaussians(_dataPath);
         
