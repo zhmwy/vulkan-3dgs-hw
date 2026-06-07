@@ -69,7 +69,7 @@ void InterfaceImplVulkan::TrainVulkan() {
 //     GetProcessVulkan();
 
     try {
-        std::vector<int> max_steps = {794, 500, 500};
+        std::vector<int> max_steps = {792, 500, 500};
         
         double total_time = 60.0;
         auto start = std::chrono::high_resolution_clock::now();
@@ -98,7 +98,7 @@ void InterfaceImplVulkan::TrainVulkan() {
             }
         }
         
-//         // Main training loop
+        // Main training loop
 //         for (step = 0; step < max_steps[0]; ++step) {
 //             if (!_isTraining) break;
 //             _renderer->render();

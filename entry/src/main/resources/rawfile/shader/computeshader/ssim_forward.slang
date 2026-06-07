@@ -390,9 +390,13 @@ void computeMain(uint3 dispatchThreadID: SV_DispatchThreadID)
     const float C1 = 0.0001f;
     const float C2 = 0.0009f;
 
-    dL_dmap[t2i(0, pix_y, pix_x, H, W)] = -1.0 * lambda_dssim / (3 * H * W);
-    dL_dmap[t2i(1, pix_y, pix_x, H, W)] = -1.0 * lambda_dssim / (3 * H * W);
-    dL_dmap[t2i(2, pix_y, pix_x, H, W)] = -1.0 * lambda_dssim / (3 * H * W);
+    bool inBounds = (pix_x < width) && (pix_y < height) && (pix_x >= 0) && (pix_y >= 0);
+    if (inBounds) {
+        dL_dmap[t2i(0, pix_y, pix_x, H, W)] = -1.0 * lambda_dssim / (3 * H * W);
+        dL_dmap[t2i(1, pix_y, pix_x, H, W)] = -1.0 * lambda_dssim / (3 * H * W);
+        dL_dmap[t2i(2, pix_y, pix_x, H, W)] = -1.0 * lambda_dssim / (3 * H * W);
+    }
+
 
     for (int c = 0; c < 3; c++) {
 
