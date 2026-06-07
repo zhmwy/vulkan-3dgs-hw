@@ -42,7 +42,30 @@ void VulkanComputeGS::encodeInitBuffersValues2CommandBuffer()
     X = (splat_count + 256 - 1) / 256;
     queryTime.clear();
     encodeCpu2Gpu();
-    ComputeMemoryBarrierBlock();
+
+    auto clearBuffer = [this](vkgs::Buffer& buffer) {
+        vkCmdFillBufferGS(compute.commandBuffer, buffer, 0, VK_WHOLE_SIZE, 0);
+    };
+
+    clearBuffer(splat_buffers.xyz_array_avg);
+    clearBuffer(splat_buffers.scale_array_avg);
+    clearBuffer(splat_buffers.rotate_array_avg);
+    clearBuffer(splat_buffers.feature_array_avg);
+    clearBuffer(splat_buffers.opacity_array_avg);
+
+    clearBuffer(splat_buffers.xyz_array_exp_avg);
+    clearBuffer(splat_buffers.scale_array_exp_avg);
+    clearBuffer(splat_buffers.rotate_array_exp_avg);
+    clearBuffer(splat_buffers.feature_array_exp_avg);
+    clearBuffer(splat_buffers.opacity_array_exp_avg);
+
+    clearBuffer(splat_buffers.intr_avg);
+    clearBuffer(splat_buffers.intr_exp_avg);
+    clearBuffer(splat_buffers.camera_extrs_avg);
+    clearBuffer(splat_buffers.camera_extrs_exp_avg);
+    clearBuffer(splat_buffers.camera_training_steps);
+
+    TransComputeBarrierBlock();
     if(!hasKNN){
         LOGI("KNN is computed");
         queryCmdTimeStart("KNN");
